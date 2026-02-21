@@ -23,7 +23,7 @@ ratatui = "0.29"
 crossterm = "0.28"
 portable-pty = "0.8"
 vt100 = "0.15"
-vte = "0.15"
+alacritty_terminal = "0.25"
 libc = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

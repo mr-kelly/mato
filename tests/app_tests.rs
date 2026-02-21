@@ -1,4 +1,4 @@
-/// Tests for Task and App business logic (tab/task management, rename, nav, idle).
+/// Tests for Desk and App business logic (tab/task management, rename, nav, idle).
 /// Uses a NullProvider to avoid needing a live daemon socket.
 use mato::terminal_provider::{ScreenContent, TerminalProvider};
 
@@ -12,7 +12,7 @@ impl TerminalProvider for NullProvider {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-use mato::client::app::{Focus, RenameTarget, TabEntry, Task};
+use mato::client::app::{Focus, RenameTarget, TabEntry, Desk};
 use ratatui::widgets::ListState;
 use std::collections::HashSet;
 
@@ -20,11 +20,11 @@ fn make_tab(name: &str) -> TabEntry {
     TabEntry { id: mato::utils::new_id(), name: name.into(), provider: Box::new(NullProvider) }
 }
 
-fn make_task(name: &str) -> Task {
-    Task { id: mato::utils::new_id(), name: name.into(), tabs: vec![make_tab("Terminal 1")], active_tab: 0 }
+fn make_task(name: &str) -> Desk {
+    Desk { id: mato::utils::new_id(), name: name.into(), tabs: vec![make_tab("Terminal 1")], active_tab: 0 }
 }
 
-// ── Task: tab management ─────────────────────────────────────────────────────
+// ── Desk: tab management ─────────────────────────────────────────────────────
 
 #[test]
 fn close_tab_cannot_remove_last() {
@@ -55,9 +55,13 @@ fn new_tab_selects_new_tab() {
 
 // ── App: task management ─────────────────────────────────────────────────────
 
-fn make_app_with(tasks: Vec<Task>) -> mato::client::app::App {
+fn make_app_with(desks: Vec<Desk>) -> mato::client::app::App {
     let mut app = mato::client::app::App::new();
-    app.tasks = tasks;
+    app.current_office = 0;
+    // Ensure exactly one office with the given desks
+    app.offices = vec![mato::client::app::Office {
+        id: "test".into(), name: "Test".into(), desks, active_desk: 0,
+    }];
     app.list_state.select(Some(0));
     app
 }
@@ -65,8 +69,8 @@ fn make_app_with(tasks: Vec<Task>) -> mato::client::app::App {
 #[test]
 fn close_task_cannot_remove_last() {
     let mut app = make_app_with(vec![make_task("Only")]);
-    app.close_task();
-    assert_eq!(app.tasks.len(), 1);
+    app.close_desk();
+    assert_eq!(app.offices[0].desks.len(), 1);
 }
 
 #[test]
@@ -75,8 +79,8 @@ fn close_task_selects_valid_index_after_removal() {
     // select last task then close it
     app.nav(2);
     assert_eq!(app.selected(), 2);
-    app.close_task();
-    assert_eq!(app.tasks.len(), 2);
+    app.close_desk();
+    assert_eq!(app.offices[0].desks.len(), 2);
     assert_eq!(app.selected(), 1, "selection should clamp to new last");
 }
 
@@ -94,25 +98,25 @@ fn nav_does_not_go_out_of_bounds() {
 #[test]
 fn commit_rename_empty_string_is_ignored() {
     let mut app = make_app_with(vec![make_task("Original")]);
-    app.rename = Some((RenameTarget::Task(0), "   ".into()));
+    app.rename = Some((RenameTarget::Desk(0), "   ".into()));
     app.commit_rename();
-    assert_eq!(app.tasks[0].name, "Original", "empty rename should not apply");
+    assert_eq!(app.offices[0].desks[0].name, "Original", "empty rename should not apply");
     assert!(!app.dirty);
 }
 
 #[test]
 fn commit_rename_task_applies_trimmed_name() {
     let mut app = make_app_with(vec![make_task("Old")]);
-    app.rename = Some((RenameTarget::Task(0), "  New Name  ".into()));
+    app.rename = Some((RenameTarget::Desk(0), "  New Name  ".into()));
     app.commit_rename();
-    assert_eq!(app.tasks[0].name, "New Name");
+    assert_eq!(app.offices[0].desks[0].name, "New Name");
     assert!(app.dirty);
 }
 
 #[test]
 fn cancel_rename_clears_state() {
     let mut app = make_app_with(vec![make_task("T")]);
-    app.rename = Some((RenameTarget::Task(0), "typing...".into()));
+    app.rename = Some((RenameTarget::Desk(0), "typing...".into()));
     app.cancel_rename();
     assert!(app.rename.is_none());
 }
@@ -185,35 +189,34 @@ fn vt100_cursor_advances_after_text() {
 
 #[test]
 fn saved_state_roundtrip() {
-    use mato::client::persistence::{SavedState, SavedTab, SavedTask};
+    use mato::client::persistence::{SavedState, SavedTab, SavedDesk, SavedOffice};
 
     let state = SavedState {
-        active_task: 1,
-        tasks: vec![
-            SavedTask {
-                id: "t1".into(),
-                name: "Work".into(),
-                active_tab: 0,
-                tabs: vec![SavedTab { id: "tb1".into(), name: "Terminal 1".into() }],
-            },
-            SavedTask {
-                id: "t2".into(),
-                name: "Personal".into(),
-                active_tab: 1,
-                tabs: vec![
-                    SavedTab { id: "tb2".into(), name: "Terminal 1".into() },
-                    SavedTab { id: "tb3".into(), name: "Terminal 2".into() },
-                ],
-            },
-        ],
+        current_office: 0,
+        offices: vec![SavedOffice {
+            id: "o1".into(), name: "Default".into(), active_desk: 1,
+            desks: vec![
+                SavedDesk {
+                    id: "t1".into(), name: "Work".into(), active_tab: 0,
+                    tabs: vec![SavedTab { id: "tb1".into(), name: "Terminal 1".into() }],
+                },
+                SavedDesk {
+                    id: "t2".into(), name: "Personal".into(), active_tab: 1,
+                    tabs: vec![
+                        SavedTab { id: "tb2".into(), name: "Terminal 1".into() },
+                        SavedTab { id: "tb3".into(), name: "Terminal 2".into() },
+                    ],
+                },
+            ],
+        }],
     };
 
     let json = serde_json::to_string(&state).unwrap();
     let restored: SavedState = serde_json::from_str(&json).unwrap();
 
-    assert_eq!(restored.active_task, 1);
-    assert_eq!(restored.tasks.len(), 2);
-    assert_eq!(restored.tasks[1].name, "Personal");
-    assert_eq!(restored.tasks[1].tabs.len(), 2);
-    assert_eq!(restored.tasks[1].active_tab, 1);
+    assert_eq!(restored.offices[0].active_desk, 1);
+    assert_eq!(restored.offices[0].desks.len(), 2);
+    assert_eq!(restored.offices[0].desks[1].name, "Personal");
+    assert_eq!(restored.offices[0].desks[1].tabs.len(), 2);
+    assert_eq!(restored.offices[0].desks[1].active_tab, 1);
 }

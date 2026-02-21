@@ -9,7 +9,7 @@ pub mod error;
 pub mod emulators;
 pub mod providers;
 pub mod client;
-pub mod daemon_modules;
+pub mod daemon;
 
 // Re-export commonly used items
 pub use protocol::{ClientMsg, ServerMsg};

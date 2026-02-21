@@ -7,7 +7,7 @@ pub struct Config {
 }
 
 fn default_emulator() -> String {
-    "vt100".to_string()
+    "alacritty".to_string()
 }
 
 impl Default for Config {

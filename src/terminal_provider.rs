@@ -7,12 +7,22 @@ pub trait TerminalProvider: Send {
     fn resize(&mut self, rows: u16, cols: u16);
     fn write(&mut self, bytes: &[u8]);
     fn get_screen(&self, rows: u16, cols: u16) -> ScreenContent;
+    fn scroll(&mut self, _delta: i32) {}
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScreenContent {
     pub lines: Vec<ScreenLine>,
     pub cursor: (u16, u16),
+    pub title: Option<String>,
+    pub cursor_shape: CursorShape,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum CursorShape {
+    Block,
+    Beam,
+    Underline,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,6 +72,6 @@ mod color_serde {
 
 impl Default for ScreenContent {
     fn default() -> Self {
-        Self { lines: vec![], cursor: (0, 0) }
+        Self { lines: vec![], cursor: (0, 0), title: None, cursor_shape: CursorShape::Block }
     }
 }

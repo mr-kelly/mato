@@ -11,6 +11,7 @@ pub enum ClientMsg {
     GetIdleStatus,
     GetUpdateStatus,
     ClosePty { tab_id: String },
+    Scroll { tab_id: String, delta: i32 },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

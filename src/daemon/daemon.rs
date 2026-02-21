@@ -9,7 +9,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use crate::protocol::{ClientMsg, ServerMsg};
 use crate::providers::PtyProvider;
 use crate::terminal_provider::TerminalProvider;
-use crate::daemon_modules::signals::SignalHandler;
+use crate::daemon::signals::SignalHandler;
 use crate::config::Config;
 
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -229,13 +229,18 @@ pub async fn handle_client(
             ClientMsg::ClosePty { tab_id } => {
                 if let Some((_, entry)) = tabs.remove(&tab_id) {
                     tracing::info!("Closing PTY for tab {}", tab_id);
-                    // Drop the entry, which will kill the PTY process
                     drop(entry);
                     ServerMsg::Welcome { version: "ok".into() }
                 } else {
                     tracing::warn!("Attempted to close non-existent tab {}", tab_id);
                     ServerMsg::Error { message: "tab not found".into() }
                 }
+            }
+            ClientMsg::Scroll { tab_id, delta } => {
+                if let Some(entry) = tabs.get(&tab_id) {
+                    entry.lock().scroll(delta);
+                }
+                ServerMsg::Welcome { version: "ok".into() }
             }
         };
 

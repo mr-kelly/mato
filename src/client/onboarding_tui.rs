@@ -12,73 +12,71 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
     Frame, Terminal,
 };
+use serde::Deserialize;
+use crate::client::persistence::SavedState;
+
+#[derive(Deserialize)]
+struct TemplateMetadata {
+    name: String,
+    description: String,
+    details: String,
+}
+
+#[derive(Deserialize)]
+struct TemplateFile {
+    metadata: TemplateMetadata,
+}
 
 // Embed templates at compile time
-const POWER_USER: &str = include_str!("../../templates/power-user.json");
 const SOLO_DEVELOPER: &str = include_str!("../../templates/solo-developer.json");
 const ONE_PERSON_COMPANY: &str = include_str!("../../templates/one-person-company.json");
 const FULLSTACK_DEVELOPER: &str = include_str!("../../templates/fullstack-developer.json");
 const DATA_SCIENTIST: &str = include_str!("../../templates/data-scientist.json");
-const MINIMAL: &str = include_str!("../../templates/minimal.json");
+const POWER_USER: &str = include_str!("../../templates/power-user.json");
+const START_FROM_SCRATCH: &str = include_str!("../../templates/minimal.json");
 
 struct Template {
-    name: &'static str,
-    description: &'static str,
-    details: &'static str,
+    name: String,
+    description: String,
+    details: String,
     content: &'static str,
 }
 
-const TEMPLATES: &[Template] = &[
+fn parse_template(content: &'static str) -> Template {
+    let file: TemplateFile = serde_json::from_str(content).expect("Failed to parse template");
     Template {
-        name: "⭐ Power User",
-        description: "45 tasks, 250+ tabs",
-        details: "Complete setup with all AI tools (Claude, Gemini, Codex, Copilot, Cursor, Aider, Continue, Cline, Windsurf, Bolt) and comprehensive business functions. Perfect for serious professionals managing complex workflows.",
-        content: POWER_USER,
-    },
-    Template {
-        name: "💻 Solo Developer",
-        description: "3 tasks, 8 tabs",
-        details: "Focused workspace for individual developers. Includes Development (Editor, Dev Server, Logs), Git & Deploy, and Tools (Database, Docker, Monitor).",
-        content: SOLO_DEVELOPER,
-    },
-    Template {
-        name: "💼 One-Person Company",
-        description: "4 tasks, 13 tabs",
-        details: "Organized by business departments: Engineering, Product, Marketing, and Operations. Perfect for solo entrepreneurs managing multiple business functions.",
-        content: ONE_PERSON_COMPANY,
-    },
-    Template {
-        name: "🚀 Full-Stack Developer",
-        description: "4 tasks, 11 tabs",
-        details: "Multiple projects workspace with Main Project, Side Project, DevOps (Docker, K8s, CI/CD), and Learning sections.",
-        content: FULLSTACK_DEVELOPER,
-    },
-    Template {
-        name: "📊 Data Scientist",
-        description: "4 tasks, 11 tabs",
-        details: "Data-focused workspace with Data Analysis (Jupyter, Python, Viz), ML Training (TensorBoard, GPU), Data Pipeline (ETL, Airflow), and Deployment.",
-        content: DATA_SCIENTIST,
-    },
-    Template {
-        name: "✨ Minimal",
-        description: "1 task, 1 tab",
-        details: "Start from scratch with a clean slate. Perfect if you want to build your own workspace from the ground up.",
-        content: MINIMAL,
-    },
-];
+        name: file.metadata.name,
+        description: file.metadata.description,
+        details: file.metadata.details,
+        content,
+    }
+}
 
-pub fn show_onboarding_tui() -> io::Result<()> {
+fn get_templates() -> Vec<Template> {
+    vec![
+        parse_template(SOLO_DEVELOPER),
+        parse_template(ONE_PERSON_COMPANY),
+        parse_template(FULLSTACK_DEVELOPER),
+        parse_template(DATA_SCIENTIST),
+        parse_template(POWER_USER),
+        parse_template(START_FROM_SCRATCH),
+    ]
+}
+
+pub fn show_onboarding_tui() -> io::Result<Option<SavedState>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    let templates = get_templates();
     let mut list_state = ListState::default();
     list_state.select(Some(0));
+    let mut result = None;
 
     loop {
-        terminal.draw(|f| draw_onboarding(f, &mut list_state))?;
+        terminal.draw(|f| draw_onboarding(f, &mut list_state, &templates))?;
 
         if let Event::Key(key) = event::read()? {
             match key.code {
@@ -90,17 +88,16 @@ pub fn show_onboarding_tui() -> io::Result<()> {
                 }
                 KeyCode::Down => {
                     let selected = list_state.selected().unwrap_or(0);
-                    if selected < TEMPLATES.len() - 1 {
+                    if selected < templates.len() - 1 {
                         list_state.select(Some(selected + 1));
                     }
                 }
                 KeyCode::Enter => {
                     let selected = list_state.selected().unwrap_or(0);
-                    apply_template(selected)?;
+                    result = apply_template_return(&templates[selected])?;
                     break;
                 }
                 KeyCode::Esc | KeyCode::Char('q') => {
-                    apply_template(5)?; // Default to minimal
                     break;
                 }
                 _ => {}
@@ -110,10 +107,10 @@ pub fn show_onboarding_tui() -> io::Result<()> {
 
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    Ok(())
+    Ok(result)
 }
 
-fn draw_onboarding(f: &mut Frame, list_state: &mut ListState) {
+fn draw_onboarding(f: &mut Frame, list_state: &mut ListState, templates: &[Template]) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -142,13 +139,13 @@ fn draw_onboarding(f: &mut Frame, list_state: &mut ListState) {
     f.render_widget(title, chunks[0]);
 
     // Template list
-    let items: Vec<ListItem> = TEMPLATES
+    let items: Vec<ListItem> = templates
         .iter()
         .map(|t| {
             ListItem::new(vec![
-                Line::from(Span::styled(t.name, Style::default().add_modifier(Modifier::BOLD))),
+                Line::from(Span::styled(&t.name, Style::default().add_modifier(Modifier::BOLD))),
                 Line::from(Span::styled(
-                    t.description,
+                    &t.description,
                     Style::default().fg(Color::DarkGray),
                 )),
             ])
@@ -158,7 +155,7 @@ fn draw_onboarding(f: &mut Frame, list_state: &mut ListState) {
     let list = List::new(items)
         .block(
             Block::default()
-                .title(" Choose a Workspace Template ")
+                .title(" Choose an Office Template ")
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::Cyan)),
         )
@@ -172,8 +169,8 @@ fn draw_onboarding(f: &mut Frame, list_state: &mut ListState) {
 
     // Details
     let selected = list_state.selected().unwrap_or(0);
-    let template = &TEMPLATES[selected];
-    let details = Paragraph::new(template.details)
+    let template = &templates[selected];
+    let details = Paragraph::new(template.details.as_str())
         .wrap(Wrap { trim: true })
         .block(
             Block::default()
@@ -191,8 +188,7 @@ fn draw_onboarding(f: &mut Frame, list_state: &mut ListState) {
     f.render_widget(help, chunks[3]);
 }
 
-fn apply_template(index: usize) -> io::Result<()> {
-    let template = &TEMPLATES[index];
+fn apply_template(template: &Template) -> io::Result<()> {
     let state_path = crate::utils::get_state_file_path();
     
     if let Some(parent) = state_path.parent() {
@@ -201,4 +197,10 @@ fn apply_template(index: usize) -> io::Result<()> {
     
     std::fs::write(&state_path, template.content)?;
     Ok(())
+}
+
+fn apply_template_return(template: &Template) -> io::Result<Option<SavedState>> {
+    let state: SavedState = serde_json::from_str(template.content)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    Ok(Some(state))
 }

@@ -1,16 +1,28 @@
 {
-  "tasks": [
+  "metadata": {
+    "name": "\u2728 Start from Scratch",
+    "description": "1 desk, 1 tab",
+    "details": "Begin with a clean slate. Perfect if you want to build your own office from the ground up."
+  },
+  "offices": [
     {
-      "id": "task-1",
-      "name": "Task 1",
-      "tabs": [
+      "id": "office-default",
+      "name": "Default",
+      "desks": [
         {
-          "id": "tab-1",
-          "name": "Terminal 1"
+          "id": "desk-1",
+          "name": "Desk 1",
+          "tabs": [
+            {
+              "id": "tab-1",
+              "name": "Terminal 1"
+            }
+          ],
+          "active_tab": 0
         }
       ],
-      "active_tab": 0
+      "active_desk": 0
     }
   ],
-  "active_task": 0
+  "current_office": 0
 }

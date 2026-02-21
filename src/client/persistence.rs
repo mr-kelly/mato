@@ -9,7 +9,7 @@ pub struct SavedTab {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct SavedTask {
+pub struct SavedDesk {
     pub id: String,
     pub name: String,
     pub tabs: Vec<SavedTab>,
@@ -17,21 +17,34 @@ pub struct SavedTask {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct SavedOffice {
+    pub id: String,
+    pub name: String,
+    pub desks: Vec<SavedDesk>,
+    pub active_desk: usize,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct SavedState {
-    pub tasks: Vec<SavedTask>,
+    pub offices: Vec<SavedOffice>,
     #[serde(default)]
-    pub active_task: usize,
+    pub current_office: usize,
 }
 
 pub fn save_state(app: &App) -> Result<()> {
     let state = SavedState {
-        tasks: app.tasks.iter().map(|t| SavedTask {
-            id: t.id.clone(),
-            name: t.name.clone(),
-            tabs: t.tabs.iter().map(|tb| SavedTab { id: tb.id.clone(), name: tb.name.clone() }).collect(),
-            active_tab: t.active_tab,
+        offices: app.offices.iter().map(|o| SavedOffice {
+            id: o.id.clone(),
+            name: o.name.clone(),
+            desks: o.desks.iter().map(|d| SavedDesk {
+                id: d.id.clone(),
+                name: d.name.clone(),
+                tabs: d.tabs.iter().map(|tb| SavedTab { id: tb.id.clone(), name: tb.name.clone() }).collect(),
+                active_tab: d.active_tab,
+            }).collect(),
+            active_desk: o.active_desk,
         }).collect(),
-        active_task: app.active_task(),
+        current_office: app.current_office,
     };
     
     let json = serde_json::to_string_pretty(&state)?;

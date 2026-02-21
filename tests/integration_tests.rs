@@ -9,7 +9,7 @@ use dashmap::DashMap;
 use parking_lot::Mutex;
 
 use mato::config::Config;
-use mato::daemon_modules::daemon::handle_client;
+use mato::daemon::daemon::handle_client;
 use mato::protocol::{ClientMsg, ServerMsg};
 use mato::providers::PtyProvider;
 
@@ -29,7 +29,8 @@ fn start_daemon(socket_path: &str) -> Arc<DashMap<String, Arc<Mutex<PtyProvider>
                     let tabs = tabs_clone.clone();
                     let config = Arc::new(Mutex::new(Config::default()));
                     tokio::spawn(async move {
-                        let _ = handle_client(stream, tabs, config, 1).await;
+                        let latest_version = Arc::new(parking_lot::Mutex::new(None));
+                        let _ = handle_client(stream, tabs, config, 1, latest_version).await;
                     });
                 }
             }

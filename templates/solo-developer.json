@@ -1,58 +1,70 @@
 {
-  "tasks": [
+  "offices": [
     {
-      "id": "dev-coding",
-      "name": "💻 Development",
-      "tabs": [
+      "id": "office-default",
+      "name": "Solo Developer",
+      "desks": [
         {
-          "id": "tab-editor",
-          "name": "📝 Editor"
+          "id": "dev-coding",
+          "name": "\ud83d\udcbb Development",
+          "tabs": [
+            {
+              "id": "tab-editor",
+              "name": "\ud83d\udcdd Editor"
+            },
+            {
+              "id": "tab-server",
+              "name": "\ud83d\ude80 Dev Server"
+            },
+            {
+              "id": "tab-logs",
+              "name": "\ud83d\udccb Logs"
+            }
+          ],
+          "active_tab": 0
         },
         {
-          "id": "tab-server",
-          "name": "🚀 Dev Server"
+          "id": "dev-git",
+          "name": "\ud83d\udd00 Git & Deploy",
+          "tabs": [
+            {
+              "id": "tab-git",
+              "name": "\ud83c\udf3f Git"
+            },
+            {
+              "id": "tab-deploy",
+              "name": "\ud83d\udea2 Deploy"
+            }
+          ],
+          "active_tab": 0
         },
         {
-          "id": "tab-logs",
-          "name": "📋 Logs"
+          "id": "dev-tools",
+          "name": "\ud83d\udee0\ufe0f Tools",
+          "tabs": [
+            {
+              "id": "tab-db",
+              "name": "\ud83d\uddc4\ufe0f Database"
+            },
+            {
+              "id": "tab-docker",
+              "name": "\ud83d\udc33 Docker"
+            },
+            {
+              "id": "tab-monitor",
+              "name": "\ud83d\udcca Monitor"
+            }
+          ],
+          "active_tab": 0
         }
       ],
-      "active_tab": 0
-    },
-    {
-      "id": "dev-git",
-      "name": "🔀 Git & Deploy",
-      "tabs": [
-        {
-          "id": "tab-git",
-          "name": "🌿 Git"
-        },
-        {
-          "id": "tab-deploy",
-          "name": "🚢 Deploy"
-        }
-      ],
-      "active_tab": 0
-    },
-    {
-      "id": "dev-tools",
-      "name": "🛠️ Tools",
-      "tabs": [
-        {
-          "id": "tab-db",
-          "name": "🗄️ Database"
-        },
-        {
-          "id": "tab-docker",
-          "name": "🐳 Docker"
-        },
-        {
-          "id": "tab-monitor",
-          "name": "📊 Monitor"
-        }
-      ],
-      "active_tab": 0
+      "active_desk": 0
     }
   ],
-  "active_task": 0
+  "current_office": 0,
+  "metadata": {
+    "name": "\ud83d\udcbb Solo Developer",
+    "description": "3 desks, 8 tabs",
+    "details": "Focused office for individual developers. Includes Development (Editor, Dev Server, Logs), Git & Deploy, and Tools (Database, Docker, Monitor)."
+  }
 }

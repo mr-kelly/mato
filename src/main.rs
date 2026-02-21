@@ -2,7 +2,7 @@ mod client;
 mod terminal_provider;
 mod terminal_emulator;
 mod protocol;
-mod daemon_modules;
+mod daemon;
 mod providers;
 mod emulators;
 mod config;
@@ -28,7 +28,7 @@ use ratatui::{backend::CrosstermBackend, layout::Rect, Terminal};
 use client::{App, save_state};
 use client::ui::draw;
 use client::input::handle_key;
-use client::app::Focus;
+use client::app::{Focus, Office, Desk, TabEntry};
 
 // Global flag for SIGCONT
 static RESUMED: AtomicBool = AtomicBool::new(false);
@@ -48,12 +48,12 @@ fn main() -> Result<()> {
     // Check for --daemon flag
     if std::env::args().any(|a| a == "--daemon") {
         let foreground = std::env::args().any(|a| a == "--foreground");
-        return daemon_modules::run_daemon(foreground).map_err(MatoError::from);
+        return daemon::run_daemon(foreground).map_err(MatoError::from);
     }
 
     // Check for --status flag
     if std::env::args().any(|a| a == "--status") {
-        return daemon_modules::show_status().map_err(MatoError::from);
+        return daemon::show_status().map_err(MatoError::from);
     }
 
     // Setup client logging
@@ -73,11 +73,18 @@ fn main() -> Result<()> {
     // Check if this is first run (no state file)
     let state_path = utils::get_state_file_path();
     if !state_path.exists() {
-        client::show_onboarding_tui()?;
+        if let Some(state) = client::show_onboarding_tui()? {
+            let state_json = serde_json::to_string_pretty(&state)
+                .map_err(|e| MatoError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+            if let Some(parent) = state_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(&state_path, state_json)?;
+        }
     }
 
     // Ensure daemon is running
-    daemon_modules::ensure_daemon_running()?;
+    daemon::ensure_daemon_running()?;
 
     run_client().map_err(|e| {
         eprintln!("Error: {}", e);
@@ -94,7 +101,7 @@ fn run_client() -> Result<()> {
     
     enable_raw_mode()?;
     let mut stdout = std::io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture, crossterm::event::EnableBracketedPaste)?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
     terminal.show_cursor()?;  // Show cursor at startup
 
@@ -115,6 +122,8 @@ fn run_client() -> Result<()> {
         app.refresh_active_status();
         app.refresh_update_status();
         app.update_spinner();
+        app.sync_tab_titles();
+        app.sync_focus_events();
         
         terminal.draw(|f| draw(f, &mut app))?;
         
@@ -131,17 +140,55 @@ fn run_client() -> Result<()> {
         if event::poll(timeout)? {
             match event::read()? {
                 Event::Key(key) => {
-                    if handle_key(&mut app, key) { break; }
+                    if handle_key(&mut app, key) {
+                        break;
+                    }
                     if app.dirty { save_state(&app); app.dirty = false; }
                 }
                 Event::Mouse(me) => handle_mouse(&mut app, me),
+                Event::Resize(_, _) => {
+                    // Terminal resized - trigger PTY resize via pending mechanism
+                    app.resize_all_ptys(app.term_rows, app.term_cols);
+                }
+                Event::Paste(text) => {
+                    if matches!(app.focus, client::app::Focus::Content) {
+                        app.pty_write(text.as_bytes());
+                    }
+                }
                 _ => {}
             }
+        }
+        
+        if app.should_show_onboarding {
+            app.should_show_onboarding = false;
+            disable_raw_mode()?;
+            execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture, crossterm::event::DisableBracketedPaste)?;
+            
+            if let Some(state) = client::show_onboarding_tui()? {
+                let new_office_idx = app.offices.len();
+                let new_office = state.offices.into_iter().next().unwrap();
+                let office = Office {
+                    id: new_office.id,
+                    name: new_office.name,
+                    desks: new_office.desks.into_iter().map(|d| {
+                        let tabs = d.tabs.into_iter().map(|tb| TabEntry::with_id(tb.id, tb.name)).collect();
+                        Desk { id: d.id, name: d.name, tabs, active_tab: d.active_tab }
+                    }).collect(),
+                    active_desk: new_office.active_desk,
+                };
+                app.offices.push(office);
+                app.switch_office(new_office_idx);
+                save_state(&app);
+            }
+            
+            enable_raw_mode()?;
+            execute!(terminal.backend_mut(), EnterAlternateScreen, EnableMouseCapture)?;
+            terminal.clear()?;
         }
     }
 
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture, crossterm::event::DisableBracketedPaste)?;
     terminal.show_cursor()?;
     Ok(())
 }
@@ -151,20 +198,46 @@ fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
     fn in_rect(col: u16, row: u16, r: Rect) -> bool {
         col >= r.x && col < r.x + r.width && row >= r.y && row < r.y + r.height
     }
+
+    // Mouse passthrough to PTY when in content focus
+    if matches!(app.focus, client::app::Focus::Content) && in_rect(col, row, app.content_area) {
+        let tx = col.saturating_sub(app.content_area.x + 1) + 1;
+        let ty = row.saturating_sub(app.content_area.y + 1) + 1;
+        match me.kind {
+            MouseEventKind::ScrollUp   => { app.pty_scroll(3);  return; }
+            MouseEventKind::ScrollDown => { app.pty_scroll(-3); return; }
+            _ => {}
+        }
+        let (btn, is_up) = match me.kind {
+            MouseEventKind::Down(MouseButton::Left)   => (0u8, false),
+            MouseEventKind::Down(MouseButton::Middle) => (1,   false),
+            MouseEventKind::Down(MouseButton::Right)  => (2,   false),
+            MouseEventKind::Up(_)                     => (3,   true),
+            MouseEventKind::Drag(MouseButton::Left)   => (32,  false),
+            MouseEventKind::Moved                     => (35,  false),
+            _ => return,
+        };
+        let suffix = if is_up { 'm' } else { 'M' };
+        app.pty_write(format!("\x1b[<{};{};{}{}", btn, tx, ty, suffix).as_bytes());
+        return;
+    }
+
     match me.kind {
         MouseEventKind::Down(MouseButton::Left) => {
             let mut handled = false;
 
-            // New Task button
-            if in_rect(col, row, app.new_task_area) {
-                app.new_task(); app.focus = Focus::Sidebar; handled = true;
+            // Office selector
+            if in_rect(col, row, app.new_desk_area) {
+                app.office_selector.active = true;
+                app.office_selector.list_state.select(Some(app.current_office));
+                handled = true;
             }
 
-            // Sidebar task list
+            // Sidebar desk list
             let a = app.sidebar_list_area;
             if !handled && col >= a.x && col < a.x + a.width && row >= a.y + 1 && row < a.y + a.height {
                 let idx = (row - a.y - 1) as usize;
-                if idx < app.tasks.len() {
+                if idx < app.offices[app.current_office].desks.len() {
                     let is_double = app.last_click.as_ref()
                         .map(|&(lc, lr, ref t)| lc == col && lr == row && t.elapsed().as_millis() < 400)
                         .unwrap_or(false);
@@ -184,7 +257,7 @@ fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
                 app.focus = Focus::Topbar;
                 // New tab button
                 if in_rect(col, row, app.new_tab_area) {
-                    app.cur_task_mut().new_tab();
+                    app.cur_desk_mut().new_tab();
                     app.spawn_active_pty();
                     app.dirty = true;
                     handled = true;
@@ -198,10 +271,10 @@ fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
                             let is_double = app.last_click.as_ref()
                                 .map(|&(lc, lr, ref t)| lc == col && lr == row && t.elapsed().as_millis() < 400)
                                 .unwrap_or(false);
-                            if is_double && app.tasks[ti].active_tab == i {
+                            if is_double && app.offices[app.current_office].desks[ti].active_tab == i {
                                 app.begin_rename_tab();
                             } else {
-                                app.tasks[ti].active_tab = i;
+                                app.offices[app.current_office].desks[ti].active_tab = i;
                                 app.spawn_active_pty();
                             }
                             handled = true;
@@ -225,13 +298,17 @@ fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
             if in_rect(col, row, app.sidebar_area) { app.nav(-1); }
             else if in_rect(col, row, app.topbar_area) {
                 app.tab_scroll = app.tab_scroll.saturating_sub(1);
+            } else if in_rect(col, row, app.content_area) {
+                app.pty_scroll(3);
             }
         }
         MouseEventKind::ScrollDown => {
             if in_rect(col, row, app.sidebar_area) { app.nav(1); }
             else if in_rect(col, row, app.topbar_area) {
-                let max = app.tasks[app.selected()].tabs.len().saturating_sub(1);
+                let max = app.offices[app.current_office].desks[app.selected()].tabs.len().saturating_sub(1);
                 if app.tab_scroll < max { app.tab_scroll += 1; }
+            } else if in_rect(col, row, app.content_area) {
+                app.pty_scroll(-3);
             }
         }
         _ => {}

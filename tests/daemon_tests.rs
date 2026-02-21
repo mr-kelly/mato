@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 // ── PidFile ───────────────────────────────────────────────────────────────────
 
-use mato::daemon_modules::pid::PidFile;
+use mato::daemon::pid::PidFile;
 
 fn tmp(name: &str) -> PathBuf {
     std::env::temp_dir().join(name)
@@ -45,7 +45,7 @@ fn pid_file_drop_removes_file() {
 
 // ── DaemonLock ────────────────────────────────────────────────────────────────
 
-use mato::daemon_modules::lock::DaemonLock;
+use mato::daemon::lock::DaemonLock;
 
 #[test]
 fn lock_acquire_creates_file() {
@@ -74,14 +74,14 @@ fn lock_second_acquire_fails() {
     assert!(result.is_err(), "second acquire should fail while first is held");
 }
 
-// ── VteEmulator ───────────────────────────────────────────────────────────────
+// ── AlacrittyEmulator ─────────────────────────────────────────────────────────
 
 use mato::terminal_emulator::TerminalEmulator;
-use mato::emulators::VteEmulator;
+use mato::emulators::AlacrittyEmulator;
 
 #[test]
-fn vte_renders_written_text() {
-    let mut emu = VteEmulator::new(24, 80);
+fn alacritty_renders_written_text() {
+    let mut emu = AlacrittyEmulator::new(24, 80);
     emu.process(b"Hello");
     let screen = emu.get_screen(24, 80);
     let first_row: String = screen.lines[0].cells.iter().map(|c| c.ch).collect();
@@ -89,49 +89,52 @@ fn vte_renders_written_text() {
 }
 
 #[test]
-fn vte_cursor_advances_after_text() {
-    let mut emu = VteEmulator::new(24, 80);
+fn alacritty_cursor_advances_after_text() {
+    let mut emu = AlacrittyEmulator::new(24, 80);
     emu.process(b"Hi");
     let screen = emu.get_screen(24, 80);
     assert_eq!(screen.cursor.1, 2);
 }
 
 #[test]
-fn vte_newline_moves_cursor_down() {
-    let mut emu = VteEmulator::new(24, 80);
-    emu.process(b"A\nB");
+fn alacritty_newline_moves_cursor_down() {
+    let mut emu = AlacrittyEmulator::new(24, 80);
+    emu.process(b"A\r\nB");
     let screen = emu.get_screen(24, 80);
-    assert_eq!(screen.cursor.0, 1, "cursor should be on row 1 after \\n");
+    assert_eq!(screen.cursor.0, 1, "cursor should be on row 1 after newline");
 }
 
 #[test]
-fn vte_carriage_return_resets_column() {
-    let mut emu = VteEmulator::new(24, 80);
+fn alacritty_carriage_return_resets_column() {
+    let mut emu = AlacrittyEmulator::new(24, 80);
     emu.process(b"Hello\r");
     let screen = emu.get_screen(24, 80);
     assert_eq!(screen.cursor.1, 0, "cursor column should be 0 after \\r");
 }
 
 #[test]
-fn vte_resize_clears_screen() {
-    let mut emu = VteEmulator::new(24, 80);
+fn alacritty_resize_preserves_content() {
+    let mut emu = AlacrittyEmulator::new(24, 80);
     emu.process(b"Hello");
-    emu.resize(10, 40);
+    emu.resize(10, 40); // should be no-op for emulator
     let screen = emu.get_screen(10, 40);
     let first_row: String = screen.lines[0].cells.iter().map(|c| c.ch).collect();
-    assert!(first_row.chars().all(|c| c == ' '), "screen should be blank after resize");
+    assert!(first_row.starts_with("Hello"), "content should survive resize: {first_row:?}");
 }
 
 // ── persistence ───────────────────────────────────────────────────────────────
 
-use mato::client::persistence::{SavedState, SavedTab, SavedTask};
+use mato::client::persistence::{SavedState, SavedTab, SavedDesk, SavedOffice};
 
 fn make_state() -> SavedState {
     SavedState {
-        active_task: 0,
-        tasks: vec![SavedTask {
-            id: "t1".into(), name: "Work".into(), active_tab: 0,
-            tabs: vec![SavedTab { id: "tb1".into(), name: "Terminal 1".into() }],
+        current_office: 0,
+        offices: vec![SavedOffice {
+            id: "o1".into(), name: "Default".into(), active_desk: 0,
+            desks: vec![SavedDesk {
+                id: "t1".into(), name: "Work".into(), active_tab: 0,
+                tabs: vec![SavedTab { id: "tb1".into(), name: "Terminal 1".into() }],
+            }],
         }],
     }
 }
@@ -144,9 +147,9 @@ fn persistence_save_and_load_roundtrip() {
     let json = serde_json::to_string_pretty(&make_state()).unwrap();
     std::fs::write(&path, &json).unwrap();
     let restored: SavedState = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
-    assert_eq!(restored.tasks.len(), 1);
-    assert_eq!(restored.tasks[0].name, "Work");
-    assert_eq!(restored.tasks[0].tabs[0].name, "Terminal 1");
+    assert_eq!(restored.offices[0].desks.len(), 1);
+    assert_eq!(restored.offices[0].desks[0].name, "Work");
+    assert_eq!(restored.offices[0].desks[0].tabs[0].name, "Terminal 1");
 }
 
 #[test]
@@ -157,15 +160,15 @@ fn persistence_corrupt_json_fails_gracefully() {
 
 #[test]
 fn persistence_missing_active_task_defaults_to_zero() {
-    let json = r#"{"tasks":[]}"#;
+    let json = r#"{"offices":[]}"#;
     let state: SavedState = serde_json::from_str(json).unwrap();
-    assert_eq!(state.active_task, 0);
+    assert_eq!(state.current_office, 0);
 }
 
 // ── persistence: save_state / load_state via XDG_CONFIG_HOME ─────────────────
 
 use mato::terminal_provider::{ScreenContent, TerminalProvider};
-use mato::client::app::{App, Focus, RenameTarget, TabEntry, Task};
+use mato::client::app::{App, Focus, RenameTarget, TabEntry, Desk};
 use ratatui::widgets::ListState;
 use std::collections::HashSet;
 
@@ -181,14 +184,17 @@ fn null_tab(name: &str) -> TabEntry {
     TabEntry { id: mato::utils::new_id(), name: name.into(), provider: Box::new(NullProvider) }
 }
 
-fn null_task(name: &str, n: usize) -> Task {
+fn null_task(name: &str, n: usize) -> Desk {
     let tabs = (0..n).map(|i| null_tab(&format!("T{}", i + 1))).collect();
-    Task { id: mato::utils::new_id(), name: name.into(), tabs, active_tab: 0 }
+    Desk { id: mato::utils::new_id(), name: name.into(), tabs, active_tab: 0 }
 }
 
-fn make_app(tasks: Vec<Task>) -> App {
+fn make_app(desks: Vec<Desk>) -> App {
     let mut app = App::new();
-    app.tasks = tasks;
+    app.current_office = 0;
+    app.offices = vec![mato::client::app::Office {
+        id: "test".into(), name: "Test".into(), desks, active_desk: 0,
+    }];
     app.list_state.select(Some(0));
     app
 }
@@ -209,13 +215,13 @@ fn with_temp_config<F: FnOnce()>(name: &str, f: F) {
 fn save_and_load_state_roundtrip() {
     with_temp_config("save_load", || {
         let mut app = make_app(vec![null_task("Work", 2), null_task("Play", 1)]);
-        app.tasks[0].active_tab = 1;
+        app.offices[0].desks[0].active_tab = 1;
         mato::client::persistence::save_state(&app).unwrap();
         let restored = mato::client::persistence::load_state().unwrap();
-        assert_eq!(restored.tasks.len(), 2);
-        assert_eq!(restored.tasks[0].name, "Work");
-        assert_eq!(restored.tasks[0].tabs.len(), 2);
-        assert_eq!(restored.tasks[0].active_tab, 1);
+        assert_eq!(restored.offices[0].desks.len(), 2);
+        assert_eq!(restored.offices[0].desks[0].name, "Work");
+        assert_eq!(restored.offices[0].desks[0].tabs.len(), 2);
+        assert_eq!(restored.offices[0].desks[0].active_tab, 1);
     });
 }
 
@@ -243,15 +249,15 @@ fn commit_rename_tab_applies_name() {
     let mut app = make_app(vec![null_task("T", 2)]);
     app.rename = Some((RenameTarget::Tab(0, 1), "Renamed".into()));
     app.commit_rename();
-    assert_eq!(app.tasks[0].tabs[1].name, "Renamed");
+    assert_eq!(app.offices[0].desks[0].tabs[1].name, "Renamed");
 }
 
 #[test]
 fn begin_rename_task_sets_rename_state() {
     let mut app = make_app(vec![null_task("MyTask", 1)]);
-    app.begin_rename_task(0);
+    app.begin_rename_desk(0);
     let (target, buf) = app.rename.as_ref().unwrap();
-    assert!(matches!(target, RenameTarget::Task(0)));
+    assert!(matches!(target, RenameTarget::Desk(0)));
     assert_eq!(buf, "MyTask");
 }
 

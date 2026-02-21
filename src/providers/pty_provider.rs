@@ -2,7 +2,7 @@ use std::{io::{Read, Write}, sync::{Arc, Mutex}, thread, time::Instant};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use crate::terminal_provider::{TerminalProvider, ScreenContent};
 use crate::terminal_emulator::TerminalEmulator;
-use crate::emulators::{Vt100Emulator, VteEmulator};
+use crate::emulators::{Vt100Emulator, AlacrittyEmulator};
 
 pub struct PtyProvider {
     pty: Option<PtyState>,
@@ -31,13 +31,13 @@ impl PtyProvider {
         let config = crate::config::Config::load();
         
         match config.emulator.as_str() {
-            "vte" => {
-                tracing::info!("Using VTE emulator (from config)");
-                Box::new(VteEmulator::new(rows, cols))
-            }
-            "vt100" | _ => {
+            "vt100" => {
                 tracing::info!("Using VT100 emulator (from config)");
                 Box::new(Vt100Emulator::new(rows, cols))
+            }
+            _ => {
+                tracing::info!("Using Alacritty emulator (from config)");
+                Box::new(AlacrittyEmulator::new(rows, cols))
             }
         }
     }
@@ -114,5 +114,11 @@ impl TerminalProvider for PtyProvider {
         let content = pty.emulator.lock().unwrap().get_screen(rows, cols);
         tracing::debug!("get_screen: {} lines", content.lines.len());
         content
+    }
+
+    fn scroll(&mut self, delta: i32) {
+        if let Some(pty) = &self.pty {
+            pty.emulator.lock().unwrap().scroll(delta);
+        }
     }
 }

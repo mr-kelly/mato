@@ -1,85 +1,97 @@
 {
-  "tasks": [
+  "offices": [
     {
-      "id": "dept-engineering",
-      "name": "🔧 Engineering",
-      "tabs": [
+      "id": "office-default",
+      "name": "One Person Company",
+      "desks": [
         {
-          "id": "tab-frontend",
-          "name": "🎨 Frontend"
+          "id": "dept-engineering",
+          "name": "\ud83d\udd27 Engineering",
+          "tabs": [
+            {
+              "id": "tab-frontend",
+              "name": "\ud83c\udfa8 Frontend"
+            },
+            {
+              "id": "tab-backend",
+              "name": "\u2699\ufe0f Backend"
+            },
+            {
+              "id": "tab-infra",
+              "name": "\u2601\ufe0f Infrastructure"
+            },
+            {
+              "id": "tab-testing",
+              "name": "\ud83e\uddea Testing"
+            }
+          ],
+          "active_tab": 0
         },
         {
-          "id": "tab-backend",
-          "name": "⚙️ Backend"
+          "id": "dept-product",
+          "name": "\ud83d\udce6 Product",
+          "tabs": [
+            {
+              "id": "tab-design",
+              "name": "\ud83c\udfa8 Design"
+            },
+            {
+              "id": "tab-docs",
+              "name": "\ud83d\udcda Documentation"
+            },
+            {
+              "id": "tab-research",
+              "name": "\ud83d\udd0d Research"
+            }
+          ],
+          "active_tab": 0
         },
         {
-          "id": "tab-infra",
-          "name": "☁️ Infrastructure"
+          "id": "dept-marketing",
+          "name": "\ud83d\udce2 Marketing",
+          "tabs": [
+            {
+              "id": "tab-content",
+              "name": "\u270d\ufe0f Content"
+            },
+            {
+              "id": "tab-social",
+              "name": "\ud83d\udcf1 Social Media"
+            },
+            {
+              "id": "tab-analytics",
+              "name": "\ud83d\udcca Analytics"
+            }
+          ],
+          "active_tab": 0
         },
         {
-          "id": "tab-testing",
-          "name": "🧪 Testing"
+          "id": "dept-operations",
+          "name": "\u26a1 Operations",
+          "tabs": [
+            {
+              "id": "tab-support",
+              "name": "\ud83d\udcac Support"
+            },
+            {
+              "id": "tab-finance",
+              "name": "\ud83d\udcb0 Finance"
+            },
+            {
+              "id": "tab-admin",
+              "name": "\ud83d\udccb Admin"
+            }
+          ],
+          "active_tab": 0
         }
       ],
-      "active_tab": 0
-    },
-    {
-      "id": "dept-product",
-      "name": "📦 Product",
-      "tabs": [
-        {
-          "id": "tab-design",
-          "name": "🎨 Design"
-        },
-        {
-          "id": "tab-docs",
-          "name": "📚 Documentation"
-        },
-        {
-          "id": "tab-research",
-          "name": "🔍 Research"
-        }
-      ],
-      "active_tab": 0
-    },
-    {
-      "id": "dept-marketing",
-      "name": "📢 Marketing",
-      "tabs": [
-        {
-          "id": "tab-content",
-          "name": "✍️ Content"
-        },
-        {
-          "id": "tab-social",
-          "name": "📱 Social Media"
-        },
-        {
-          "id": "tab-analytics",
-          "name": "📊 Analytics"
-        }
-      ],
-      "active_tab": 0
-    },
-    {
-      "id": "dept-operations",
-      "name": "⚡ Operations",
-      "tabs": [
-        {
-          "id": "tab-support",
-          "name": "💬 Support"
-        },
-        {
-          "id": "tab-finance",
-          "name": "💰 Finance"
-        },
-        {
-          "id": "tab-admin",
-          "name": "📋 Admin"
-        }
-      ],
-      "active_tab": 0
+      "active_desk": 0
     }
   ],
-  "active_task": 0
+  "current_office": 0,
+  "metadata": {
+    "name": "\ud83d\udcbc One-Person Company",
+    "description": "4 desks, 13 tabs",
+    "details": "Organized by business departments: Engineering, Product, Marketing, and Operations. Perfect for solo entrepreneurs managing multiple business functions."
+  }
 }

@@ -3,7 +3,7 @@ use mato::config::Config;
 #[test]
 fn test_default_config() {
     let config = Config::default();
-    assert_eq!(config.emulator, "vt100");
+    assert_eq!(config.emulator, "alacritty");
 }
 
 #[test]
@@ -23,5 +23,5 @@ fn test_config_serialization() {
 fn test_config_load_default() {
     // Loading non-existent config should return default
     let config = Config::load();
-    assert_eq!(config.emulator, "vt100");
+    assert_eq!(config.emulator, "alacritty");
 }

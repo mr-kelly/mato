@@ -3,4 +3,4 @@
 
 # Terminal emulator to use
 # Options: "vt100" (default, basic ANSI) or "vte" (better compatibility)
-emulator = "vt100"
+emulator = "vte"

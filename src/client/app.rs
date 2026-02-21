@@ -1,7 +1,7 @@
 use ratatui::{layout::Rect, widgets::ListState};
 use std::collections::HashSet;
 use std::time::Instant;
-use crate::{utils::new_id, client::persistence::load_state, terminal_provider::TerminalProvider, providers::DaemonProvider};
+use crate::{utils::new_id, client::persistence::{load_state, SavedState}, terminal_provider::TerminalProvider, providers::DaemonProvider};
 use crate::protocol::{ClientMsg, ServerMsg};
 use crate::theme::ThemeColors;
 
@@ -15,7 +15,32 @@ pub enum JumpMode {
 }
 
 #[derive(PartialEq, Clone)]
-pub enum RenameTarget { Task(usize), Tab(usize, usize) }
+pub enum RenameTarget { Desk(usize), Tab(usize, usize), Office(usize) }
+
+pub struct OfficeSelectorState {
+    pub active: bool,
+    pub list_state: ListState,
+}
+
+impl OfficeSelectorState {
+    pub fn new() -> Self {
+        let mut list_state = ListState::default();
+        list_state.select(Some(0));
+        Self { active: false, list_state }
+    }
+}
+
+pub struct OfficeDeleteConfirm {
+    pub active: bool,
+    pub office_idx: usize,
+    pub input: String,
+}
+
+impl OfficeDeleteConfirm {
+    pub fn new(office_idx: usize) -> Self {
+        Self { active: true, office_idx, input: String::new() }
+    }
+}
 
 pub struct TabEntry {
     pub id: String,
@@ -55,14 +80,14 @@ impl TabEntry {
     }
 }
 
-pub struct Task {
+pub struct Desk {
     pub id: String,
     pub name: String,
     pub tabs: Vec<TabEntry>,
     pub active_tab: usize,
 }
 
-impl Task {
+impl Desk {
     pub fn new(name: impl Into<String>) -> Self {
         Self { id: new_id(), name: name.into(), tabs: vec![TabEntry::new("Terminal 1")], active_tab: 0 }
     }
@@ -101,12 +126,33 @@ impl Task {
     }
 }
 
+pub struct Office {
+    pub id: String,
+    pub name: String,
+    pub desks: Vec<Desk>,
+    pub active_desk: usize,
+}
+
+impl Office {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self { 
+            id: new_id(), 
+            name: name.into(), 
+            desks: vec![Desk::new("Desk 1")], 
+            active_desk: 0 
+        }
+    }
+}
+
 pub struct App {
-    pub tasks: Vec<Task>,
+    pub offices: Vec<Office>,
+    pub current_office: usize,
     pub list_state: ListState,
     pub focus: Focus,
+    pub prev_focus: Focus,
     pub jump_mode: JumpMode,
     pub rename: Option<(RenameTarget, String)>,
+    pub office_selector: OfficeSelectorState,
     pub term_rows: u16,
     pub term_cols: u16,
     pub pending_resize: Option<(u16, u16, std::time::Instant)>,  // Delay resize to avoid content loss
@@ -116,7 +162,7 @@ pub struct App {
     pub sidebar_area: Rect,
     pub topbar_area: Rect,
     pub content_area: Rect,
-    pub new_task_area: Rect,
+    pub new_desk_area: Rect,
     pub tab_areas: Vec<Rect>,
     pub new_tab_area: Rect,
     pub tab_scroll: usize,
@@ -133,28 +179,37 @@ pub struct App {
     /// Some(version) if an update is available
     pub update_available: Option<String>,
     pub last_update_check: Instant,
+    /// Trigger onboarding for new office
+    pub should_show_onboarding: bool,
+    /// Office delete confirmation
+    pub office_delete_confirm: Option<OfficeDeleteConfirm>,
 }
 
 impl App {
     pub fn new() -> Self {
         let mut list_state = ListState::default();
-        let (tasks, active_task) = if let Ok(s) = load_state() {
-            let tasks = s.tasks.into_iter().map(|t| {
-                let tabs = t.tabs.into_iter().map(|tb| TabEntry::with_id(tb.id, tb.name)).collect();
-                Task { id: t.id, name: t.name, tabs, active_tab: t.active_tab }
+        let (offices, current_office) = if let Ok(s) = load_state() {
+            let offices = s.offices.into_iter().map(|o| {
+                let desks = o.desks.into_iter().map(|d| {
+                    let tabs = d.tabs.into_iter().map(|tb| TabEntry::with_id(tb.id, tb.name)).collect();
+                    Desk { id: d.id, name: d.name, tabs, active_tab: d.active_tab }
+                }).collect();
+                Office { id: o.id, name: o.name, desks, active_desk: o.active_desk }
             }).collect();
-            (tasks, s.active_task)
+            (offices, s.current_office)
         } else {
-            (vec![Task::new("Task 1")], 0)
+            (vec![Office::new("Default")], 0)
         };
-        list_state.select(Some(active_task));
+        let active_desk = offices[current_office].active_desk;
+        list_state.select(Some(active_desk));
         Self {
-            tasks, list_state,
-            focus: Focus::Sidebar, jump_mode: JumpMode::None, rename: None,
+            offices, current_office, list_state,
+            focus: Focus::Sidebar, prev_focus: Focus::Sidebar, jump_mode: JumpMode::None, rename: None,
+            office_selector: OfficeSelectorState::new(),
             term_rows: 24, term_cols: 80, pending_resize: None, dirty: false,
             sidebar_list_area: Rect::default(), sidebar_area: Rect::default(),
             topbar_area: Rect::default(), content_area: Rect::default(),
-            new_task_area: Rect::default(), tab_areas: vec![], new_tab_area: Rect::default(),
+            new_desk_area: Rect::default(), tab_areas: vec![], new_tab_area: Rect::default(),
             tab_scroll: 0, last_click: None,
             active_tabs: HashSet::new(),
             spinner_frame: 0,
@@ -163,34 +218,90 @@ impl App {
             show_settings: false,
             settings_selected: 0,
             update_available: None,
-            last_update_check: Instant::now() - std::time::Duration::from_secs(290), // first check after ~10s
+            last_update_check: Instant::now() - std::time::Duration::from_secs(290),
+            should_show_onboarding: false,
+            office_delete_confirm: None,
         }
     }
 
+    pub fn from_saved(state: SavedState) -> Self {
+        let mut list_state = ListState::default();
+        let offices = state.offices.into_iter().map(|o| {
+            let desks = o.desks.into_iter().map(|d| {
+                let tabs = d.tabs.into_iter().map(|tb| TabEntry::with_id(tb.id, tb.name)).collect();
+                Desk { id: d.id, name: d.name, tabs, active_tab: d.active_tab }
+            }).collect();
+            Office { id: o.id, name: o.name, desks, active_desk: o.active_desk }
+        }).collect();
+        let current_office = state.current_office;
+        list_state.select(Some(0));
+        
+        Self {
+            offices, current_office, list_state,
+            focus: Focus::Sidebar, prev_focus: Focus::Sidebar, jump_mode: JumpMode::None, rename: None,
+            office_selector: OfficeSelectorState::new(),
+            term_rows: 24, term_cols: 80, pending_resize: None, dirty: false,
+            sidebar_list_area: Rect::default(), sidebar_area: Rect::default(),
+            topbar_area: Rect::default(), content_area: Rect::default(),
+            new_desk_area: Rect::default(), tab_areas: vec![], new_tab_area: Rect::default(),
+            tab_scroll: 0, last_click: None,
+            active_tabs: HashSet::new(),
+            spinner_frame: 0,
+            last_spinner_update: Instant::now(),
+            theme: crate::theme::load(),
+            show_settings: false,
+            settings_selected: 0,
+            update_available: None,
+            last_update_check: Instant::now() - std::time::Duration::from_secs(290),
+            should_show_onboarding: false,
+            office_delete_confirm: None,
+        }
+    }
+
+    // Helper methods to access current office's desks
+    pub fn desks(&self) -> &Vec<Desk> { &self.offices[self.current_office].desks }
+    pub fn desks_mut(&mut self) -> &mut Vec<Desk> { &mut self.offices[self.current_office].desks }
+    pub fn office(&self) -> &Office { &self.offices[self.current_office] }
+    pub fn office_mut(&mut self) -> &mut Office { &mut self.offices[self.current_office] }
+
     pub fn selected(&self) -> usize { self.list_state.selected().unwrap_or(0) }
 
-    pub fn active_task(&self) -> usize { self.selected() }
+    pub fn active_desk(&self) -> usize { self.selected() }
 
-    pub fn cur_task_mut(&mut self) -> &mut Task { let i = self.selected(); &mut self.tasks[i] }
+    pub fn cur_desk_mut(&mut self) -> &mut Desk { 
+        let i = self.selected(); 
+        &mut self.offices[self.current_office].desks[i] 
+    }
 
-    pub fn new_task(&mut self) {
-        let n = self.tasks.len() + 1;
-        self.tasks.push(Task::new(format!("Task {n}")));
-        self.list_state.select(Some(self.tasks.len() - 1));
+    pub fn switch_office(&mut self, office_idx: usize) {
+        if office_idx < self.offices.len() {
+            self.current_office = office_idx;
+            let active_desk = self.offices[office_idx].active_desk;
+            self.list_state.select(Some(active_desk));
+            self.tab_scroll = 0;
+            self.spawn_active_pty();
+            self.dirty = true;
+        }
+    }
+
+    pub fn new_desk(&mut self) {
+        let n = self.offices[self.current_office].desks.len() + 1;
+        self.offices[self.current_office].desks.push(Desk::new(format!("Desk {n}")));
+        self.list_state.select(Some(self.offices[self.current_office].desks.len() - 1));
         self.dirty = true;
     }
 
-    pub fn close_task(&mut self) {
-        if self.tasks.len() <= 1 { return; }
+    pub fn close_desk(&mut self) {
+        if self.offices[self.current_office].desks.len() <= 1 { return; }
         let idx = self.selected();
         
-        // Close all PTYs in this task
-        let task = &self.tasks[idx];
+        // Close all PTYs in this desk
+        let desk = &self.offices[self.current_office].desks[idx];
         let socket_path = crate::utils::get_socket_path();
         if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(&socket_path) {
             use std::io::Write;
             use crate::protocol::ClientMsg;
-            for tab in &task.tabs {
+            for tab in &desk.tabs {
                 let msg = ClientMsg::ClosePty { tab_id: tab.id.clone() };
                 if let Ok(json) = serde_json::to_vec(&msg) {
                     let _ = stream.write_all(&json);
@@ -200,13 +311,13 @@ impl App {
             let _ = stream.flush();
         }
         
-        self.tasks.remove(idx);
-        self.list_state.select(Some(idx.min(self.tasks.len() - 1)));
+        self.offices[self.current_office].desks.remove(idx);
+        self.list_state.select(Some(idx.min(self.offices[self.current_office].desks.len() - 1)));
         self.dirty = true;
     }
 
     pub fn nav(&mut self, delta: i32) {
-        let max = self.tasks.len().saturating_sub(1) as i32;
+        let max = self.offices[self.current_office].desks.len().saturating_sub(1) as i32;
         let next = (self.selected() as i32 + delta).clamp(0, max) as usize;
         self.list_state.select(Some(next));
         self.tab_scroll = 0;
@@ -215,8 +326,8 @@ impl App {
     pub fn spawn_active_pty(&mut self) {
         let (rows, cols) = (self.term_rows, self.term_cols);
         let i = self.selected();
-        let at = self.tasks[i].active_tab;
-        self.tasks[i].tabs[at].spawn_pty(rows, cols);
+        let at = self.offices[self.current_office].desks[i].active_tab;
+        self.offices[self.current_office].desks[i].tabs[at].spawn_pty(rows, cols);
     }
 
     pub fn resize_all_ptys(&mut self, rows: u16, cols: u16) {
@@ -235,8 +346,8 @@ impl App {
                     tracing::info!("Applying delayed resize: {}x{} -> {}x{}", self.term_rows, self.term_cols, rows, cols);
                     self.term_rows = rows;
                     self.term_cols = cols;
-                    for task in &mut self.tasks {
-                        task.resize_all_ptys(rows, cols);
+                    for desk in &mut self.offices[self.current_office].desks {
+                        desk.resize_all_ptys(rows, cols);
                     }
                 }
                 self.pending_resize = None;
@@ -246,21 +357,49 @@ impl App {
 
     pub fn pty_write(&mut self, bytes: &[u8]) {
         let i = self.selected();
-        let at = self.tasks[i].active_tab;
-        self.tasks[i].tabs[at].pty_write(bytes);
+        let at = self.offices[self.current_office].desks[i].active_tab;
+        self.offices[self.current_office].desks[i].tabs[at].pty_write(bytes);
+    }
+
+    pub fn pty_scroll(&mut self, delta: i32) {
+        let i = self.selected();
+        let at = self.offices[self.current_office].desks[i].active_tab;
+        self.offices[self.current_office].desks[i].tabs[at].provider.scroll(delta);
+    }
+
+    /// Send focus in/out events to PTY when focus changes
+    pub fn sync_focus_events(&mut self) {
+        if self.prev_focus == self.focus { return; }
+        let was_content = self.prev_focus == Focus::Content;
+        let is_content  = self.focus == Focus::Content;
+        if is_content  { self.pty_write(b"\x1b[I"); } // focus in
+        if was_content { self.pty_write(b"\x1b[O"); } // focus out
+        self.prev_focus = self.focus;
+    }
+    pub fn sync_tab_titles(&mut self) {
+        for desk in self.offices[self.current_office].desks.iter_mut() {
+            for tab in desk.tabs.iter_mut() {
+                let screen = tab.provider.get_screen(1, 1); // minimal call just for title
+                if let Some(title) = screen.title {
+                    if !title.is_empty() {
+                        tab.name = title;
+                    }
+                }
+            }
+        }
     }
 
     /// Start renaming task at sidebar index
-    pub fn begin_rename_task(&mut self, idx: usize) {
-        let name = self.tasks[idx].name.clone();
-        self.rename = Some((RenameTarget::Task(idx), name));
+    pub fn begin_rename_desk(&mut self, idx: usize) {
+        let name = self.offices[self.current_office].desks[idx].name.clone();
+        self.rename = Some((RenameTarget::Desk(idx), name));
     }
 
     /// Start renaming active tab of current task
     pub fn begin_rename_tab(&mut self) {
         let ti = self.selected();
-        let at = self.tasks[ti].active_tab;
-        let name = self.tasks[ti].tabs[at].name.clone();
+        let at = self.offices[self.current_office].desks[ti].active_tab;
+        let name = self.offices[self.current_office].desks[ti].tabs[at].name.clone();
         self.rename = Some((RenameTarget::Tab(ti, at), name));
     }
 
@@ -269,8 +408,9 @@ impl App {
             let name = buf.trim().to_string();
             if name.is_empty() { return; }
             match target {
-                RenameTarget::Task(i) => self.tasks[i].name = name,
-                RenameTarget::Tab(ti, at) => self.tasks[ti].tabs[at].name = name,
+                RenameTarget::Desk(i) => self.offices[self.current_office].desks[i].name = name,
+                RenameTarget::Tab(ti, at) => self.offices[self.current_office].desks[ti].tabs[at].name = name,
+                RenameTarget::Office(i) => self.offices[i].name = name,
             }
             self.dirty = true;
         }
@@ -280,18 +420,18 @@ impl App {
 
     /// Handle jump mode character selection
     pub fn handle_jump_selection(&mut self, c: char) {
-        // Generate jump targets: tasks (a-z) and tabs (a-z)
+        // Generate jump targets: desks (a-z) and tabs (a-z)
         let mut targets = Vec::new();
         
-        // Add tasks
-        for (i, _) in self.tasks.iter().enumerate() {
+        // Add desks
+        for (i, _) in self.offices[self.current_office].desks.iter().enumerate() {
             targets.push(('t', i, 0)); // ('t' for task, task_idx, 0)
         }
         
-        // Add tabs from current task
-        let task_idx = self.selected();
-        for (tab_idx, _) in self.tasks[task_idx].tabs.iter().enumerate() {
-            targets.push(('b', task_idx, tab_idx)); // ('b' for tab, task_idx, tab_idx)
+        // Add tabs from current desk
+        let desk_idx = self.selected();
+        for (tab_idx, _) in self.offices[self.current_office].desks[desk_idx].tabs.iter().enumerate() {
+            targets.push(('b', desk_idx, tab_idx)); // ('b' for tab, desk_idx, tab_idx)
         }
         
         // Map character to target
@@ -307,7 +447,7 @@ impl App {
                     }
                     'b' => {
                         // Jump to tab
-                        self.tasks[task_idx].active_tab = tab_idx;
+                        self.offices[self.current_office].desks[task_idx].active_tab = tab_idx;
                         self.focus = Focus::Content;
                         self.spawn_active_pty();
                     }

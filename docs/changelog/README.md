@@ -5,6 +5,7 @@ This directory contains historical development documentation for Mato.
 ## 📚 Documents
 
 ### Recent Changes (2026-02-22)
+- **[2026-02-22_desk-terminology.md](2026-02-22_desk-terminology.md)** - Task → Desk terminology refactor
 - **[2026-02-22_activity-indicators.md](2026-02-22_activity-indicators.md)** - Activity indicators, PTY cleanup, UI improvements
 
 ### Development Plans

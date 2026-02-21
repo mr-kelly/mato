@@ -92,4 +92,11 @@ impl TerminalProvider for DaemonProvider {
             _ => ScreenContent::default(),
         }
     }
+
+    fn scroll(&mut self, delta: i32) {
+        self.send_msg_no_response(ClientMsg::Scroll {
+            tab_id: self.tab_id.clone(),
+            delta,
+        });
+    }
 }

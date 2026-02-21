@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- 🔄 **Terminology Refactor: Task → Desk**
+  - All "Task" references renamed to "Desk" throughout codebase
+  - Better reflects workspace concept (multiple desks, each with terminals)
+  - Breaking change: old `state.json` files incompatible (auto-reset to default)
+  - UI: "Tasks" → "Desks", "New Task" → "New Desk", etc.
+
 ### Added
 - 🎯 **Activity Indicators** - Real-time spinners show which terminals are working
   - 10-frame Braille spinner animation (⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
@@ -21,11 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Daemon removes and drops PTY entries on close
   - Prevents memory leaks from accumulating bash processes
 - Jump Mode help text now shows appropriate shortcuts based on focus
-
-### Changed
-- Replaced idle detection (30s threshold) with activity detection (2s threshold)
-- Inverted UI logic: show "working" instead of "idle"
-- README redesigned to highlight activity indicators
+- Topbar and Jump Mode now handle `q` key for quit
 
 ### Documentation
 - Added `docs/ACTIVITY_INDICATORS.md` - Complete technical guide
@@ -33,7 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated README with "Why Mato?" and "Perfect For" sections
 - Removed `docs/IDLE_DETECTION.md` (replaced by ACTIVITY_INDICATORS.md)
 
-📖 **[Detailed Changelog →](docs/changelog/2026-02-22_activity-indicators.md)**
+📖 **[Activity Indicators Changelog →](docs/changelog/2026-02-22_activity-indicators.md)**  
+📖 **[Desk Terminology Changelog →](docs/changelog/2026-02-22_desk-terminology.md)**
 
 ---
 

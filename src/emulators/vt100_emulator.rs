@@ -46,7 +46,7 @@ impl TerminalEmulator for Vt100Emulator {
         let (cr, cc) = screen.cursor_position();
         let cr = cr.min(rows.saturating_sub(1));
         let cc = cc.min(cols.saturating_sub(1));
-        ScreenContent { lines, cursor: (cr, cc) }
+        ScreenContent { lines, cursor: (cr, cc), title: None, cursor_shape: crate::terminal_provider::CursorShape::Block }
     }
     
     fn resize(&mut self, rows: u16, cols: u16) {

@@ -1,77 +1,89 @@
 {
-  "tasks": [
+  "offices": [
     {
-      "id": "project-main",
-      "name": "🚀 Main Project",
-      "tabs": [
+      "id": "office-default",
+      "name": "Fullstack Developer",
+      "desks": [
         {
-          "id": "tab-code",
-          "name": "💻 Code"
+          "id": "project-main",
+          "name": "\ud83d\ude80 Main Project",
+          "tabs": [
+            {
+              "id": "tab-code",
+              "name": "\ud83d\udcbb Code"
+            },
+            {
+              "id": "tab-frontend",
+              "name": "\ud83c\udfa8 Frontend Dev"
+            },
+            {
+              "id": "tab-backend",
+              "name": "\u2699\ufe0f Backend Dev"
+            },
+            {
+              "id": "tab-test",
+              "name": "\ud83e\uddea Tests"
+            }
+          ],
+          "active_tab": 0
         },
         {
-          "id": "tab-frontend",
-          "name": "🎨 Frontend Dev"
+          "id": "project-side",
+          "name": "\ud83d\udca1 Side Project",
+          "tabs": [
+            {
+              "id": "tab-side-code",
+              "name": "\ud83d\udcbb Code"
+            },
+            {
+              "id": "tab-side-server",
+              "name": "\ud83d\ude80 Server"
+            }
+          ],
+          "active_tab": 0
         },
         {
-          "id": "tab-backend",
-          "name": "⚙️ Backend Dev"
+          "id": "devops",
+          "name": "\ud83d\udd27 DevOps",
+          "tabs": [
+            {
+              "id": "tab-docker",
+              "name": "\ud83d\udc33 Docker"
+            },
+            {
+              "id": "tab-k8s",
+              "name": "\u2638\ufe0f Kubernetes"
+            },
+            {
+              "id": "tab-ci",
+              "name": "\ud83d\udd04 CI/CD"
+            }
+          ],
+          "active_tab": 0
         },
         {
-          "id": "tab-test",
-          "name": "🧪 Tests"
+          "id": "learning",
+          "name": "\ud83d\udcda Learning",
+          "tabs": [
+            {
+              "id": "tab-tutorial",
+              "name": "\ud83d\udcd6 Tutorial"
+            },
+            {
+              "id": "tab-experiment",
+              "name": "\ud83e\uddea Experiments"
+            }
+          ],
+          "active_tab": 0
         }
       ],
-      "active_tab": 0
-    },
-    {
-      "id": "project-side",
-      "name": "💡 Side Project",
-      "tabs": [
-        {
-          "id": "tab-side-code",
-          "name": "💻 Code"
-        },
-        {
-          "id": "tab-side-server",
-          "name": "🚀 Server"
-        }
-      ],
-      "active_tab": 0
-    },
-    {
-      "id": "devops",
-      "name": "🔧 DevOps",
-      "tabs": [
-        {
-          "id": "tab-docker",
-          "name": "🐳 Docker"
-        },
-        {
-          "id": "tab-k8s",
-          "name": "☸️ Kubernetes"
-        },
-        {
-          "id": "tab-ci",
-          "name": "🔄 CI/CD"
-        }
-      ],
-      "active_tab": 0
-    },
-    {
-      "id": "learning",
-      "name": "📚 Learning",
-      "tabs": [
-        {
-          "id": "tab-tutorial",
-          "name": "📖 Tutorial"
-        },
-        {
-          "id": "tab-experiment",
-          "name": "🧪 Experiments"
-        }
-      ],
-      "active_tab": 0
+      "active_desk": 0
     }
   ],
-  "active_task": 0
+  "current_office": 0,
+  "metadata": {
+    "name": "\ud83d\ude80 Full-Stack Developer",
+    "description": "4 desks, 11 tabs",
+    "details": "Multiple projects office with Main Project, Side Project, DevOps (Docker, K8s, CI/CD), and Learning sections."
+  }
 }

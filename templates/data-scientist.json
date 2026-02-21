@@ -1,77 +1,89 @@
 {
-  "tasks": [
+  "offices": [
     {
-      "id": "data-analysis",
-      "name": "📊 Data Analysis",
-      "tabs": [
+      "id": "office-default",
+      "name": "Data Scientist",
+      "desks": [
         {
-          "id": "tab-jupyter",
-          "name": "📓 Jupyter"
+          "id": "data-analysis",
+          "name": "\ud83d\udcca Data Analysis",
+          "tabs": [
+            {
+              "id": "tab-jupyter",
+              "name": "\ud83d\udcd3 Jupyter"
+            },
+            {
+              "id": "tab-python",
+              "name": "\ud83d\udc0d Python"
+            },
+            {
+              "id": "tab-viz",
+              "name": "\ud83d\udcc8 Visualization"
+            }
+          ],
+          "active_tab": 0
         },
         {
-          "id": "tab-python",
-          "name": "🐍 Python"
+          "id": "ml-training",
+          "name": "\ud83e\udd16 ML Training",
+          "tabs": [
+            {
+              "id": "tab-train",
+              "name": "\ud83c\udfcb\ufe0f Training"
+            },
+            {
+              "id": "tab-tensorboard",
+              "name": "\ud83d\udcca TensorBoard"
+            },
+            {
+              "id": "tab-gpu",
+              "name": "\ud83c\udfae GPU Monitor"
+            }
+          ],
+          "active_tab": 0
         },
         {
-          "id": "tab-viz",
-          "name": "📈 Visualization"
+          "id": "data-pipeline",
+          "name": "\ud83d\udd04 Data Pipeline",
+          "tabs": [
+            {
+              "id": "tab-etl",
+              "name": "\ud83d\udd27 ETL"
+            },
+            {
+              "id": "tab-airflow",
+              "name": "\ud83c\udf0a Airflow"
+            },
+            {
+              "id": "tab-db",
+              "name": "\ud83d\uddc4\ufe0f Database"
+            }
+          ],
+          "active_tab": 0
+        },
+        {
+          "id": "deployment",
+          "name": "\ud83d\ude80 Deployment",
+          "tabs": [
+            {
+              "id": "tab-api",
+              "name": "\ud83d\udd0c API"
+            },
+            {
+              "id": "tab-docker",
+              "name": "\ud83d\udc33 Docker"
+            }
+          ],
+          "active_tab": 0
         }
       ],
-      "active_tab": 0
-    },
-    {
-      "id": "ml-training",
-      "name": "🤖 ML Training",
-      "tabs": [
-        {
-          "id": "tab-train",
-          "name": "🏋️ Training"
-        },
-        {
-          "id": "tab-tensorboard",
-          "name": "📊 TensorBoard"
-        },
-        {
-          "id": "tab-gpu",
-          "name": "🎮 GPU Monitor"
-        }
-      ],
-      "active_tab": 0
-    },
-    {
-      "id": "data-pipeline",
-      "name": "🔄 Data Pipeline",
-      "tabs": [
-        {
-          "id": "tab-etl",
-          "name": "🔧 ETL"
-        },
-        {
-          "id": "tab-airflow",
-          "name": "🌊 Airflow"
-        },
-        {
-          "id": "tab-db",
-          "name": "🗄️ Database"
-        }
-      ],
-      "active_tab": 0
-    },
-    {
-      "id": "deployment",
-      "name": "🚀 Deployment",
-      "tabs": [
-        {
-          "id": "tab-api",
-          "name": "🔌 API"
-        },
-        {
-          "id": "tab-docker",
-          "name": "🐳 Docker"
-        }
-      ],
-      "active_tab": 0
+      "active_desk": 0
     }
   ],
-  "active_task": 0
+  "current_office": 0,
+  "metadata": {
+    "name": "\ud83d\udcca Data Scientist",
+    "description": "4 desks, 11 tabs",
+    "details": "Data-focused office with Data Analysis (Jupyter, Python, Viz), ML Training (TensorBoard, GPU), Data Pipeline (ETL, Airflow), and Deployment."
+  }
 }

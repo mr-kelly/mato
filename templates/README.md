@@ -1,13 +1,13 @@
 # Mato State Templates
 
-Pre-configured workspace templates for different use cases.
+Pre-configured office templates for different use cases.
 
 ## Available Templates
 
 ### 1. Power User (`power-user.json`) ⭐ RECOMMENDED
 **Best for**: Serious professionals managing complex workflows
 
-**Structure**: 45 tasks with comprehensive coverage
+**Structure**: 45 desks with comprehensive coverage
 - 🚀 Project X (15 tabs) - Main development with all AI tools
 - 📱 Mobile App (13 tabs) - Mobile development
 - 🌐 Web Platform (13 tabs) - Web development
@@ -28,9 +28,9 @@ Pre-configured workspace templates for different use cases.
 - 🎯 Strategy (12 tabs) - Strategic planning
 - 🔬 Research2 (12 tabs) - Research
 - 💼 Business Ops (12 tabs) - Business operations
-- Plus 25 additional tasks for expansion
+- Plus 25 additional desks for expansion
 
-**Total**: 45 tasks, 250+ tabs
+**Total**: 45 desks, 250+ tabs
 
 **Features**:
 - All major AI coding assistants (Claude, Gemini, Codex, Copilot, Cursor, Aider, Continue, Cline, Windsurf, Bolt)
@@ -56,7 +56,7 @@ Pre-configured workspace templates for different use cases.
   - 🐳 Docker
   - 📊 Monitor
 
-**Total**: 3 tasks, 8 tabs
+**Total**: 3 desks, 8 tabs
 
 ---
 
@@ -82,7 +82,7 @@ Pre-configured workspace templates for different use cases.
   - 💰 Finance
   - 📋 Admin
 
-**Total**: 4 tasks, 13 tabs
+**Total**: 4 desks, 13 tabs
 
 ---
 
@@ -106,7 +106,7 @@ Pre-configured workspace templates for different use cases.
   - 📖 Tutorial
   - 🧪 Experiments
 
-**Total**: 4 tasks, 11 tabs
+**Total**: 4 desks, 11 tabs
 
 ---
 
@@ -130,7 +130,7 @@ Pre-configured workspace templates for different use cases.
   - 🔌 API
   - 🐳 Docker
 
-**Total**: 4 tasks, 11 tabs
+**Total**: 4 desks, 11 tabs
 
 ---
 
@@ -159,12 +159,12 @@ You'll see:
 ```
 Welcome to Mato! 🎉
 
-Choose a workspace template:
-1. Power User (45 tasks, 250+ tabs) ⭐ RECOMMENDED
-2. Solo Developer (3 tasks, 8 tabs)
-3. One-Person Company (4 tasks, 13 tabs)
-4. Full-Stack Developer (4 tasks, 11 tabs)
-5. Data Scientist (4 tasks, 11 tabs)
+Choose a office template:
+1. Power User (45 desks, 250+ tabs) ⭐ RECOMMENDED
+2. Solo Developer (3 desks, 8 tabs)
+3. One-Person Company (4 desks, 13 tabs)
+4. Full-Stack Developer (4 desks, 11 tabs)
+5. Data Scientist (4 desks, 11 tabs)
 6. Minimal (1 task, 1 tab)
 
 Enter your choice (1-6):
@@ -184,7 +184,7 @@ mato
 
 ### Method 3: Reset to Template
 
-If you want to reset your workspace:
+If you want to reset your office:
 
 ```bash
 # Backup current state (optional)
@@ -201,7 +201,7 @@ mato
 
 You can create your own templates:
 
-1. Set up your ideal workspace in Mato
+1. Set up your ideal office in Mato
 2. Copy your state file:
    ```bash
    cp ~/.config/mato/state.json my-custom-template.json
@@ -213,7 +213,7 @@ You can create your own templates:
 
 ```json
 {
-  "tasks": [
+  "desks": [
     {
       "id": "unique-task-id",
       "name": "Task Name",
@@ -239,11 +239,11 @@ You can create your own templates:
 
 ### Emoji in Names
 Templates use emoji for visual clarity. You can:
-- Keep them for a colorful workspace
+- Keep them for a colorful office
 - Remove them for a minimal look
 - Replace with your own emoji
 
-### Organizing Tasks
+### Organizing Desks
 Common organization patterns:
 - **By Project**: Main, Side, Experiments
 - **By Function**: Dev, Ops, Marketing
@@ -254,7 +254,7 @@ Common organization patterns:
 Good tab names are:
 - Short and descriptive
 - Use emoji for quick recognition
-- Consistent across similar tasks
+- Consistent across similar desks
 
 ## Examples in Action
 
