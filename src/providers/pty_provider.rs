@@ -43,6 +43,12 @@ impl PtyProvider {
     }
 }
 
+impl Default for PtyProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TerminalProvider for PtyProvider {
     fn spawn(&mut self, rows: u16, cols: u16) {
         if self.pty.is_some() { return; }
@@ -104,6 +110,31 @@ impl TerminalProvider for PtyProvider {
             let _ = p.writer.write_all(bytes);
             let _ = p.writer.flush();
         }
+    }
+
+    fn paste(&mut self, text: &str) {
+        let Some(p) = &mut self.pty else { return };
+        let bracketed = p.emulator.lock().unwrap().bracketed_paste_enabled();
+        if bracketed {
+            let mut payload = Vec::with_capacity(text.len() + 16);
+            payload.extend_from_slice(b"\x1b[200~");
+            payload.extend_from_slice(text.as_bytes());
+            payload.extend_from_slice(b"\x1b[201~");
+            let _ = p.writer.write_all(&payload);
+        } else {
+            let _ = p.writer.write_all(text.as_bytes());
+        }
+        let _ = p.writer.flush();
+    }
+
+    fn mouse_mode_enabled(&self) -> bool {
+        let Some(pty) = &self.pty else { return false };
+        pty.emulator.lock().unwrap().mouse_mode_enabled()
+    }
+
+    fn bracketed_paste_enabled(&self) -> bool {
+        let Some(pty) = &self.pty else { return false };
+        pty.emulator.lock().unwrap().bracketed_paste_enabled()
     }
 
     fn get_screen(&self, rows: u16, cols: u16) -> ScreenContent {

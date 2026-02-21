@@ -1,6 +1,7 @@
 use std::io;
 use std::fs;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
+use crate::client::persistence::SavedState;
 
 pub fn show_status() -> io::Result<()> {
     use std::os::unix::net::UnixStream;
@@ -57,25 +58,24 @@ pub fn show_status() -> io::Result<()> {
     if state_path.exists() {
         println!("📁 Workspace:     Configured");
         
-        // Parse state file to show task/tab counts
+        // Parse state file to show office/desk/tab counts
         if let Ok(content) = fs::read_to_string(&state_path) {
-            if let Ok(state) = serde_json::from_str::<serde_json::Value>(&content) {
-                if let Some(tasks) = state["tasks"].as_array() {
-                    let total_tabs: usize = tasks.iter()
-                        .filter_map(|t| t["tabs"].as_array())
-                        .map(|tabs| tabs.len())
-                        .sum();
-                    
-                    println!("   Tasks:         {}", tasks.len());
-                    println!("   Total Tabs:    {}", total_tabs);
-                    
-                    // Show active task
-                    if let Some(active_idx) = state["active_task"].as_u64() {
-                        if let Some(active_task) = tasks.get(active_idx as usize) {
-                            if let Some(name) = active_task["name"].as_str() {
-                                println!("   Active Task:   {}", name);
-                            }
-                        }
+            if let Ok(state) = serde_json::from_str::<SavedState>(&content) {
+                let office_count = state.offices.len();
+                let desk_count: usize = state.offices.iter().map(|o| o.desks.len()).sum();
+                let total_tabs: usize = state.offices.iter()
+                    .flat_map(|o| o.desks.iter())
+                    .map(|d| d.tabs.len())
+                    .sum();
+
+                println!("   Offices:       {}", office_count);
+                println!("   Desks:         {}", desk_count);
+                println!("   Total Tabs:    {}", total_tabs);
+
+                if let Some(active_office) = state.offices.get(state.current_office) {
+                    println!("   Active Office: {}", active_office.name);
+                    if let Some(active_desk) = active_office.desks.get(active_office.active_desk) {
+                        println!("   Active Desk:   {}", active_desk.name);
                     }
                 }
             }

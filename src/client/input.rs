@@ -1,10 +1,14 @@
 use std::io;
 use crossterm::{
-    event::{KeyCode, KeyEventKind, KeyModifiers, EnableMouseCapture, DisableMouseCapture},
+    event::{EnableMouseCapture, KeyCode, KeyEventKind, KeyModifiers},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{enable_raw_mode, EnterAlternateScreen},
 };
 use crate::client::app::{App, Focus, JumpMode, RenameTarget, OfficeDeleteConfirm};
+
+fn hard_disable_terminal_modes() {
+    crate::terminal::restore_terminal_modes();
+}
 
 pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
     if key.code == KeyCode::Esc && key.kind == KeyEventKind::Repeat { return false; }
@@ -26,15 +30,13 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
             KeyCode::Enter => {
                 let office_idx = confirm.office_idx;
                 let expected_name = &app.offices[office_idx].name;
-                if confirm.input == *expected_name {
-                    if app.offices.len() > 1 {
-                        app.offices.remove(office_idx);
-                        if app.current_office >= app.offices.len() {
-                            app.current_office = app.offices.len() - 1;
-                        }
-                        app.switch_office(app.current_office);
-                        app.dirty = true;
+                if confirm.input == *expected_name && app.offices.len() > 1 {
+                    app.offices.remove(office_idx);
+                    if app.current_office >= app.offices.len() {
+                        app.current_office = app.offices.len() - 1;
                     }
+                    app.switch_office(app.current_office);
+                    app.dirty = true;
                 }
                 app.office_delete_confirm = None;
             }
@@ -58,7 +60,7 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
             }
             KeyCode::Down => {
                 let selected = app.office_selector.list_state.selected().unwrap_or(0);
-                if selected + 1 <= max_idx {
+                if selected < max_idx {
                     app.office_selector.list_state.select(Some(selected + 1));
                 }
             }
@@ -158,16 +160,20 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
     if ctrl && key.code == KeyCode::Char('z') && app.focus != Focus::Content {
         #[cfg(unix)] {
             use std::io::Write;
-            disable_raw_mode().ok();
-            execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture).ok();
-            io::stdout().flush().ok();
+            hard_disable_terminal_modes();
             
             // Send SIGTSTP to self
             unsafe { libc::kill(libc::getpid(), libc::SIGTSTP); }
             
             // After resume (fg) - reinitialize everything
             enable_raw_mode().ok();
-            execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture).ok();
+            execute!(
+                io::stdout(),
+                EnterAlternateScreen,
+                EnableMouseCapture,
+                crossterm::event::EnableBracketedPaste
+            )
+            .ok();
             io::stdout().flush().ok();
         }
         return false;
@@ -193,6 +199,7 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
                 let i = app.selected();
                 if idx < app.offices[app.current_office].desks[i].tabs.len() {
                     app.offices[app.current_office].desks[i].active_tab = idx;
+                    app.mark_tab_switch();
                     app.spawn_active_pty();
                 }
                 return false;
@@ -221,13 +228,21 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
             KeyCode::Left  => {
                 let i = app.selected();
                 let at = app.offices[app.current_office].desks[i].active_tab;
-                if at > 0 { app.offices[app.current_office].desks[i].active_tab = at - 1; app.spawn_active_pty(); }
+                if at > 0 {
+                    app.offices[app.current_office].desks[i].active_tab = at - 1;
+                    app.mark_tab_switch();
+                    app.spawn_active_pty();
+                }
             }
             KeyCode::Right => {
                 let i = app.selected();
                 let len = app.offices[app.current_office].desks[i].tabs.len();
                 let at = app.offices[app.current_office].desks[i].active_tab;
-                if at + 1 < len { app.offices[app.current_office].desks[i].active_tab = at + 1; app.spawn_active_pty(); }
+                if at + 1 < len {
+                    app.offices[app.current_office].desks[i].active_tab = at + 1;
+                    app.mark_tab_switch();
+                    app.spawn_active_pty();
+                }
             }
             KeyCode::Char('n') => { app.cur_desk_mut().new_tab(); app.spawn_active_pty(); app.dirty = true; }
             KeyCode::Char('x') => { app.cur_desk_mut().close_tab(); app.dirty = true; }
@@ -240,22 +255,81 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
             // Shift+PageUp/Down = scrollback
             if shift && key.code == KeyCode::PageUp   { app.pty_scroll(5);  return false; }
             if shift && key.code == KeyCode::PageDown  { app.pty_scroll(-5); return false; }
-            let bytes: Vec<u8> = match key.code {
-                KeyCode::Enter     => b"\r".to_vec(),
-                KeyCode::Backspace => vec![0x7f],
-                KeyCode::Tab       => b"\t".to_vec(),
-                KeyCode::Up        => b"\x1b[A".to_vec(),
-                KeyCode::Down      => b"\x1b[B".to_vec(),
-                KeyCode::Right     => b"\x1b[C".to_vec(),
-                KeyCode::Left      => b"\x1b[D".to_vec(),
-                KeyCode::Char(c)   => {
-                    if ctrl { vec![(c as u8).wrapping_sub(b'a').wrapping_add(1)] }
-                    else { c.to_string().into_bytes() }
-                }
-                _ => vec![],
-            };
+            let bytes = encode_content_key(&key);
             if !bytes.is_empty() { app.pty_write(&bytes); }
         }
     }
     false
+}
+
+fn encode_content_key(key: &crossterm::event::KeyEvent) -> Vec<u8> {
+    let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+    let alt = key.modifiers.contains(KeyModifiers::ALT);
+    let mut bytes: Vec<u8> = match key.code {
+        KeyCode::Enter     => b"\r".to_vec(),
+        KeyCode::Backspace => vec![0x7f],
+        KeyCode::Tab       => b"\t".to_vec(),
+        KeyCode::BackTab   => b"\x1b[Z".to_vec(),
+        KeyCode::Up        => b"\x1b[A".to_vec(),
+        KeyCode::Down      => b"\x1b[B".to_vec(),
+        KeyCode::Right     => b"\x1b[C".to_vec(),
+        KeyCode::Left      => b"\x1b[D".to_vec(),
+        KeyCode::Home      => b"\x1b[H".to_vec(),
+        KeyCode::End       => b"\x1b[F".to_vec(),
+        KeyCode::Delete    => b"\x1b[3~".to_vec(),
+        KeyCode::Insert    => b"\x1b[2~".to_vec(),
+        KeyCode::PageUp    => b"\x1b[5~".to_vec(),
+        KeyCode::PageDown  => b"\x1b[6~".to_vec(),
+        KeyCode::F(n)      => encode_function_key(n),
+        KeyCode::Char(c)   => {
+            if ctrl {
+                encode_ctrl_char(c)
+            } else {
+                c.to_string().into_bytes()
+            }
+        }
+        _ => vec![],
+    };
+
+    if alt && !bytes.is_empty() {
+        let mut prefixed = Vec::with_capacity(bytes.len() + 1);
+        prefixed.push(0x1b);
+        prefixed.extend_from_slice(&bytes);
+        bytes = prefixed;
+    }
+
+    bytes
+}
+
+fn encode_ctrl_char(c: char) -> Vec<u8> {
+    match c {
+        'a'..='z' => vec![(c as u8 - b'a') + 1],
+        'A'..='Z' => vec![(c as u8 - b'A') + 1],
+        ' ' | '@' => vec![0x00],
+        '[' => vec![0x1b],
+        '\\' => vec![0x1c],
+        ']' => vec![0x1d],
+        '^' => vec![0x1e],
+        '_' => vec![0x1f],
+        '?' => vec![0x7f],
+        _ => vec![],
+    }
+}
+
+fn encode_function_key(n: u8) -> Vec<u8> {
+    match n {
+        1 => b"\x1bOP".to_vec(),
+        2 => b"\x1bOQ".to_vec(),
+        3 => b"\x1bOR".to_vec(),
+        4 => b"\x1bOS".to_vec(),
+        5 => b"\x1b[15~".to_vec(),
+        6 => b"\x1b[17~".to_vec(),
+        7 => b"\x1b[18~".to_vec(),
+        8 => b"\x1b[19~".to_vec(),
+        9 => b"\x1b[20~".to_vec(),
+        10 => b"\x1b[21~".to_vec(),
+        11 => b"\x1b[23~".to_vec(),
+        12 => b"\x1b[24~".to_vec(),
+        _ => vec![],
+    }
 }

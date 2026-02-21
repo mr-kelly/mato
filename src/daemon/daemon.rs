@@ -141,10 +141,16 @@ impl Daemon {
     }
 }
 
+impl Default for Daemon {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub async fn handle_client(
     stream: UnixStream,
     tabs: Arc<DashMap<String, Arc<Mutex<PtyProvider>>>>,
-    config: Arc<Mutex<Config>>,
+    _config: Arc<Mutex<Config>>,
     client_id: usize,
     latest_version: Arc<Mutex<Option<String>>>,
 ) -> Result<()> {
@@ -173,7 +179,7 @@ pub async fn handle_client(
             ClientMsg::Hello { .. } => ServerMsg::Welcome { version: "0.1".into() },
             
             ClientMsg::Spawn { tab_id, rows, cols } => {
-                if let Some(tab) = tabs.get(&tab_id) {
+                if tabs.contains_key(&tab_id) {
                     tracing::info!("Tab {} already exists", tab_id);
                     // Don't resize on reconnect - it would clear the screen
                     // Client will send explicit Resize if needed
@@ -192,6 +198,25 @@ pub async fn handle_client(
                     (*tab.lock()).write(&data);
                 }
                 continue;
+            }
+
+            ClientMsg::Paste { tab_id, data } => {
+                if let Some(tab) = tabs.get(&tab_id) {
+                    (*tab.lock()).paste(&data);
+                }
+                continue;
+            }
+
+            ClientMsg::GetInputModes { tab_id } => {
+                if let Some(tab) = tabs.get(&tab_id) {
+                    let tab = tab.lock();
+                    ServerMsg::InputModes {
+                        mouse: tab.mouse_mode_enabled(),
+                        bracketed_paste: tab.bracketed_paste_enabled(),
+                    }
+                } else {
+                    ServerMsg::Error { message: "tab not found".into() }
+                }
             }
             
             ClientMsg::Resize { tab_id, rows, cols } => {

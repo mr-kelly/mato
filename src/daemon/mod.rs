@@ -9,4 +9,5 @@ pub use daemon::Daemon;
 pub use lock::DaemonLock;
 pub use pid::PidFile;
 pub use spawn::{run_daemon, ensure_daemon_running};
+pub use spawn::kill_all;
 pub use status::show_status;

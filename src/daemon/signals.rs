@@ -1,11 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-pub enum DaemonSignal {
-    Shutdown,
-    Reload,
-}
-
 pub struct SignalHandler {
     shutdown: Arc<AtomicBool>,
     reload: Arc<AtomicBool>,
@@ -60,3 +55,8 @@ impl SignalHandler {
     }
 }
 
+impl Default for SignalHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}

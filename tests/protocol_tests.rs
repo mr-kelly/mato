@@ -49,6 +49,24 @@ fn test_input_msg() {
 }
 
 #[test]
+fn test_paste_msg() {
+    let msg = ClientMsg::Paste {
+        tab_id: "abc".to_string(),
+        data: "line1\nline2".to_string(),
+    };
+    let json = serde_json::to_string(&msg).unwrap();
+    let deserialized: ClientMsg = serde_json::from_str(&json).unwrap();
+
+    match deserialized {
+        ClientMsg::Paste { tab_id, data } => {
+            assert_eq!(tab_id, "abc");
+            assert_eq!(data, "line1\nline2");
+        }
+        _ => panic!("Wrong message type"),
+    }
+}
+
+#[test]
 fn test_resize_msg() {
     let msg = ClientMsg::Resize {
         tab_id: "test".to_string(),
@@ -62,6 +80,38 @@ fn test_resize_msg() {
         ClientMsg::Resize { rows, cols, .. } => {
             assert_eq!(rows, 30);
             assert_eq!(cols, 100);
+        }
+        _ => panic!("Wrong message type"),
+    }
+}
+
+#[test]
+fn test_get_input_modes_msg() {
+    let msg = ClientMsg::GetInputModes {
+        tab_id: "tab-1".to_string(),
+    };
+    let json = serde_json::to_string(&msg).unwrap();
+    let deserialized: ClientMsg = serde_json::from_str(&json).unwrap();
+
+    match deserialized {
+        ClientMsg::GetInputModes { tab_id } => assert_eq!(tab_id, "tab-1"),
+        _ => panic!("Wrong message type"),
+    }
+}
+
+#[test]
+fn test_input_modes_server_msg() {
+    let msg = ServerMsg::InputModes {
+        mouse: true,
+        bracketed_paste: false,
+    };
+    let json = serde_json::to_string(&msg).unwrap();
+    let deserialized: ServerMsg = serde_json::from_str(&json).unwrap();
+
+    match deserialized {
+        ServerMsg::InputModes { mouse, bracketed_paste } => {
+            assert!(mouse);
+            assert!(!bracketed_paste);
         }
         _ => panic!("Wrong message type"),
     }

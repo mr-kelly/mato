@@ -1,6 +1,8 @@
 /// Tests for Desk and App business logic (tab/task management, rename, nav, idle).
 /// Uses a NullProvider to avoid needing a live daemon socket.
 use mato::terminal_provider::{ScreenContent, TerminalProvider};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 struct NullProvider;
 impl TerminalProvider for NullProvider {
@@ -10,10 +12,24 @@ impl TerminalProvider for NullProvider {
     fn get_screen(&self, _: u16, _: u16) -> ScreenContent { ScreenContent::default() }
 }
 
+struct CountingMouseProvider {
+    calls: Arc<AtomicUsize>,
+    enabled: bool,
+}
+impl TerminalProvider for CountingMouseProvider {
+    fn spawn(&mut self, _: u16, _: u16) {}
+    fn resize(&mut self, _: u16, _: u16) {}
+    fn write(&mut self, _: &[u8]) {}
+    fn mouse_mode_enabled(&self) -> bool {
+        self.calls.fetch_add(1, Ordering::Relaxed);
+        self.enabled
+    }
+    fn get_screen(&self, _: u16, _: u16) -> ScreenContent { ScreenContent::default() }
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-use mato::client::app::{Focus, RenameTarget, TabEntry, Desk};
-use ratatui::widgets::ListState;
+use mato::client::app::{RenameTarget, TabEntry, Desk};
 use std::collections::HashSet;
 
 fn make_tab(name: &str) -> TabEntry {
@@ -22,6 +38,21 @@ fn make_tab(name: &str) -> TabEntry {
 
 fn make_task(name: &str) -> Desk {
     Desk { id: mato::utils::new_id(), name: name.into(), tabs: vec![make_tab("Terminal 1")], active_tab: 0 }
+}
+
+fn make_mouse_mode_app(calls: Arc<AtomicUsize>) -> mato::client::app::App {
+    let tab = TabEntry {
+        id: mato::utils::new_id(),
+        name: "Terminal 1".into(),
+        provider: Box::new(CountingMouseProvider { calls, enabled: true }),
+    };
+    let desk = Desk {
+        id: mato::utils::new_id(),
+        name: "Desk".into(),
+        tabs: vec![tab],
+        active_tab: 0,
+    };
+    make_app_with(vec![desk])
 }
 
 // ── Desk: tab management ─────────────────────────────────────────────────────
@@ -219,4 +250,15 @@ fn saved_state_roundtrip() {
     assert_eq!(restored.offices[0].desks[1].name, "Personal");
     assert_eq!(restored.offices[0].desks[1].tabs.len(), 2);
     assert_eq!(restored.offices[0].desks[1].active_tab, 1);
+}
+
+#[test]
+fn mouse_mode_query_is_cached_briefly() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let mut app = make_mouse_mode_app(calls.clone());
+
+    assert!(app.pty_mouse_mode_enabled());
+    assert!(app.pty_mouse_mode_enabled());
+
+    assert_eq!(calls.load(Ordering::Relaxed), 1, "second call should hit cache");
 }

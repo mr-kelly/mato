@@ -38,6 +38,9 @@ pub struct AlacrittyEmulator {
     processor: Processor,
     title: Arc<Mutex<Option<String>>>,
     scroll_offset: i32,
+    bracketed_paste: bool,
+    mouse_mode: bool,
+    mode_tail: Vec<u8>,
 }
 
 impl AlacrittyEmulator {
@@ -45,16 +48,64 @@ impl AlacrittyEmulator {
         let title = Arc::new(Mutex::new(None));
         let listener = TitleCapture(Arc::clone(&title));
         let size = TermSize { cols: cols as usize, lines: rows as usize };
-        let mut config = Config::default();
-        config.scrolling_history = 10000;
+        let config = Config { scrolling_history: 10000, ..Config::default() };
         let term = Term::new(config, &size, listener);
-        Self { term, processor: Processor::new(), title, scroll_offset: 0 }
+        Self {
+            term,
+            processor: Processor::new(),
+            title,
+            scroll_offset: 0,
+            bracketed_paste: false,
+            mouse_mode: false,
+            mode_tail: Vec::new(),
+        }
+    }
+
+    fn update_terminal_modes(&mut self, bytes: &[u8]) {
+        const ENABLE: &[u8] = b"\x1b[?2004h";
+        const DISABLE: &[u8] = b"\x1b[?2004l";
+        const MOUSE_ENABLE_1000: &[u8] = b"\x1b[?1000h";
+        const MOUSE_ENABLE_1002: &[u8] = b"\x1b[?1002h";
+        const MOUSE_ENABLE_1003: &[u8] = b"\x1b[?1003h";
+        const MOUSE_DISABLE_1000: &[u8] = b"\x1b[?1000l";
+        const MOUSE_DISABLE_1002: &[u8] = b"\x1b[?1002l";
+        const MOUSE_DISABLE_1003: &[u8] = b"\x1b[?1003l";
+        let mut merged = Vec::with_capacity(self.mode_tail.len() + bytes.len());
+        merged.extend_from_slice(&self.mode_tail);
+        merged.extend_from_slice(bytes);
+
+        if merged.windows(ENABLE.len()).any(|w| w == ENABLE) {
+            self.bracketed_paste = true;
+        }
+        if merged.windows(DISABLE.len()).any(|w| w == DISABLE) {
+            self.bracketed_paste = false;
+        }
+        if merged.windows(MOUSE_ENABLE_1000.len()).any(|w| w == MOUSE_ENABLE_1000)
+            || merged.windows(MOUSE_ENABLE_1002.len()).any(|w| w == MOUSE_ENABLE_1002)
+            || merged.windows(MOUSE_ENABLE_1003.len()).any(|w| w == MOUSE_ENABLE_1003)
+        {
+            self.mouse_mode = true;
+        }
+        if merged.windows(MOUSE_DISABLE_1000.len()).any(|w| w == MOUSE_DISABLE_1000)
+            || merged.windows(MOUSE_DISABLE_1002.len()).any(|w| w == MOUSE_DISABLE_1002)
+            || merged.windows(MOUSE_DISABLE_1003.len()).any(|w| w == MOUSE_DISABLE_1003)
+        {
+            self.mouse_mode = false;
+        }
+
+        let keep = ENABLE.len().max(DISABLE.len()).saturating_sub(1);
+        if merged.len() > keep {
+            self.mode_tail = merged[merged.len() - keep..].to_vec();
+        } else {
+            self.mode_tail = merged;
+        }
     }
 }
 
 impl TerminalEmulator for AlacrittyEmulator {
     fn process(&mut self, bytes: &[u8]) {
         self.processor.advance(&mut self.term, bytes);
+        self.update_terminal_modes(bytes);
         // Auto-scroll to bottom on new output
         self.scroll_offset = 0;
     }
@@ -111,6 +162,14 @@ impl TerminalEmulator for AlacrittyEmulator {
         // Do NOT resize the terminal emulator - that clears the screen.
         // The PTY process size (TIOCSWINSZ) is handled by PtyProvider directly.
         // We render by clipping/padding in get_screen.
+    }
+
+    fn bracketed_paste_enabled(&self) -> bool {
+        self.bracketed_paste
+    }
+
+    fn mouse_mode_enabled(&self) -> bool {
+        self.mouse_mode
     }
 }
 

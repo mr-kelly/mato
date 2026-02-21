@@ -2,7 +2,6 @@ pub mod app;
 pub mod ui;
 pub mod input;
 pub mod persistence;
-pub mod onboarding;
 pub mod onboarding_tui;
 
 pub use app::App;

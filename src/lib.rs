@@ -10,6 +10,7 @@ pub mod emulators;
 pub mod providers;
 pub mod client;
 pub mod daemon;
+pub mod terminal;
 
 // Re-export commonly used items
 pub use protocol::{ClientMsg, ServerMsg};

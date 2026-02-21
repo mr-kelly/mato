@@ -1,6 +1,10 @@
 use ratatui::{layout::Rect, widgets::ListState};
-use std::collections::HashSet;
-use std::time::Instant;
+use std::collections::{HashMap, HashSet};
+use std::io::{BufRead, BufReader, Write};
+use std::os::unix::net::UnixStream;
+use std::sync::mpsc::{self, Receiver};
+use std::thread;
+use std::time::{Duration, Instant};
 use crate::{utils::new_id, client::persistence::{load_state, SavedState}, terminal_provider::TerminalProvider, providers::DaemonProvider};
 use crate::protocol::{ClientMsg, ServerMsg};
 use crate::theme::ThemeColors;
@@ -30,16 +34,27 @@ impl OfficeSelectorState {
     }
 }
 
+impl Default for OfficeSelectorState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct OfficeDeleteConfirm {
-    pub active: bool,
     pub office_idx: usize,
     pub input: String,
 }
 
 impl OfficeDeleteConfirm {
     pub fn new(office_idx: usize) -> Self {
-        Self { active: true, office_idx, input: String::new() }
+        Self { office_idx, input: String::new() }
     }
+}
+
+struct MouseModeCache {
+    tab_id: String,
+    mouse_enabled: bool,
+    checked_at: Instant,
 }
 
 pub struct TabEntry {
@@ -169,9 +184,11 @@ pub struct App {
     pub last_click: Option<(u16, u16, std::time::Instant)>,
     /// tab_ids that are ACTIVE (have output in last 2 seconds)
     pub active_tabs: HashSet<String>,
+    pub terminal_titles: HashMap<String, String>,
     /// Spinner animation state
     pub spinner_frame: usize,
     pub last_spinner_update: Instant,
+    pub last_title_sync: Instant,
     pub theme: ThemeColors,
     /// Settings screen open
     pub show_settings: bool,
@@ -183,6 +200,9 @@ pub struct App {
     pub should_show_onboarding: bool,
     /// Office delete confirmation
     pub office_delete_confirm: Option<OfficeDeleteConfirm>,
+    mouse_mode_cache: Option<MouseModeCache>,
+    active_status_rx: Option<Receiver<HashSet<String>>>,
+    tab_switch_started_at: Option<Instant>,
 }
 
 impl App {
@@ -212,8 +232,10 @@ impl App {
             new_desk_area: Rect::default(), tab_areas: vec![], new_tab_area: Rect::default(),
             tab_scroll: 0, last_click: None,
             active_tabs: HashSet::new(),
+            terminal_titles: HashMap::new(),
             spinner_frame: 0,
             last_spinner_update: Instant::now(),
+            last_title_sync: Instant::now() - Duration::from_millis(500),
             theme: crate::theme::load(),
             show_settings: false,
             settings_selected: 0,
@@ -221,9 +243,13 @@ impl App {
             last_update_check: Instant::now() - std::time::Duration::from_secs(290),
             should_show_onboarding: false,
             office_delete_confirm: None,
+            mouse_mode_cache: None,
+            active_status_rx: None,
+            tab_switch_started_at: None,
         }
     }
 
+    #[allow(dead_code)]
     pub fn from_saved(state: SavedState) -> Self {
         let mut list_state = ListState::default();
         let offices = state.offices.into_iter().map(|o| {
@@ -246,8 +272,10 @@ impl App {
             new_desk_area: Rect::default(), tab_areas: vec![], new_tab_area: Rect::default(),
             tab_scroll: 0, last_click: None,
             active_tabs: HashSet::new(),
+            terminal_titles: HashMap::new(),
             spinner_frame: 0,
             last_spinner_update: Instant::now(),
+            last_title_sync: Instant::now() - Duration::from_millis(500),
             theme: crate::theme::load(),
             show_settings: false,
             settings_selected: 0,
@@ -255,17 +283,25 @@ impl App {
             last_update_check: Instant::now() - std::time::Duration::from_secs(290),
             should_show_onboarding: false,
             office_delete_confirm: None,
+            mouse_mode_cache: None,
+            active_status_rx: None,
+            tab_switch_started_at: None,
         }
     }
 
     // Helper methods to access current office's desks
+    #[allow(dead_code)]
     pub fn desks(&self) -> &Vec<Desk> { &self.offices[self.current_office].desks }
+    #[allow(dead_code)]
     pub fn desks_mut(&mut self) -> &mut Vec<Desk> { &mut self.offices[self.current_office].desks }
+    #[allow(dead_code)]
     pub fn office(&self) -> &Office { &self.offices[self.current_office] }
+    #[allow(dead_code)]
     pub fn office_mut(&mut self) -> &mut Office { &mut self.offices[self.current_office] }
 
     pub fn selected(&self) -> usize { self.list_state.selected().unwrap_or(0) }
 
+    #[allow(dead_code)]
     pub fn active_desk(&self) -> usize { self.selected() }
 
     pub fn cur_desk_mut(&mut self) -> &mut Desk { 
@@ -279,6 +315,7 @@ impl App {
             let active_desk = self.offices[office_idx].active_desk;
             self.list_state.select(Some(active_desk));
             self.tab_scroll = 0;
+            self.mark_tab_switch();
             self.spawn_active_pty();
             self.dirty = true;
         }
@@ -361,10 +398,37 @@ impl App {
         self.offices[self.current_office].desks[i].tabs[at].pty_write(bytes);
     }
 
+    pub fn pty_paste(&mut self, text: &str) {
+        let i = self.selected();
+        let at = self.offices[self.current_office].desks[i].active_tab;
+        self.offices[self.current_office].desks[i].tabs[at].provider.paste(text);
+    }
+
     pub fn pty_scroll(&mut self, delta: i32) {
         let i = self.selected();
         let at = self.offices[self.current_office].desks[i].active_tab;
         self.offices[self.current_office].desks[i].tabs[at].provider.scroll(delta);
+    }
+
+    pub fn pty_mouse_mode_enabled(&mut self) -> bool {
+        let i = self.selected();
+        let at = self.offices[self.current_office].desks[i].active_tab;
+        let tab_id = self.offices[self.current_office].desks[i].tabs[at].id.clone();
+        if let Some(cache) = &self.mouse_mode_cache {
+            if cache.tab_id == tab_id && cache.checked_at.elapsed() < Duration::from_millis(100) {
+                return cache.mouse_enabled;
+            }
+        }
+
+        let enabled = self.offices[self.current_office].desks[i].tabs[at]
+            .provider
+            .mouse_mode_enabled();
+        self.mouse_mode_cache = Some(MouseModeCache {
+            tab_id,
+            mouse_enabled: enabled,
+            checked_at: Instant::now(),
+        });
+        enabled
     }
 
     /// Send focus in/out events to PTY when focus changes
@@ -377,13 +441,19 @@ impl App {
         self.prev_focus = self.focus;
     }
     pub fn sync_tab_titles(&mut self) {
-        for desk in self.offices[self.current_office].desks.iter_mut() {
-            for tab in desk.tabs.iter_mut() {
-                let screen = tab.provider.get_screen(1, 1); // minimal call just for title
-                if let Some(title) = screen.title {
-                    if !title.is_empty() {
-                        tab.name = title;
-                    }
+        if self.last_title_sync.elapsed() < Duration::from_millis(500) {
+            return;
+        }
+        self.last_title_sync = Instant::now();
+
+        // Sync only the currently visible tab to avoid per-frame N×socket round-trips.
+        let desk_idx = self.selected();
+        let tab_idx = self.offices[self.current_office].desks[desk_idx].active_tab;
+        if let Some(tab) = self.offices[self.current_office].desks[desk_idx].tabs.get_mut(tab_idx) {
+            let screen = tab.provider.get_screen(1, 1);
+            if let Some(title) = screen.title {
+                if !title.is_empty() {
+                    self.terminal_titles.insert(tab.id.clone(), title);
                 }
             }
         }
@@ -449,6 +519,7 @@ impl App {
                         // Jump to tab
                         self.offices[self.current_office].desks[task_idx].active_tab = tab_idx;
                         self.focus = Focus::Content;
+                        self.mark_tab_switch();
                         self.spawn_active_pty();
                     }
                     _ => {}
@@ -463,23 +534,71 @@ impl App {
 
     /// Query daemon for active status of all tabs (call every frame)
     pub fn refresh_active_status(&mut self) {
-        const ACTIVE_THRESHOLD_SECS: u64 = 2;  // Active = output in last 2 seconds
-        let socket_path = crate::utils::get_socket_path();
-        use std::os::unix::net::UnixStream;
-        use std::io::{Write, BufRead, BufReader};
-        let Ok(mut stream) = UnixStream::connect(&socket_path) else { return };
-        let msg = serde_json::to_vec(&ClientMsg::GetIdleStatus).unwrap();
-        let _ = stream.write_all(&msg);
-        let _ = stream.write_all(b"\n");
-        let _ = stream.flush();
-        let mut line = String::new();
-        let _ = BufReader::new(&stream).read_line(&mut line);
-        if let Ok(ServerMsg::IdleStatus { tabs }) = serde_json::from_str(&line) {
-            self.active_tabs = tabs.into_iter()
-                .filter(|(_, secs)| *secs < ACTIVE_THRESHOLD_SECS)  // ACTIVE if recent output
-                .map(|(id, _)| id)
-                .collect();
+        const ACTIVE_THRESHOLD_SECS: u64 = 2;
+        if self.active_status_rx.is_none() {
+            self.active_status_rx = Some(Self::spawn_active_status_worker(ACTIVE_THRESHOLD_SECS));
         }
+        let mut latest: Option<HashSet<String>> = None;
+        if let Some(rx) = &self.active_status_rx {
+            while let Ok(active) = rx.try_recv() {
+                latest = Some(active);
+            }
+        }
+        if let Some(active) = latest {
+            self.active_tabs = active;
+        }
+    }
+
+    fn spawn_active_status_worker(active_threshold_secs: u64) -> Receiver<HashSet<String>> {
+        let (tx, rx) = mpsc::channel();
+        thread::spawn(move || {
+            let socket_path = crate::utils::get_socket_path();
+            loop {
+                let active = (|| -> Option<HashSet<String>> {
+                    let mut stream = UnixStream::connect(&socket_path).ok()?;
+                    stream.set_read_timeout(Some(Duration::from_millis(150))).ok()?;
+                    let msg = serde_json::to_vec(&ClientMsg::GetIdleStatus).ok()?;
+                    stream.write_all(&msg).ok()?;
+                    stream.write_all(b"\n").ok()?;
+                    stream.flush().ok()?;
+                    let mut line = String::new();
+                    BufReader::new(&stream).read_line(&mut line).ok()?;
+                    let ServerMsg::IdleStatus { tabs } = serde_json::from_str(&line).ok()? else {
+                        return None;
+                    };
+                    Some(
+                        tabs.into_iter()
+                            .filter(|(_, secs)| *secs < active_threshold_secs)
+                            .map(|(id, _)| id)
+                            .collect(),
+                    )
+                })();
+                let poll_interval = if let Some(active_tabs) = active {
+                    let next = if active_tabs.is_empty() {
+                        Duration::from_millis(1000)
+                    } else {
+                        Duration::from_millis(300)
+                    };
+                    if tx.send(active_tabs).is_err() {
+                        break;
+                    }
+                    next
+                } else {
+                    // Daemon/socket issue: back off briefly to avoid hot-looping.
+                    Duration::from_millis(1000)
+                };
+                thread::sleep(poll_interval);
+            }
+        });
+        rx
+    }
+
+    pub fn mark_tab_switch(&mut self) {
+        self.tab_switch_started_at = Some(Instant::now());
+    }
+
+    pub fn finish_tab_switch_measurement(&mut self) -> Option<Duration> {
+        self.tab_switch_started_at.take().map(|t| t.elapsed())
     }
 
     pub fn refresh_update_status(&mut self) {
@@ -519,5 +638,11 @@ impl App {
     /// Check if any tab is active
     pub fn has_active_tabs(&self) -> bool {
         !self.active_tabs.is_empty()
+    }
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
     }
 }

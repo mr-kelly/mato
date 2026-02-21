@@ -4,8 +4,7 @@ use mato::terminal_provider::{ScreenContent, TerminalProvider};
 use mato::client::app::{App, Focus, JumpMode, RenameTarget, TabEntry, Desk};
 use mato::client::input::handle_key;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use ratatui::{layout::Rect, widgets::ListState};
-use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
 
 struct NullProvider;
 impl TerminalProvider for NullProvider {
@@ -15,12 +14,37 @@ impl TerminalProvider for NullProvider {
     fn get_screen(&self, _: u16, _: u16) -> ScreenContent { ScreenContent::default() }
 }
 
+struct CaptureProvider {
+    sink: Arc<Mutex<Vec<u8>>>,
+}
+impl TerminalProvider for CaptureProvider {
+    fn spawn(&mut self, _: u16, _: u16) {}
+    fn resize(&mut self, _: u16, _: u16) {}
+    fn write(&mut self, bytes: &[u8]) {
+        self.sink.lock().unwrap().extend_from_slice(bytes);
+    }
+    fn get_screen(&self, _: u16, _: u16) -> ScreenContent { ScreenContent::default() }
+}
+
 fn make_tab(name: &str) -> TabEntry {
     TabEntry { id: mato::utils::new_id(), name: name.into(), provider: Box::new(NullProvider) }
 }
 
 fn make_task(name: &str) -> Desk {
     Desk { id: mato::utils::new_id(), name: name.into(), tabs: vec![make_tab("T1")], active_tab: 0 }
+}
+
+fn make_capture_app() -> (App, Arc<Mutex<Vec<u8>>>) {
+    let sink = Arc::new(Mutex::new(Vec::new()));
+    let tab = TabEntry {
+        id: mato::utils::new_id(),
+        name: "T1".into(),
+        provider: Box::new(CaptureProvider { sink: sink.clone() }),
+    };
+    let desk = Desk { id: mato::utils::new_id(), name: "Desk".into(), tabs: vec![tab], active_tab: 0 };
+    let mut app = make_app(vec![desk]);
+    app.focus = Focus::Content;
+    (app, sink)
 }
 
 fn make_app(desks: Vec<Desk>) -> App {
@@ -186,4 +210,37 @@ fn left_in_topbar_does_not_go_below_zero() {
     app.focus = Focus::Topbar;
     handle_key(&mut app, key(KeyCode::Left));
     assert_eq!(app.offices[0].desks[0].active_tab, 0);
+}
+
+// ── content key encoding ──────────────────────────────────────────────────────
+
+#[test]
+fn content_home_end_are_encoded() {
+    let (mut app, sink) = make_capture_app();
+    handle_key(&mut app, key(KeyCode::Home));
+    handle_key(&mut app, key(KeyCode::End));
+    assert_eq!(*sink.lock().unwrap(), b"\x1b[H\x1b[F");
+}
+
+#[test]
+fn content_delete_page_and_function_keys_are_encoded() {
+    let (mut app, sink) = make_capture_app();
+    handle_key(&mut app, key(KeyCode::Delete));
+    handle_key(&mut app, key(KeyCode::PageUp));
+    handle_key(&mut app, key(KeyCode::F(5)));
+    assert_eq!(*sink.lock().unwrap(), b"\x1b[3~\x1b[5~\x1b[15~");
+}
+
+#[test]
+fn content_ctrl_left_bracket_encodes_escape() {
+    let (mut app, sink) = make_capture_app();
+    handle_key(&mut app, key_mod(KeyCode::Char('['), KeyModifiers::CONTROL));
+    assert_eq!(*sink.lock().unwrap(), b"\x1b");
+}
+
+#[test]
+fn content_alt_char_is_meta_prefixed() {
+    let (mut app, sink) = make_capture_app();
+    handle_key(&mut app, key_mod(KeyCode::Char('x'), KeyModifiers::ALT));
+    assert_eq!(*sink.lock().unwrap(), b"\x1bx");
 }

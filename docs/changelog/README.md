@@ -7,6 +7,7 @@ This directory contains historical development documentation for Mato.
 ### Recent Changes (2026-02-22)
 - **[2026-02-22_desk-terminology.md](2026-02-22_desk-terminology.md)** - Task → Desk terminology refactor
 - **[2026-02-22_activity-indicators.md](2026-02-22_activity-indicators.md)** - Activity indicators, PTY cleanup, UI improvements
+- **[2026-02-21_todo-audit-clippy-and-tab-title-separation.md](2026-02-21_todo-audit-clippy-and-tab-title-separation.md)** - TODO audit, warning cleanup, tab title/name separation
 
 ### Development Plans
 - **[2026-02-20_phase4-implementation-plan.md](2026-02-20_phase4-implementation-plan.md)** - Phase 4 roadmap to 100% TMUX parity

@@ -188,17 +188,6 @@ fn draw_onboarding(f: &mut Frame, list_state: &mut ListState, templates: &[Templ
     f.render_widget(help, chunks[3]);
 }
 
-fn apply_template(template: &Template) -> io::Result<()> {
-    let state_path = crate::utils::get_state_file_path();
-    
-    if let Some(parent) = state_path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    
-    std::fs::write(&state_path, template.content)?;
-    Ok(())
-}
-
 fn apply_template_return(template: &Template) -> io::Result<Option<SavedState>> {
     let state: SavedState = serde_json::from_str(template.content)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;

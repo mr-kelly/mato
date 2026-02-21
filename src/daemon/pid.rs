@@ -21,9 +21,6 @@ impl PidFile {
             .ok()
     }
     
-    pub fn exists(path: &PathBuf) -> bool {
-        path.exists()
-    }
 }
 
 impl Drop for PidFile {

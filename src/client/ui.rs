@@ -40,7 +40,6 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     // Update dimensions for spawn (no resize triggered here)
     app.term_rows = tr;
     app.term_cols = tc;
-    app.spawn_active_pty();
 
     app.sidebar_area = cols[0];
     app.topbar_area  = main_rows[0];
@@ -117,7 +116,7 @@ fn draw_sidebar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
 
     // Office selector (top area)
     let office_name = &app.offices[app.current_office].name;
-    let office_text = format!(" 🏢 Office: {} ", office_name);
+    let office_text = format!(" 🏢 {} ", office_name);
     let office_style = if active {
         Style::default().fg(t.fg()).bg(t.surface()).add_modifier(Modifier::BOLD)
     } else {
@@ -183,9 +182,9 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     loop {
         let mut used = plus_w;
         let mut last_visible = app.tab_scroll;
-        for i in app.tab_scroll..task.tabs.len() {
-            if used + tab_widths[i] > inner_w { break; }
-            used += tab_widths[i];
+        for (i, w) in tab_widths.iter().enumerate().take(task.tabs.len()).skip(app.tab_scroll) {
+            if used + *w > inner_w { break; }
+            used += *w;
             last_visible = i;
         }
         if at <= last_visible || app.tab_scroll >= at { break; }
@@ -258,7 +257,16 @@ fn draw_terminal(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
 
     f.render_widget(
         Block::default().borders(Borders::ALL)
-            .title(Span::styled(format!(" {} ", tab.name), title_style(t, active)))
+            .title(Span::styled(
+                format!(
+                    " {} ",
+                    match app.terminal_titles.get(&tab.id) {
+                        Some(term_title) if !term_title.is_empty() => format!("{} : {}", tab.name, term_title),
+                        _ => tab.name.clone(),
+                    }
+                ),
+                title_style(t, active),
+            ))
             .border_style(border_style(t, active))
             .style(Style::default().bg(Color::Black)),
         area,

@@ -168,9 +168,7 @@ fn persistence_missing_active_task_defaults_to_zero() {
 // ── persistence: save_state / load_state via XDG_CONFIG_HOME ─────────────────
 
 use mato::terminal_provider::{ScreenContent, TerminalProvider};
-use mato::client::app::{App, Focus, RenameTarget, TabEntry, Desk};
-use ratatui::widgets::ListState;
-use std::collections::HashSet;
+use mato::client::app::{App, RenameTarget, TabEntry, Desk};
 
 struct NullProvider;
 impl TerminalProvider for NullProvider {

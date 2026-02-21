@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `docs/RECORDING_DEMO.md` - GIF recording instructions
 - Updated README with "Why Mato?" and "Perfect For" sections
 - Removed `docs/IDLE_DETECTION.md` (replaced by ACTIVITY_INDICATORS.md)
+- Audited `docs/todos/TODO.md` and marked historically completed items based on current repo state
 
 📖 **[Activity Indicators Changelog →](docs/changelog/2026-02-22_activity-indicators.md)**  
 📖 **[Desk Terminology Changelog →](docs/changelog/2026-02-22_desk-terminology.md)**

@@ -29,12 +29,4 @@ impl Config {
         Self::default()
     }
     
-    pub fn save(&self) -> std::io::Result<()> {
-        let path = crate::utils::get_config_file_path();
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        let content = toml::to_string_pretty(self).unwrap();
-        std::fs::write(&path, content)
-    }
 }

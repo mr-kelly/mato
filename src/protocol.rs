@@ -6,6 +6,8 @@ pub enum ClientMsg {
     Hello { version: String },
     Spawn { tab_id: String, rows: u16, cols: u16 },
     Input { tab_id: String, data: Vec<u8> },
+    Paste { tab_id: String, data: String },
+    GetInputModes { tab_id: String },
     Resize { tab_id: String, rows: u16, cols: u16 },
     GetScreen { tab_id: String, rows: u16, cols: u16 },
     GetIdleStatus,
@@ -23,4 +25,5 @@ pub enum ServerMsg {
     IdleStatus { tabs: Vec<(String, u64)> },
     /// None = up to date or check failed; Some(ver) = update available
     UpdateStatus { latest: Option<String> },
+    InputModes { mouse: bool, bracketed_paste: bool },
 }
