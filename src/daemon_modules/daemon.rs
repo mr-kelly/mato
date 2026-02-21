@@ -12,11 +12,16 @@ use crate::terminal_provider::TerminalProvider;
 use crate::daemon_modules::signals::SignalHandler;
 use crate::config::Config;
 
+const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
+const VERSION_URL: &str = "https://mato.sh/version.txt";
+
 pub struct Daemon {
     tabs: Arc<DashMap<String, Arc<Mutex<PtyProvider>>>>,
     signals: SignalHandler,
     config: Arc<Mutex<Config>>,
     client_count: Arc<AtomicUsize>,
+    /// None = up to date or check failed; Some(ver) = update available
+    latest_version: Arc<Mutex<Option<String>>>,
 }
 
 impl Daemon {
@@ -29,6 +34,7 @@ impl Daemon {
             signals: SignalHandler::new(),
             config: Arc::new(Mutex::new(config)),
             client_count: Arc::new(AtomicUsize::new(0)),
+            latest_version: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -47,6 +53,29 @@ impl Daemon {
         
         tracing::info!("Daemon listening on {}", socket_path);
         tracing::info!("Active tabs at startup: {}", self.tabs.len());
+
+        // Background update checker: fetch every hour
+        {
+            let latest_version = self.latest_version.clone();
+            tokio::spawn(async move {
+                loop {
+                    match reqwest::get(VERSION_URL).await {
+                        Ok(resp) if resp.status().is_success() => {
+                            if let Ok(text) = resp.text().await {
+                                let remote = text.trim().to_string();
+                                let update = if remote != CURRENT_VERSION { Some(remote) } else { None };
+                                *latest_version.lock() = update;
+                            }
+                        }
+                        _ => {
+                            // fetch failed: log and leave state unchanged
+                            tracing::debug!("Update check failed: could not reach {}", VERSION_URL);
+                        }
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
+                }
+            });
+        }
 
         loop {
             // Check for shutdown signal
@@ -72,9 +101,10 @@ impl Daemon {
                             let tabs = self.tabs.clone();
                             let config = self.config.clone();
                             let client_count = self.client_count.clone();
+                            let latest_version = self.latest_version.clone();
                             
                             tokio::spawn(async move {
-                                if let Err(e) = handle_client(stream, tabs, config, client_id).await {
+                                if let Err(e) = handle_client(stream, tabs, config, client_id, latest_version).await {
                                     tracing::error!("Client #{} error: {}", client_id, e);
                                 }
                                 let remaining = client_count.fetch_sub(1, Ordering::Relaxed) - 1;
@@ -116,6 +146,7 @@ pub async fn handle_client(
     tabs: Arc<DashMap<String, Arc<Mutex<PtyProvider>>>>,
     config: Arc<Mutex<Config>>,
     client_id: usize,
+    latest_version: Arc<Mutex<Option<String>>>,
 ) -> Result<()> {
     tracing::info!("Client #{} handler started", client_id);
     let (reader, mut writer) = stream.into_split();
@@ -142,8 +173,10 @@ pub async fn handle_client(
             ClientMsg::Hello { .. } => ServerMsg::Welcome { version: "0.1".into() },
             
             ClientMsg::Spawn { tab_id, rows, cols } => {
-                if tabs.contains_key(&tab_id) {
-                    tracing::info!("Tab {} already exists, skipping spawn", tab_id);
+                if let Some(tab) = tabs.get(&tab_id) {
+                    tracing::info!("Tab {} already exists", tab_id);
+                    // Don't resize on reconnect - it would clear the screen
+                    // Client will send explicit Resize if needed
                     ServerMsg::Welcome { version: "already exists".into() }
                 } else {
                     tracing::info!("Spawning new tab {} ({}x{})", tab_id, rows, cols);
@@ -162,9 +195,10 @@ pub async fn handle_client(
             }
             
             ClientMsg::Resize { tab_id, rows, cols } => {
-                if let Some(tab) = tabs.get(&tab_id) {
-                    (*tab.lock()).resize(rows, cols);
-                }
+                // DON'T resize the PTY! This would clear the screen.
+                // The PTY should keep running at its original size.
+                // Only the client's display needs to adapt to window size.
+                tracing::debug!("Ignoring resize request for tab {} ({}x{}) - PTY size is fixed", tab_id, rows, cols);
                 continue;
             }
             
@@ -185,6 +219,23 @@ pub async fn handle_client(
                     (entry.key().clone(), secs)
                 }).collect();
                 ServerMsg::IdleStatus { tabs: idle }
+            }
+
+            ClientMsg::GetUpdateStatus => {
+                let latest = latest_version.lock().clone();
+                ServerMsg::UpdateStatus { latest }
+            }
+
+            ClientMsg::ClosePty { tab_id } => {
+                if let Some((_, entry)) = tabs.remove(&tab_id) {
+                    tracing::info!("Closing PTY for tab {}", tab_id);
+                    // Drop the entry, which will kill the PTY process
+                    drop(entry);
+                    ServerMsg::Welcome { version: "ok".into() }
+                } else {
+                    tracing::warn!("Attempted to close non-existent tab {}", tab_id);
+                    ServerMsg::Error { message: "tab not found".into() }
+                }
             }
         };
 

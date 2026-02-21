@@ -1,20 +1,37 @@
 # Mato Keyboard Shortcuts
 
-Complete reference for all keyboard shortcuts in Mato.
+> **Philosophy**: Minimal shortcuts, maximum productivity. Everything starts with `Esc`.
 
-## Global Shortcuts
+## 🎯 The One Key Rule
 
-These work in any focus mode:
+**In terminal focus, only `Esc` is special. Everything else goes to your shell.**
+
+This means:
+- ✅ `Ctrl+A/E/K/U` — Your bash shortcuts work
+- ✅ `Ctrl+R` — Reverse search works
+- ✅ `Ctrl+C/D/Z` — Process control works
+- ✅ All your muscle memory preserved
+
+**No prefix key. No mode confusion. Just `Esc` when you need to navigate.**
+
+## Essential Shortcuts (You Only Need These)
+
+| Key | Action | When |
+|-----|--------|------|
+| `Esc` | **Jump Mode** | In terminal → Navigate anywhere |
+| `a-z` | Jump to task/tab | In Jump Mode → Instant jump |
+| `←` or `↑` | Switch focus | In Jump Mode → Traditional navigation |
+| `q` | Quit | In sidebar → Exit Mato |
+
+**That's it.** Everything else is optional convenience.
+
+## Optional Shortcuts
+
+### Global (Work Anywhere)
 
 | Shortcut | Action | Description |
 |----------|--------|-------------|
 | `Ctrl+Z` | Suspend | Suspend Mato (resume with `fg`) |
-| `Alt+1` | Switch to Tab 1 | Jump to first tab |
-| `Alt+2` | Switch to Tab 2 | Jump to second tab |
-| `Alt+3` | Switch to Tab 3 | Jump to third tab |
-| `Alt+4-9` | Switch to Tab 4-9 | Jump to tabs 4-9 |
-| `Ctrl+PageUp` | Previous Tab | Switch to previous tab |
-| `Ctrl+PageDown` | Next Tab | Switch to next tab |
 
 ## Sidebar Mode (Task List)
 
@@ -36,11 +53,17 @@ When focus is on the topbar (tab bar):
 | Shortcut | Action | Description |
 |----------|--------|-------------|
 | `←` / `→` | Navigate | Move left/right in tab list |
-| `t` | New Tab | Create a new tab |
-| `w` | Close Tab | Delete current tab |
+| `n` | New Tab | Create a new tab |
+| `x` | Close Tab | Delete current tab |
 | `r` | Rename Tab | Rename current tab |
 | `Enter` | Focus Terminal | Switch to terminal content |
 | `Esc` | Back to Sidebar | Return to sidebar |
+
+**Note**: `n` and `x` are **context-aware**:
+- In **Sidebar** → New/Close **Task**
+- In **Topbar** → New/Close **Tab**
+
+Same keys, different context. Simple and consistent.
 
 ## Terminal Mode (Content)
 
@@ -48,12 +71,58 @@ When focus is on the terminal content:
 
 | Shortcut | Action | Description |
 |----------|--------|-------------|
-| `Esc` | Switch Mode | Enter switch mode |
-| `Esc` → `←` or `a` | Focus Sidebar | Switch to sidebar |
-| `Esc` → `↑` or `w` | Focus Topbar | Switch to topbar |
+| `Esc` | **Jump Mode** | Enter Jump Mode for quick navigation |
 | All other keys | Forward to Shell | Sent to terminal |
 
 **Note**: In terminal mode, all keys except `Esc` are forwarded to the shell.
+
+## Jump Mode 🎯
+
+**Activated by**: Press `Esc` when in terminal focus
+
+Jump Mode provides **dual navigation**:
+1. **EasyMotion-style jumps** - Press a letter to instantly jump to any task/tab
+2. **Arrow key focus switching** - Use `←` or `↑` to switch focus areas (backward compatible)
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `a-z` | Jump | Jump to labeled task/tab |
+| `←` or `a` | Focus Sidebar | Switch to sidebar |
+| `↑` or `w` | Focus Topbar | Switch to topbar |
+| `Esc` | Cancel | Exit Jump Mode |
+
+### How Jump Mode Works
+
+1. **Activate**: Press `Esc` while in terminal focus
+2. **Labels Appear**: All visible tasks and tabs show letter labels `[a]`, `[b]`, `[c]`, etc.
+3. **Choose Action**:
+   - Press a **letter** → Jump to that task/tab
+   - Press **arrow key** → Switch focus area
+   - Press **Esc** → Cancel
+4. **Done**: Jump Mode exits automatically after any action
+
+### Example
+
+```
+Sidebar:              Topbar:
+[a] Development       [d] Terminal 1  [e] Terminal 2  [f] Server
+[b] Testing           
+[c] Documentation     
+```
+
+**Letter jumps**:
+- Press `b` → Switch to "Testing" task
+- Press `e` → Switch to "Terminal 2" tab
+
+**Arrow keys** (backward compatible):
+- Press `←` → Focus sidebar
+- Press `↑` → Focus topbar
+
+**Benefits**:
+- ⚡ **Instant navigation** - single keypress to any location
+- 🔄 **Backward compatible** - arrow keys work like before
+- 👀 **Visual feedback** - see all available targets
+- 🎯 **Flexible** - choose between jump or focus switch
 
 ## Rename Mode
 
@@ -155,9 +224,9 @@ You can use Mato entirely without a mouse:
 
 Currently, keybindings are fixed. Custom keybindings will be added in a future version.
 
-## Comparison with TMUX
+## Comparison with Other Tools
 
-| Action | TMUX | Mato |
+| Action | Standard Multiplexers | Mato |
 |--------|------|------|
 | Prefix | `Ctrl+B` | None (direct keys) |
 | New window | `Ctrl+B c` | `n` (sidebar) or `t` (topbar) |

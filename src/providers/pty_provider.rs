@@ -7,6 +7,7 @@ use crate::emulators::{Vt100Emulator, VteEmulator};
 pub struct PtyProvider {
     pty: Option<PtyState>,
     pub last_output: Arc<Mutex<Instant>>,
+    current_size: (u16, u16), // Track current size to avoid unnecessary resizes
 }
 
 struct PtyState {
@@ -18,7 +19,11 @@ struct PtyState {
 
 impl PtyProvider {
     pub fn new() -> Self {
-        Self { pty: None, last_output: Arc::new(Mutex::new(Instant::now())) }
+        Self { 
+            pty: None, 
+            last_output: Arc::new(Mutex::new(Instant::now())),
+            current_size: (24, 80), // Default size
+        }
     }
     
     fn create_emulator(rows: u16, cols: u16) -> Box<dyn TerminalEmulator> {
@@ -41,6 +46,9 @@ impl PtyProvider {
 impl TerminalProvider for PtyProvider {
     fn spawn(&mut self, rows: u16, cols: u16) {
         if self.pty.is_some() { return; }
+        
+        self.current_size = (rows, cols); // Track size
+        
         let pty_system = native_pty_system();
         let pair = pty_system.openpty(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 }).expect("openpty");
         let mut cmd = CommandBuilder::new("bash");
@@ -76,6 +84,15 @@ impl TerminalProvider for PtyProvider {
     }
 
     fn resize(&mut self, rows: u16, cols: u16) {
+        // Skip if size hasn't changed
+        if self.current_size == (rows, cols) {
+            tracing::debug!("Resize skipped: size unchanged ({}, {})", rows, cols);
+            return;
+        }
+        
+        tracing::info!("Resizing PTY from {:?} to ({}, {})", self.current_size, rows, cols);
+        self.current_size = (rows, cols);
+        
         if let Some(p) = &mut self.pty {
             let _ = p.master.resize(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 });
             p.emulator.lock().unwrap().resize(rows, cols);
@@ -90,7 +107,12 @@ impl TerminalProvider for PtyProvider {
     }
 
     fn get_screen(&self, rows: u16, cols: u16) -> ScreenContent {
-        let Some(pty) = &self.pty else { return ScreenContent::default(); };
-        pty.emulator.lock().unwrap().get_screen(rows, cols)
+        let Some(pty) = &self.pty else { 
+            tracing::debug!("get_screen: PTY not spawned");
+            return ScreenContent::default(); 
+        };
+        let content = pty.emulator.lock().unwrap().get_screen(rows, cols);
+        tracing::debug!("get_screen: {} lines", content.lines.len());
+        content
     }
 }

@@ -2,6 +2,7 @@
 pub mod protocol;
 pub mod config;
 pub mod utils;
+pub mod theme;
 pub mod terminal_provider;
 pub mod terminal_emulator;
 pub mod error;

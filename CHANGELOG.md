@@ -8,17 +8,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Idle Tab Detection**
-  - Daemon tracks last PTY output time per tab (updated in read thread)
-  - New `GetIdleStatus` / `IdleStatus` protocol messages
-  - Client polls daemon every ~3 seconds (every 30 frames) for idle status
-  - Tabs idle for ≥30 seconds show a `·` marker in the topbar
-  - Tasks where all tabs are idle show a `·` marker in the sidebar
-  - Threshold configurable via `IDLE_THRESHOLD_SECS` in `client/app.rs`
+- 🎯 **Activity Indicators** - Real-time spinners show which terminals are working
+  - 10-frame Braille spinner animation (⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
+  - Adaptive polling (12.5 FPS active, 5 FPS idle)
+  - Smart logic: excludes current tab, only shows background activity
+  - Perfect for monitoring AI agents and parallel tasks
+- Context-aware Jump Mode help text (shows `q` shortcut when available)
+
+### Fixed
+- 🐛 **PTY Process Leak** - Closing tabs now properly kills PTY processes in daemon
+  - Added `ClientMsg::ClosePty` protocol message
+  - Daemon removes and drops PTY entries on close
+  - Prevents memory leaks from accumulating bash processes
+- Jump Mode help text now shows appropriate shortcuts based on focus
+
+### Changed
+- Replaced idle detection (30s threshold) with activity detection (2s threshold)
+- Inverted UI logic: show "working" instead of "idle"
+- README redesigned to highlight activity indicators
+
+### Documentation
+- Added `docs/ACTIVITY_INDICATORS.md` - Complete technical guide
+- Added `docs/RECORDING_DEMO.md` - GIF recording instructions
+- Updated README with "Why Mato?" and "Perfect For" sections
+- Removed `docs/IDLE_DETECTION.md` (replaced by ACTIVITY_INDICATORS.md)
+
+📖 **[Detailed Changelog →](docs/changelog/2026-02-22_activity-indicators.md)**
+
+---
+
+## [0.3.0] - 2026-02-21
+
+**The Minimalist Release** 🎯
+
+### Highlights
+- 🚀 Jump Mode - EasyMotion-style navigation
+- 🤖 AI-agent-friendly design (zero shortcut conflicts)
+- ⌨️ Unified shortcuts (50% reduction)
+- 🐛 Terminal content preserved on resize
+- 🔧 Ctrl+Z suspend/resume fixed
+
+📖 **[Full Release Notes →](docs/release-notes/RELEASE_NOTES_v0.3.0.md)**
 
 ## [0.2.0] - 2026-02-21
 
-### Added
+**Production Ready Release** ✅
+
+### Highlights
+- 🔒 Daemon improvements (lock file, signals, security)
+- 🧪 Testing infrastructure (8 tests)
+- 🎨 UI/UX improvements
+- 🎯 6 workspace templates
+- 📚 Comprehensive documentation
+
+📖 **[Full Release Notes →](docs/release-notes/RELEASE_NOTES_v0.2.0.md)**  
+📖 **[Technical Summary →](docs/release-notes/RELEASE_SUMMARY_v0.2.0.md)**
+
+## [0.1.0] - 2026-02-20
+
+**Initial Release** 🎉
+
+### Highlights
+- 🔄 Daemon-based persistence
+- 📋 Task and tab management
+- 🎨 Beautiful TUI with deep navy theme
+- 🖱️ Mouse support
+- ⌨️ Basic keyboard shortcuts
+
+📖 **[Full Release Notes →](docs/release-notes/RELEASE_NOTES_v0.1.0.md)**
+
+---
+
+## Detailed Development History
+
+For detailed development history, design decisions, and technical discussions, see:
+
+- **[docs/changelog/](docs/changelog/)** - Dated development documents
+- **[docs/release-notes/](docs/release-notes/)** - Release documentation
+- **[AGENTS.md](AGENTS.md)** - AI-assisted development guide
+
+## Version Links
+
+[0.3.0]: https://github.com/YOUR_USERNAME/mato/releases/tag/v0.3.0
+[0.2.0]: https://github.com/YOUR_USERNAME/mato/releases/tag/v0.2.0
+[0.1.0]: https://github.com/YOUR_USERNAME/mato/releases/tag/v0.1.0
 - **Phase 4: 100% TMUX Parity Achieved! 🎉**
   - Phase 4A: Critical daemon improvements
     - Lock file mechanism to prevent race conditions

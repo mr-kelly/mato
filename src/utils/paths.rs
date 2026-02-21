@@ -28,6 +28,10 @@ pub fn get_config_file_path() -> PathBuf {
     config_dir().join("config.toml")
 }
 
+pub fn get_config_dir() -> PathBuf {
+    config_dir()
+}
+
 fn state_dir() -> PathBuf {
     if let Some(dirs) = directories::ProjectDirs::from("", "", "mato") {
         let dir = dirs.state_dir().unwrap_or(dirs.config_dir());

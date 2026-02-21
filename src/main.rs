@@ -8,8 +8,11 @@ mod emulators;
 mod config;
 mod utils;
 mod error;
+mod theme;
 
 use std::time::Duration;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use error::{MatoError, Result};
 
 #[cfg(unix)]
@@ -26,6 +29,14 @@ use client::{App, save_state};
 use client::ui::draw;
 use client::input::handle_key;
 use client::app::Focus;
+
+// Global flag for SIGCONT
+static RESUMED: AtomicBool = AtomicBool::new(false);
+
+#[cfg(unix)]
+extern "C" fn handle_sigcont(_: libc::c_int) {
+    RESUMED.store(true, Ordering::Relaxed);
+}
 
 fn main() -> Result<()> {
     // Check for --version flag
@@ -75,6 +86,12 @@ fn main() -> Result<()> {
 }
 
 fn run_client() -> Result<()> {
+    // Setup SIGCONT handler
+    #[cfg(unix)]
+    unsafe {
+        libc::signal(libc::SIGCONT, handle_sigcont as libc::sighandler_t);
+    }
+    
     enable_raw_mode()?;
     let mut stdout = std::io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -85,16 +102,33 @@ fn run_client() -> Result<()> {
     terminal.draw(|f| draw(f, &mut app))?;
     app.spawn_active_pty();
 
-    let mut idle_counter = 0u32;
     loop {
-        terminal.draw(|f| draw(f, &mut app))?;
-        idle_counter += 1;
-        if idle_counter >= 30 {
-            app.refresh_idle_status();
-            idle_counter = 0;
+        // Check if we resumed from suspend (SIGCONT)
+        if RESUMED.swap(false, Ordering::Relaxed) {
+            // Reinitialize terminal after resume
+            enable_raw_mode()?;
+            execute!(terminal.backend_mut(), EnterAlternateScreen, EnableMouseCapture)?;
+            terminal.clear()?;
         }
-        // Poll at 10fps to reduce GetScreen RPC overhead
-        if event::poll(Duration::from_millis(100))? {
+        
+        // Update active status and spinner animation
+        app.refresh_active_status();
+        app.refresh_update_status();
+        app.update_spinner();
+        
+        terminal.draw(|f| draw(f, &mut app))?;
+        
+        // Apply pending resize after user stops resizing
+        app.apply_pending_resize();
+        
+        // Poll at ~12fps for smooth animation (80ms spinner frame + some overhead)
+        let timeout = if app.has_active_tabs() {
+            Duration::from_millis(80)  // Fast polling when active
+        } else {
+            Duration::from_millis(200)  // Slower when idle
+        };
+        
+        if event::poll(timeout)? {
             match event::read()? {
                 Event::Key(key) => {
                     if handle_key(&mut app, key) { break; }

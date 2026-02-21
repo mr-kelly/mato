@@ -12,7 +12,7 @@ impl TerminalProvider for NullProvider {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-use mato::client::app::{EscMode, Focus, RenameTarget, TabEntry, Task};
+use mato::client::app::{Focus, RenameTarget, TabEntry, Task};
 use ratatui::widgets::ListState;
 use std::collections::HashSet;
 
@@ -56,29 +56,10 @@ fn new_tab_selects_new_tab() {
 // ── App: task management ─────────────────────────────────────────────────────
 
 fn make_app_with(tasks: Vec<Task>) -> mato::client::app::App {
-    use ratatui::layout::Rect;
-    let mut list_state = ListState::default();
-    list_state.select(Some(0));
-    mato::client::app::App {
-        tasks,
-        list_state,
-        focus: Focus::Sidebar,
-        esc_mode: EscMode::None,
-        rename: None,
-        term_rows: 24,
-        term_cols: 80,
-        dirty: false,
-        sidebar_list_area: Rect::default(),
-        sidebar_area: Rect::default(),
-        topbar_area: Rect::default(),
-        content_area: Rect::default(),
-        new_task_area: Rect::default(),
-        tab_areas: vec![],
-        new_tab_area: Rect::default(),
-        tab_scroll: 0,
-        last_click: None,
-        idle_tabs: HashSet::new(),
-    }
+    let mut app = mato::client::app::App::new();
+    app.tasks = tasks;
+    app.list_state.select(Some(0));
+    app
 }
 
 #[test]

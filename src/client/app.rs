@@ -1,13 +1,18 @@
 use ratatui::{layout::Rect, widgets::ListState};
 use std::collections::HashSet;
+use std::time::Instant;
 use crate::{utils::new_id, client::persistence::load_state, terminal_provider::TerminalProvider, providers::DaemonProvider};
 use crate::protocol::{ClientMsg, ServerMsg};
+use crate::theme::ThemeColors;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Focus { Sidebar, Topbar, Content }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
-pub enum EscMode { None, Pending }
+pub enum JumpMode { 
+    None,
+    Active  // ESC pressed in Content - can jump OR use arrows
+}
 
 #[derive(PartialEq, Clone)]
 pub enum RenameTarget { Task(usize), Tab(usize, usize) }
@@ -72,6 +77,21 @@ impl Task {
 
     pub fn close_tab(&mut self) {
         if self.tabs.len() <= 1 { return; }
+        
+        // Send ClosePty message to daemon before removing tab
+        let tab = &self.tabs[self.active_tab];
+        let socket_path = crate::utils::get_socket_path();
+        if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(&socket_path) {
+            use std::io::Write;
+            use crate::protocol::ClientMsg;
+            let msg = ClientMsg::ClosePty { tab_id: tab.id.clone() };
+            if let Ok(json) = serde_json::to_vec(&msg) {
+                let _ = stream.write_all(&json);
+                let _ = stream.write_all(b"\n");
+                let _ = stream.flush();
+            }
+        }
+        
         self.tabs.remove(self.active_tab);
         self.active_tab = self.active_tab.min(self.tabs.len() - 1);
     }
@@ -85,10 +105,11 @@ pub struct App {
     pub tasks: Vec<Task>,
     pub list_state: ListState,
     pub focus: Focus,
-    pub esc_mode: EscMode,
+    pub jump_mode: JumpMode,
     pub rename: Option<(RenameTarget, String)>,
     pub term_rows: u16,
     pub term_cols: u16,
+    pub pending_resize: Option<(u16, u16, std::time::Instant)>,  // Delay resize to avoid content loss
     pub dirty: bool,
     // layout rects
     pub sidebar_list_area: Rect,
@@ -100,8 +121,18 @@ pub struct App {
     pub new_tab_area: Rect,
     pub tab_scroll: usize,
     pub last_click: Option<(u16, u16, std::time::Instant)>,
-    /// tab_ids that have been idle for > IDLE_THRESHOLD_SECS
-    pub idle_tabs: HashSet<String>,
+    /// tab_ids that are ACTIVE (have output in last 2 seconds)
+    pub active_tabs: HashSet<String>,
+    /// Spinner animation state
+    pub spinner_frame: usize,
+    pub last_spinner_update: Instant,
+    pub theme: ThemeColors,
+    /// Settings screen open
+    pub show_settings: bool,
+    pub settings_selected: usize,
+    /// Some(version) if an update is available
+    pub update_available: Option<String>,
+    pub last_update_check: Instant,
 }
 
 impl App {
@@ -119,13 +150,20 @@ impl App {
         list_state.select(Some(active_task));
         Self {
             tasks, list_state,
-            focus: Focus::Sidebar, esc_mode: EscMode::None, rename: None,
-            term_rows: 24, term_cols: 80, dirty: false,
+            focus: Focus::Sidebar, jump_mode: JumpMode::None, rename: None,
+            term_rows: 24, term_cols: 80, pending_resize: None, dirty: false,
             sidebar_list_area: Rect::default(), sidebar_area: Rect::default(),
             topbar_area: Rect::default(), content_area: Rect::default(),
             new_task_area: Rect::default(), tab_areas: vec![], new_tab_area: Rect::default(),
             tab_scroll: 0, last_click: None,
-            idle_tabs: HashSet::new(),
+            active_tabs: HashSet::new(),
+            spinner_frame: 0,
+            last_spinner_update: Instant::now(),
+            theme: crate::theme::load(),
+            show_settings: false,
+            settings_selected: 0,
+            update_available: None,
+            last_update_check: Instant::now() - std::time::Duration::from_secs(290), // first check after ~10s
         }
     }
 
@@ -145,6 +183,23 @@ impl App {
     pub fn close_task(&mut self) {
         if self.tasks.len() <= 1 { return; }
         let idx = self.selected();
+        
+        // Close all PTYs in this task
+        let task = &self.tasks[idx];
+        let socket_path = crate::utils::get_socket_path();
+        if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(&socket_path) {
+            use std::io::Write;
+            use crate::protocol::ClientMsg;
+            for tab in &task.tabs {
+                let msg = ClientMsg::ClosePty { tab_id: tab.id.clone() };
+                if let Ok(json) = serde_json::to_vec(&msg) {
+                    let _ = stream.write_all(&json);
+                    let _ = stream.write_all(b"\n");
+                }
+            }
+            let _ = stream.flush();
+        }
+        
         self.tasks.remove(idx);
         self.list_state.select(Some(idx.min(self.tasks.len() - 1)));
         self.dirty = true;
@@ -165,9 +220,28 @@ impl App {
     }
 
     pub fn resize_all_ptys(&mut self, rows: u16, cols: u16) {
-        if self.term_rows == rows && self.term_cols == cols { return; }
-        self.term_rows = rows; self.term_cols = cols;
-        for task in &mut self.tasks { task.resize_all_ptys(rows, cols); }
+        // Don't resize immediately - wait for user to stop resizing
+        // This prevents content loss during window resize
+        if self.term_rows != rows || self.term_cols != cols {
+            self.pending_resize = Some((rows, cols, std::time::Instant::now()));
+        }
+    }
+    
+    pub fn apply_pending_resize(&mut self) {
+        if let Some((rows, cols, time)) = self.pending_resize {
+            // Wait 500ms after last resize before applying
+            if time.elapsed().as_millis() > 500 {
+                if self.term_rows != rows || self.term_cols != cols {
+                    tracing::info!("Applying delayed resize: {}x{} -> {}x{}", self.term_rows, self.term_cols, rows, cols);
+                    self.term_rows = rows;
+                    self.term_cols = cols;
+                    for task in &mut self.tasks {
+                        task.resize_all_ptys(rows, cols);
+                    }
+                }
+                self.pending_resize = None;
+            }
+        }
     }
 
     pub fn pty_write(&mut self, bytes: &[u8]) {
@@ -204,9 +278,52 @@ impl App {
 
     pub fn cancel_rename(&mut self) { self.rename = None; }
 
-    /// Query daemon for idle status of all tabs (call every ~3s)
-    pub fn refresh_idle_status(&mut self) {
-        const IDLE_THRESHOLD_SECS: u64 = 30;
+    /// Handle jump mode character selection
+    pub fn handle_jump_selection(&mut self, c: char) {
+        // Generate jump targets: tasks (a-z) and tabs (a-z)
+        let mut targets = Vec::new();
+        
+        // Add tasks
+        for (i, _) in self.tasks.iter().enumerate() {
+            targets.push(('t', i, 0)); // ('t' for task, task_idx, 0)
+        }
+        
+        // Add tabs from current task
+        let task_idx = self.selected();
+        for (tab_idx, _) in self.tasks[task_idx].tabs.iter().enumerate() {
+            targets.push(('b', task_idx, tab_idx)); // ('b' for tab, task_idx, tab_idx)
+        }
+        
+        // Map character to target
+        let labels = "abcdefghijklmnopqrstuvwxyz";
+        if let Some(idx) = labels.chars().position(|ch| ch == c) {
+            if idx < targets.len() {
+                let (kind, task_idx, tab_idx) = targets[idx];
+                match kind {
+                    't' => {
+                        // Jump to task
+                        self.list_state.select(Some(task_idx));
+                        self.focus = Focus::Sidebar;
+                    }
+                    'b' => {
+                        // Jump to tab
+                        self.tasks[task_idx].active_tab = tab_idx;
+                        self.focus = Focus::Content;
+                        self.spawn_active_pty();
+                    }
+                    _ => {}
+                }
+                self.dirty = true;
+            }
+        }
+        
+        // Exit jump mode
+        self.jump_mode = JumpMode::None;
+    }
+
+    /// Query daemon for active status of all tabs (call every frame)
+    pub fn refresh_active_status(&mut self) {
+        const ACTIVE_THRESHOLD_SECS: u64 = 2;  // Active = output in last 2 seconds
         let socket_path = crate::utils::get_socket_path();
         use std::os::unix::net::UnixStream;
         use std::io::{Write, BufRead, BufReader};
@@ -218,10 +335,49 @@ impl App {
         let mut line = String::new();
         let _ = BufReader::new(&stream).read_line(&mut line);
         if let Ok(ServerMsg::IdleStatus { tabs }) = serde_json::from_str(&line) {
-            self.idle_tabs = tabs.into_iter()
-                .filter(|(_, secs)| *secs >= IDLE_THRESHOLD_SECS)
+            self.active_tabs = tabs.into_iter()
+                .filter(|(_, secs)| *secs < ACTIVE_THRESHOLD_SECS)  // ACTIVE if recent output
                 .map(|(id, _)| id)
                 .collect();
         }
+    }
+
+    pub fn refresh_update_status(&mut self) {
+        use std::time::Duration;
+        if self.last_update_check.elapsed() < Duration::from_secs(3600) { return; }
+        self.last_update_check = Instant::now();
+        let socket_path = crate::utils::get_socket_path();
+        use std::os::unix::net::UnixStream;
+        use std::io::{Write, BufRead, BufReader};
+        let Ok(mut stream) = UnixStream::connect(&socket_path) else { return };
+        let msg = serde_json::to_vec(&ClientMsg::GetUpdateStatus).unwrap();
+        let _ = stream.write_all(&msg);
+        let _ = stream.write_all(b"\n");
+        let _ = stream.flush();
+        let mut line = String::new();
+        let _ = BufReader::new(&stream).read_line(&mut line);
+        if let Ok(ServerMsg::UpdateStatus { latest }) = serde_json::from_str(&line) {
+            self.update_available = latest;
+        }
+    }
+
+    /// Update spinner animation frame
+    pub fn update_spinner(&mut self) {
+        use std::time::Duration;
+        if self.last_spinner_update.elapsed() > Duration::from_millis(80) {
+            self.spinner_frame = (self.spinner_frame + 1) % 10;
+            self.last_spinner_update = Instant::now();
+        }
+    }
+
+    /// Get current spinner character
+    pub fn get_spinner(&self) -> &str {
+        const SPINNER: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+        SPINNER[self.spinner_frame]
+    }
+
+    /// Check if any tab is active
+    pub fn has_active_tabs(&self) -> bool {
+        !self.active_tabs.is_empty()
     }
 }

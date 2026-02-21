@@ -50,7 +50,24 @@ impl TerminalEmulator for Vt100Emulator {
     }
     
     fn resize(&mut self, rows: u16, cols: u16) {
-        *self.parser.lock().unwrap() = vt100::Parser::new(rows, cols, 0);
+        let mut parser = self.parser.lock().unwrap();
+        let screen = parser.screen();
+        let current_size = screen.size();
+        
+        // Only resize if size actually changed
+        if current_size != (rows, cols) {
+            tracing::warn!("Resizing vt100 from {:?} to ({}, {}) - content will be lost (vt100 limitation)", current_size, rows, cols);
+            
+            // vt100 Parser doesn't support content-preserving resize
+            // We have to create a new parser, which clears the screen
+            // This is a known limitation of the vt100 crate
+            //
+            // Workaround: Don't resize unless absolutely necessary
+            // The PTY will continue to work, just with wrong size reported
+            
+            // For now, we still resize to avoid terminal corruption
+            *parser = vt100::Parser::new(rows, cols, 0);
+        }
     }
 }
 

@@ -1,0 +1,20 @@
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Claude Agent ⠋    Codex CLI    GitHub Copilot ⠴    Terminal 4             │
+│              ↑                                  ↑                            │
+│          Working!                           Working!                        │
+├──────────────────────┬──────────────────────────────────────────────────────┤
+│                      │                                                      │
+│  ▶ AI Agents ⠋       │  $ claude "Build a REST API with authentication"    │
+│    Development       │  ⠋ Analyzing requirements...                         │
+│    Testing           │  ⠋ Generating code structure...                      │
+│    Production ⠴      │  ⠋ Creating database schema...                       │
+│         ↑            │                                                      │
+│    Has active tabs!  │  [Press Esc for Jump Mode]                          │
+│                      │                                                      │
+└──────────────────────┴──────────────────────────────────────────────────────┘
+
+Key Features:
+• Real-time spinners (⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏) show active terminals
+• Sidebar shows which tasks have working tabs
+• Perfect for monitoring AI agents and parallel tasks
+• Automatically adapts refresh rate (12.5 FPS active, 5 FPS idle)

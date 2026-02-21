@@ -4,6 +4,9 @@ This directory contains historical development documentation for Mato.
 
 ## 📚 Documents
 
+### Recent Changes (2026-02-22)
+- **[2026-02-22_activity-indicators.md](2026-02-22_activity-indicators.md)** - Activity indicators, PTY cleanup, UI improvements
+
 ### Development Plans
 - **[2026-02-20_phase4-implementation-plan.md](2026-02-20_phase4-implementation-plan.md)** - Phase 4 roadmap to 100% TMUX parity
 - **[2026-02-21_refactoring-plan.md](2026-02-21_refactoring-plan.md)** - Code reorganization strategy
@@ -11,6 +14,7 @@ This directory contains historical development documentation for Mato.
 ### Analysis & Research
 - **[2026-02-20_completion-analysis.md](2026-02-20_completion-analysis.md)** - TMUX feature comparison
 - **[2026-02-20_tmux-daemon-analysis.md](2026-02-20_tmux-daemon-analysis.md)** - TMUX source code analysis
+- **[2026-02-21_idle-tab-detection.md](2026-02-21_idle-tab-detection.md)** - Idle detection implementation (superseded by activity indicators)
 
 ### Current Status
 - **[TODO.md](../todos/TODO.md)** - Current roadmap and future plans (moved to docs/todos/)

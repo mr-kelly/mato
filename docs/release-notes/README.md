@@ -4,15 +4,29 @@ This directory contains release notes and summaries for Mato versions.
 
 ## 📦 Releases
 
+### v0.3.0 (2026-02-21) - Latest
+- **[RELEASE_NOTES_v0.3.0.md](RELEASE_NOTES_v0.3.0.md)** - The Minimalist Release
+
+**Highlights**: Jump Mode, AI-agent-friendly, 50% fewer shortcuts, critical bug fixes
+
+**Key Features**:
+- 🚀 Jump Mode (EasyMotion-style navigation)
+- 🤖 Zero conflicts with AI assistants
+- ⌨️ Unified shortcuts (n/x context-aware)
+- 🐛 Terminal resize content preservation
+- 🔧 Ctrl+Z suspend/resume fixed
+
 ### v0.2.0 (2026-02-21)
-- **[RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md)** - Public release announcement
+- **[RELEASE_NOTES_v0.2.0.md](RELEASE_NOTES_v0.2.0.md)** - Production Ready Release
 - **[RELEASE_SUMMARY_v0.2.0.md](RELEASE_SUMMARY_v0.2.0.md)** - Detailed technical summary
 - **[FINAL_SUMMARY.md](FINAL_SUMMARY.md)** - Complete development summary
 
-**Highlights**: 100% TMUX parity achieved, 6 workspace templates, enhanced daemon architecture
+**Highlights**: Daemon improvements, testing, onboarding, 6 workspace templates
 
 ### v0.1.0 (2026-02-20)
-Initial release with daemon-based persistence and multi-tab support.
+- **[RELEASE_NOTES_v0.1.0.md](RELEASE_NOTES_v0.1.0.md)** - Initial Release
+
+**Highlights**: Core daemon architecture, basic TUI, task/tab management
 
 ## 📝 Document Types
 

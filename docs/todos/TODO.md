@@ -1,6 +1,6 @@
 # Mato Development TODO
 
-## 🎉 Current Status: 100% TMUX Parity Achieved!
+## 🎉 Current Status: Production Ready!
 
 **Version**: 0.2.0  
 **Release Date**: 2026-02-21  
@@ -70,6 +70,11 @@ git push origin main v0.2.0
 - [ ] **Import/Export** - Share session configurations
 - [ ] **Session List** - View all active sessions
 - [ ] **Attach/Detach** - Connect to existing sessions
+- [ ] **Terminal State Persistence** - Save screen content to disk (see [FUTURE_STATE_PERSISTENCE.md](FUTURE_STATE_PERSISTENCE.md))
+  - Serialize screen buffer, cursor position, colors
+  - Restore on daemon restart (read-only view)
+  - Offer restore scripts to re-run commands
+  - **Note**: Cannot restore PTY process state (by design)
 
 ### Phase 11: Integration & Advanced Features 🔌
 **Priority**: Low  
@@ -313,6 +318,21 @@ git push origin main v0.2.0
 ---
 
 ## 📝 Notes
+
+### Current Persistence Behavior
+
+**What persists across client restart**: ✅
+- PTY process (bash continues in daemon)
+- Terminal content (in daemon memory)
+- Running commands continue
+
+**What does NOT persist across daemon restart**: ❌
+- PTY process (killed with daemon)
+- Terminal content (lost with daemon)
+- All process state
+
+**See**: [TERMINAL_PERSISTENCE.md](../TERMINAL_PERSISTENCE.md) for details  
+**Future**: [FUTURE_STATE_PERSISTENCE.md](FUTURE_STATE_PERSISTENCE.md) for Phase 10 design
 
 ### File Locations
 - Daemon log: `~/.local/state/mato/daemon.log`

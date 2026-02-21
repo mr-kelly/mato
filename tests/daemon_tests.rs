@@ -165,8 +165,8 @@ fn persistence_missing_active_task_defaults_to_zero() {
 // ── persistence: save_state / load_state via XDG_CONFIG_HOME ─────────────────
 
 use mato::terminal_provider::{ScreenContent, TerminalProvider};
-use mato::client::app::{App, EscMode, Focus, RenameTarget, TabEntry, Task};
-use ratatui::{layout::Rect, widgets::ListState};
+use mato::client::app::{App, Focus, RenameTarget, TabEntry, Task};
+use ratatui::widgets::ListState;
 use std::collections::HashSet;
 
 struct NullProvider;
@@ -187,17 +187,10 @@ fn null_task(name: &str, n: usize) -> Task {
 }
 
 fn make_app(tasks: Vec<Task>) -> App {
-    let mut list_state = ListState::default();
-    list_state.select(Some(0));
-    App {
-        tasks, list_state,
-        focus: Focus::Sidebar, esc_mode: EscMode::None, rename: None,
-        term_rows: 24, term_cols: 80, dirty: false,
-        sidebar_list_area: Rect::default(), sidebar_area: Rect::default(),
-        topbar_area: Rect::default(), content_area: Rect::default(),
-        new_task_area: Rect::default(), tab_areas: vec![], new_tab_area: Rect::default(),
-        tab_scroll: 0, last_click: None, idle_tabs: HashSet::new(),
-    }
+    let mut app = App::new();
+    app.tasks = tasks;
+    app.list_state.select(Some(0));
+    app
 }
 
 fn with_temp_config<F: FnOnce()>(name: &str, f: F) {
@@ -275,8 +268,11 @@ fn begin_rename_tab_sets_rename_state() {
 fn resize_all_ptys_updates_dimensions() {
     let mut app = make_app(vec![null_task("T", 1)]);
     app.resize_all_ptys(30, 100);
-    assert_eq!(app.term_rows, 30);
-    assert_eq!(app.term_cols, 100);
+    // resize is deferred; pending_resize should be set
+    assert!(app.pending_resize.is_some());
+    let (r, c, _) = app.pending_resize.unwrap();
+    assert_eq!(r, 30);
+    assert_eq!(c, 100);
 }
 
 #[test]

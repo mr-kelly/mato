@@ -1,15 +1,65 @@
 use std::io;
 use crossterm::{
-    event::{KeyCode, KeyEventKind, KeyModifiers},
+    event::{KeyCode, KeyEventKind, KeyModifiers, EnableMouseCapture, DisableMouseCapture},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use crate::client::app::{App, EscMode, Focus};
+use crate::client::app::{App, Focus, JumpMode};
 
 pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
     if key.code == KeyCode::Esc && key.kind == KeyEventKind::Repeat { return false; }
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     let alt = key.modifiers.contains(KeyModifiers::ALT);
+
+    // Settings screen intercepts keys
+    if app.show_settings {
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('s') | KeyCode::Char('q') => {
+                app.show_settings = false;
+            }
+            KeyCode::Up => {
+                if app.settings_selected > 0 { app.settings_selected -= 1; }
+            }
+            KeyCode::Down => {
+                if app.settings_selected + 1 < crate::theme::BUILTIN_THEMES.len() {
+                    app.settings_selected += 1;
+                }
+            }
+            KeyCode::Enter => {
+                let name = crate::theme::BUILTIN_THEMES[app.settings_selected];
+                app.theme = crate::theme::builtin(name);
+                crate::theme::save_name(name).ok();
+                app.show_settings = false;
+            }
+            _ => {}
+        }
+        return false;
+    }
+
+    // Jump mode intercepts all keys
+    if let JumpMode::Active = app.jump_mode {
+        match key.code {
+            KeyCode::Char('q') => return true,  // Quit in Jump Mode
+            KeyCode::Esc => {
+                app.jump_mode = JumpMode::None;
+            }
+            // Arrow keys or vim keys to switch focus
+            KeyCode::Up | KeyCode::Char('w') => {
+                app.focus = Focus::Topbar;
+                app.jump_mode = JumpMode::None;
+            }
+            KeyCode::Left | KeyCode::Char('a') => {
+                app.focus = Focus::Sidebar;
+                app.jump_mode = JumpMode::None;
+            }
+            // Letter keys for jumping
+            KeyCode::Char(c) if c.is_ascii_lowercase() => {
+                app.handle_jump_selection(c);
+            }
+            _ => {}
+        }
+        return false;
+    }
 
     // Rename mode intercepts all keys
     if app.rename.is_some() {
@@ -23,27 +73,21 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
         return false;
     }
 
-    // Alt+1-9: Quick tab switching
-    if alt && matches!(key.code, KeyCode::Char('1'..='9')) {
-        if let KeyCode::Char(c) = key.code {
-            let idx = (c as u8 - b'1') as usize;
-            let task = app.cur_task_mut();
-            if idx < task.tabs.len() {
-                task.active_tab = idx;
-                app.tab_scroll = idx.saturating_sub(5); // Center the view
-            }
-        }
-        return false;
-    }
-
     // Ctrl+Z suspend
     if ctrl && key.code == KeyCode::Char('z') && app.focus != Focus::Content {
         #[cfg(unix)] {
+            use std::io::Write;
             disable_raw_mode().ok();
-            execute!(io::stdout(), LeaveAlternateScreen).ok();
+            execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture).ok();
+            io::stdout().flush().ok();
+            
+            // Send SIGTSTP to self
             unsafe { libc::kill(libc::getpid(), libc::SIGTSTP); }
+            
+            // After resume (fg) - reinitialize everything
             enable_raw_mode().ok();
-            execute!(io::stdout(), EnterAlternateScreen).ok();
+            execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture).ok();
+            io::stdout().flush().ok();
         }
         return false;
     }
@@ -53,44 +97,25 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
             Focus::Topbar  => { app.focus = Focus::Sidebar; }
             Focus::Sidebar => {}
             Focus::Content => {
-                if app.esc_mode != EscMode::Pending { app.esc_mode = EscMode::Pending; }
+                // Enter Jump Mode - can use arrows OR letters
+                app.jump_mode = JumpMode::Active;
             }
         }
         return false;
     }
 
-    if app.esc_mode == EscMode::Pending {
-        app.esc_mode = EscMode::None;
-        match key.code {
-            KeyCode::Up   | KeyCode::Char('w') => { app.focus = Focus::Topbar;  return false; }
-            KeyCode::Left | KeyCode::Char('a') => { app.focus = Focus::Sidebar; return false; }
-            _ => {}
-        }
-    }
-
-    // Ctrl+PageUp/PageDown: Switch tabs (works in any focus)
-    if ctrl {
-        match key.code {
-            KeyCode::PageUp => {
+    // Alt+1-9: switch tab
+    if alt {
+        if let KeyCode::Char(c) = key.code {
+            if let Some(n) = c.to_digit(10) {
+                let idx = (n as usize).saturating_sub(1);
                 let i = app.selected();
-                let at = app.tasks[i].active_tab;
-                if at > 0 {
-                    app.tasks[i].active_tab = at - 1;
+                if idx < app.tasks[i].tabs.len() {
+                    app.tasks[i].active_tab = idx;
                     app.spawn_active_pty();
                 }
                 return false;
             }
-            KeyCode::PageDown => {
-                let i = app.selected();
-                let len = app.tasks[i].tabs.len();
-                let at = app.tasks[i].active_tab;
-                if at + 1 < len {
-                    app.tasks[i].active_tab = at + 1;
-                    app.spawn_active_pty();
-                }
-                return false;
-            }
-            _ => {}
         }
     }
 
@@ -100,12 +125,14 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
             KeyCode::Char('n') => app.new_task(),
             KeyCode::Char('x') => app.close_task(),
             KeyCode::Char('r') => { let i = app.selected(); app.begin_rename_task(i); }
+            KeyCode::Char('s') => { app.show_settings = true; }
             KeyCode::Up        => app.nav(-1),
             KeyCode::Down      => app.nav(1),
             KeyCode::Enter     => { app.focus = Focus::Content; app.spawn_active_pty(); }
             _ => {}
         },
         Focus::Topbar => match key.code {
+            KeyCode::Char('q') => return true,
             KeyCode::Left  => {
                 let i = app.selected();
                 let at = app.tasks[i].active_tab;
@@ -117,8 +144,8 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
                 let at = app.tasks[i].active_tab;
                 if at + 1 < len { app.tasks[i].active_tab = at + 1; app.spawn_active_pty(); }
             }
-            KeyCode::Char('t') => { app.cur_task_mut().new_tab(); app.spawn_active_pty(); app.dirty = true; }
-            KeyCode::Char('w') => { app.cur_task_mut().close_tab(); app.dirty = true; }
+            KeyCode::Char('n') => { app.cur_task_mut().new_tab(); app.spawn_active_pty(); app.dirty = true; }
+            KeyCode::Char('x') => { app.cur_task_mut().close_tab(); app.dirty = true; }
             KeyCode::Char('r') => app.begin_rename_tab(),
             KeyCode::Enter     => { app.focus = Focus::Content; app.spawn_active_pty(); }
             _ => {}

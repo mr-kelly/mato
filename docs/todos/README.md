@@ -2,9 +2,11 @@
 
 Current development roadmap and future plans for Mato.
 
-## 📋 Active TODO
+## 📚 Documentation
 
-**[TODO.md](TODO.md)** - Current roadmap (Phase 9+)
+This directory contains:
+- **[TODO.md](TODO.md)** - Current roadmap and future plans
+- **[FUTURE_STATE_PERSISTENCE.md](FUTURE_STATE_PERSISTENCE.md)** - Phase 10 design for terminal state persistence
 
 ## 🎯 Purpose
 
@@ -28,5 +30,5 @@ This directory contains:
 
 ---
 
-**Current Status**: v0.2.0 - 100% TMUX Parity ✅  
+**Current Status**: v0.2.0 - Production Ready ✅  
 **Next**: Phase 9 - Advanced UI/UX

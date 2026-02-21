@@ -146,6 +146,9 @@ impl TerminalEmulator for VteEmulator {
     
     fn resize(&mut self, rows: u16, cols: u16) {
         let mut state = self.state.lock().unwrap();
-        *state = TerminalState::new(rows, cols);
+        // Only recreate if size actually changed
+        if state.rows != rows || state.cols != cols {
+            *state = TerminalState::new(rows, cols);
+        }
     }
 }

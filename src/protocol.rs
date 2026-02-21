@@ -9,6 +9,8 @@ pub enum ClientMsg {
     Resize { tab_id: String, rows: u16, cols: u16 },
     GetScreen { tab_id: String, rows: u16, cols: u16 },
     GetIdleStatus,
+    GetUpdateStatus,
+    ClosePty { tab_id: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,4 +20,6 @@ pub enum ServerMsg {
     Error { message: String },
     /// tab_id -> idle seconds
     IdleStatus { tabs: Vec<(String, u64)> },
+    /// None = up to date or check failed; Some(ver) = update available
+    UpdateStatus { latest: Option<String> },
 }

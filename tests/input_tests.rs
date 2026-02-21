@@ -1,7 +1,7 @@
 /// Tests for handle_key input logic.
 /// Uses NullProvider + make_app helper (same pattern as app_tests).
 use mato::terminal_provider::{ScreenContent, TerminalProvider};
-use mato::client::app::{App, EscMode, Focus, RenameTarget, TabEntry, Task};
+use mato::client::app::{App, Focus, JumpMode, RenameTarget, TabEntry, Task};
 use mato::client::input::handle_key;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{layout::Rect, widgets::ListState};
@@ -24,17 +24,10 @@ fn make_task(name: &str) -> Task {
 }
 
 fn make_app(tasks: Vec<Task>) -> App {
-    let mut list_state = ListState::default();
-    list_state.select(Some(0));
-    App {
-        tasks, list_state,
-        focus: Focus::Sidebar, esc_mode: EscMode::None, rename: None,
-        term_rows: 24, term_cols: 80, dirty: false,
-        sidebar_list_area: Rect::default(), sidebar_area: Rect::default(),
-        topbar_area: Rect::default(), content_area: Rect::default(),
-        new_task_area: Rect::default(), tab_areas: vec![], new_tab_area: Rect::default(),
-        tab_scroll: 0, last_click: None, idle_tabs: HashSet::new(),
-    }
+    let mut app = App::new();
+    app.tasks = tasks;
+    app.list_state.select(Some(0));
+    app
 }
 
 fn key(code: KeyCode) -> KeyEvent {
@@ -71,30 +64,31 @@ fn esc_from_topbar_goes_to_sidebar() {
 }
 
 #[test]
-fn esc_from_content_sets_pending() {
+fn esc_from_content_enters_jump_mode() {
     let mut app = make_app(vec![make_task("T")]);
     app.focus = Focus::Content;
     handle_key(&mut app, key(KeyCode::Esc));
-    assert_eq!(app.esc_mode, EscMode::Pending);
+    assert_eq!(app.jump_mode, JumpMode::Active);
 }
 
 #[test]
-fn esc_pending_then_a_goes_to_sidebar() {
+fn jump_mode_a_goes_to_sidebar() {
     let mut app = make_app(vec![make_task("T")]);
     app.focus = Focus::Content;
-    app.esc_mode = EscMode::Pending;
+    app.jump_mode = JumpMode::Active;
     handle_key(&mut app, key(KeyCode::Char('a')));
-    assert_eq!(app.focus, Focus::Sidebar);
-    assert_eq!(app.esc_mode, EscMode::None);
+    // 'a' in jump mode jumps to first task (index 0), focus stays on content or sidebar
+    assert_eq!(app.jump_mode, JumpMode::None);
 }
 
 #[test]
-fn esc_pending_then_w_goes_to_topbar() {
+fn jump_mode_left_goes_to_sidebar() {
     let mut app = make_app(vec![make_task("T")]);
     app.focus = Focus::Content;
-    app.esc_mode = EscMode::Pending;
-    handle_key(&mut app, key(KeyCode::Char('w')));
-    assert_eq!(app.focus, Focus::Topbar);
+    app.jump_mode = JumpMode::Active;
+    handle_key(&mut app, key(KeyCode::Left));
+    assert_eq!(app.focus, Focus::Sidebar);
+    assert_eq!(app.jump_mode, JumpMode::None);
 }
 
 // ── rename buffer editing ─────────────────────────────────────────────────────

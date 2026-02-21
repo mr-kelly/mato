@@ -1,13 +1,13 @@
 [package]
 name = "mato"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
-description = "Multi-Agent Terminal Office - A daemon-based persistent terminal multiplexer with 100% TMUX parity"
+description = "Multi-Agent Terminal Office - A daemon-based persistent terminal multiplexer"
 homepage = "https://github.com/YOUR_USERNAME/mato"
 repository = "https://github.com/YOUR_USERNAME/mato"
 license = "MIT"
-keywords = ["terminal", "multiplexer", "tmux", "tui", "daemon"]
+keywords = ["terminal", "multiplexer", "tui", "daemon", "ratatui"]
 categories = ["command-line-utilities"]
 
 [[bin]]
@@ -37,3 +37,4 @@ dashmap = "6"
 parking_lot = "0.12"
 daemonize = "0.5"
 chrono = "0.4"
+reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
