@@ -106,6 +106,7 @@ fn run_client() -> Result<()> {
             enable_raw_mode()?;
             execute!(terminal.backend_mut(), EnterAlternateScreen, EnableMouseCapture, crossterm::event::EnableBracketedPaste)?;
             terminal.clear()?;
+            app.last_cursor_shape = None;
         }
         
         // Update active status and spinner animation
@@ -184,6 +185,7 @@ fn run_client() -> Result<()> {
             enable_raw_mode()?;
             execute!(terminal.backend_mut(), EnterAlternateScreen, EnableMouseCapture, crossterm::event::EnableBracketedPaste)?;
             terminal.clear()?;
+            app.last_cursor_shape = None;
         }
     }
 

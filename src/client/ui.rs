@@ -250,7 +250,7 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     f.render_widget(Paragraph::new(Line::from(spans)), inner);
 }
 
-fn draw_terminal(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
+fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     let active = app.focus == Focus::Content;
     let task = &app.offices[app.current_office].desks[app.selected()];
     let tab = task.active_tab_ref();
@@ -306,11 +306,14 @@ fn draw_terminal(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
         f.set_cursor_position((ix + cc, iy + cr));
         use crossterm::{cursor, execute};
         use crate::terminal_provider::CursorShape;
-        let _ = match screen.cursor_shape {
-            CursorShape::Beam      => execute!(std::io::stdout(), cursor::SetCursorStyle::BlinkingBar),
-            CursorShape::Underline => execute!(std::io::stdout(), cursor::SetCursorStyle::BlinkingUnderScore),
-            CursorShape::Block     => execute!(std::io::stdout(), cursor::SetCursorStyle::DefaultUserShape),
-        };
+        if app.last_cursor_shape.as_ref() != Some(&screen.cursor_shape) {
+            let _ = match &screen.cursor_shape {
+                CursorShape::Beam      => execute!(std::io::stdout(), cursor::SetCursorStyle::BlinkingBar),
+                CursorShape::Underline => execute!(std::io::stdout(), cursor::SetCursorStyle::BlinkingUnderScore),
+                CursorShape::Block     => execute!(std::io::stdout(), cursor::SetCursorStyle::DefaultUserShape),
+            };
+            app.last_cursor_shape = Some(screen.cursor_shape.clone());
+        }
     }
 }
 

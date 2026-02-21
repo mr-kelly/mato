@@ -5,7 +5,7 @@ use std::os::unix::net::UnixStream;
 use std::sync::mpsc::{self, Receiver};
 use std::thread;
 use std::time::{Duration, Instant};
-use crate::{utils::new_id, client::persistence::{load_state, SavedState}, terminal_provider::TerminalProvider, providers::DaemonProvider};
+use crate::{utils::new_id, client::persistence::{load_state, SavedState}, terminal_provider::{TerminalProvider, CursorShape}, providers::DaemonProvider};
 use crate::protocol::{ClientMsg, ServerMsg};
 use crate::theme::ThemeColors;
 
@@ -203,6 +203,7 @@ pub struct App {
     mouse_mode_cache: Option<MouseModeCache>,
     active_status_rx: Option<Receiver<HashSet<String>>>,
     tab_switch_started_at: Option<Instant>,
+    pub last_cursor_shape: Option<CursorShape>,
 }
 
 impl App {
@@ -246,6 +247,7 @@ impl App {
             mouse_mode_cache: None,
             active_status_rx: None,
             tab_switch_started_at: None,
+            last_cursor_shape: None,
         }
     }
 
@@ -286,6 +288,7 @@ impl App {
             mouse_mode_cache: None,
             active_status_rx: None,
             tab_switch_started_at: None,
+            last_cursor_shape: None,
         }
     }
 

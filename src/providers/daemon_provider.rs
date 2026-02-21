@@ -25,6 +25,19 @@ pub struct DaemonProvider {
 }
 
 impl DaemonProvider {
+    fn send_msg_on_stream(stream: &mut StdUnixStream, msg: &ClientMsg) -> Option<ServerMsg> {
+        let json = serde_json::to_vec(msg).ok()?;
+        stream.write_all(&json).ok()?;
+        stream.write_all(b"\n").ok()?;
+        stream.flush().ok()?;
+
+        // Use a cloned fd for buffered line reads without taking ownership.
+        let mut reader = BufReader::new(stream.try_clone().ok()?);
+        let mut line = String::new();
+        reader.read_line(&mut line).ok()?;
+        serde_json::from_str(&line).ok()
+    }
+
     pub fn new(tab_id: String, socket_path: String) -> Self {
         Self {
             tab_id,
@@ -95,6 +108,7 @@ impl DaemonProvider {
         thread::spawn(move || {
             let mut last_error_log: Option<Instant> = None;
             let mut last_respawn_attempt: Option<Instant> = None;
+            let mut stream: Option<StdUnixStream> = None;
 
             while running.load(Ordering::Relaxed) {
                 let now = Instant::now();
@@ -132,7 +146,24 @@ impl DaemonProvider {
                     rows,
                     cols,
                 };
-                match Self::send_msg_static(&socket_path, &msg) {
+                if stream.is_none() {
+                    if let Ok(s) = StdUnixStream::connect(&socket_path) {
+                        let _ = s.set_read_timeout(Some(Duration::from_millis(200)));
+                        let _ = s.set_write_timeout(Some(Duration::from_millis(200)));
+                        stream = Some(s);
+                    }
+                }
+                let response = if let Some(s) = stream.as_mut() {
+                    Self::send_msg_on_stream(s, &msg)
+                } else {
+                    None
+                };
+
+                if response.is_none() {
+                    stream = None;
+                }
+
+                match response {
                     Some(ServerMsg::Screen { content, .. }) => {
                         if let Ok(mut c) = cache.lock() {
                             *c = Some(ScreenCacheEntry {
@@ -223,7 +254,6 @@ impl TerminalProvider for DaemonProvider {
     }
 
     fn write(&mut self, bytes: &[u8]) {
-        self.invalidate_screen_cache();
         // Fire and forget - no response needed
         self.send_msg_no_response(ClientMsg::Input {
             tab_id: self.tab_id.clone(),
@@ -232,7 +262,6 @@ impl TerminalProvider for DaemonProvider {
     }
 
     fn paste(&mut self, text: &str) {
-        self.invalidate_screen_cache();
         self.send_msg_no_response(ClientMsg::Paste {
             tab_id: self.tab_id.clone(),
             data: text.to_string(),
@@ -304,14 +333,25 @@ impl TerminalProvider for DaemonProvider {
                         cols: self.current_size.1.max(1),
                     });
                 }
+                if let Ok(cache) = self.screen_cache.lock() {
+                    if let Some(entry) = cache.as_ref() {
+                        return entry.content.clone();
+                    }
+                }
                 ScreenContent::default()
             }
-            _ => ScreenContent::default(),
+            _ => {
+                if let Ok(cache) = self.screen_cache.lock() {
+                    if let Some(entry) = cache.as_ref() {
+                        return entry.content.clone();
+                    }
+                }
+                ScreenContent::default()
+            },
         }
     }
 
     fn scroll(&mut self, delta: i32) {
-        self.invalidate_screen_cache();
         self.send_msg_no_response(ClientMsg::Scroll {
             tab_id: self.tab_id.clone(),
             delta,
