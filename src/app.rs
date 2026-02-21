@@ -1,7 +1,5 @@
-use std::{io::{Read, Write}, sync::{Arc, Mutex}, thread};
-use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use ratatui::{layout::Rect, widgets::ListState};
-use crate::{id::new_id, persistence::load_state};
+use crate::{id::new_id, persistence::load_state, terminal_provider::TerminalProvider, pty_provider::PtyProvider};
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum Focus { Sidebar, Topbar, Content }
@@ -9,57 +7,33 @@ pub enum Focus { Sidebar, Topbar, Content }
 #[derive(PartialEq, Clone, Copy)]
 pub enum EscMode { None, Pending }
 
-/// Rename mode: which area is being renamed + current buffer
 #[derive(PartialEq, Clone)]
-pub enum RenameTarget { Task(usize), Tab(usize, usize) } // (task_idx, tab_idx)
-
-pub struct PtyState {
-    pub writer: Box<dyn Write + Send>,
-    pub parser: Arc<Mutex<vt100::Parser>>,
-    pub master: Box<dyn portable_pty::MasterPty + Send>,
-    pub _child: Box<dyn portable_pty::Child + Send + Sync>,
-}
+pub enum RenameTarget { Task(usize), Tab(usize, usize) }
 
 pub struct TabEntry {
     pub id: String,
     pub name: String,
-    pub pty: Option<PtyState>,
+    pub provider: Box<dyn TerminalProvider>,
 }
 
 impl TabEntry {
     pub fn new(name: impl Into<String>) -> Self {
-        Self { id: new_id(), name: name.into(), pty: None }
+        Self { id: new_id(), name: name.into(), provider: Box::new(PtyProvider::new()) }
     }
     pub fn with_id(id: String, name: impl Into<String>) -> Self {
-        Self { id, name: name.into(), pty: None }
+        Self { id, name: name.into(), provider: Box::new(PtyProvider::new()) }
     }
 
     pub fn spawn_pty(&mut self, rows: u16, cols: u16) {
-        if self.pty.is_some() { return; }
-        let pty_system = native_pty_system();
-        let pair = pty_system.openpty(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 }).expect("openpty");
-        let mut cmd = CommandBuilder::new("bash");
-        cmd.env("TERM", "xterm-256color");
-        let child = pair.slave.spawn_command(cmd).expect("spawn");
-        let parser = Arc::new(Mutex::new(vt100::Parser::new(rows, cols, 0)));
-        let p2 = Arc::clone(&parser);
-        let mut reader = pair.master.try_clone_reader().expect("reader");
-        thread::spawn(move || {
-            let mut buf = [0u8; 4096];
-            loop { match reader.read(&mut buf) { Ok(0) | Err(_) => break, Ok(n) => p2.lock().unwrap().process(&buf[..n]) } }
-        });
-        self.pty = Some(PtyState { writer: pair.master.take_writer().expect("writer"), parser, master: pair.master, _child: child });
+        self.provider.spawn(rows, cols);
     }
 
     pub fn resize_pty(&mut self, rows: u16, cols: u16) {
-        if let Some(p) = &mut self.pty {
-            let _ = p.master.resize(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 });
-            p.parser.lock().unwrap().set_size(rows, cols);
-        }
+        self.provider.resize(rows, cols);
     }
 
     pub fn pty_write(&mut self, bytes: &[u8]) {
-        if let Some(p) = &mut self.pty { let _ = p.writer.write_all(bytes); let _ = p.writer.flush(); }
+        self.provider.write(bytes);
     }
 }
 

@@ -212,33 +212,30 @@ fn draw_terminal(f: &mut Frame, app: &App, area: Rect) {
         area,
     );
 
-    let Some(pty) = &tab.pty else { return };
-    let parser = pty.parser.lock().unwrap();
-    let screen = parser.screen();
     let (ix, iy) = (area.x + 1, area.y + 1);
     let (iw, ih) = (area.width.saturating_sub(2), area.height.saturating_sub(2));
-
-    for row in 0..ih {
-        let spans: Vec<Span> = (0..iw).map(|col| {
-            let def = vt100::Cell::default();
-            let cell = screen.cell(row, col).unwrap_or(&def);
-            let ch = cell.contents().chars().next().unwrap_or(' ');
+    
+    let screen = tab.provider.get_screen(ih, iw);
+    
+    for (row_idx, line) in screen.lines.iter().enumerate() {
+        let spans: Vec<Span> = line.cells.iter().map(|cell| {
             let mut style = Style::default();
-            if let Some(c) = vt_color(cell.fgcolor()) { style = style.fg(c); }
-            if let Some(c) = vt_color(cell.bgcolor()) { style = style.bg(c); }
-            if cell.bold()      { style = style.add_modifier(Modifier::BOLD); }
-            if cell.italic()    { style = style.add_modifier(Modifier::ITALIC); }
-            if cell.underline() { style = style.add_modifier(Modifier::UNDERLINED); }
-            Span::styled(ch.to_string(), style)
+            if let Some(fg) = cell.fg { style = style.fg(fg); }
+            if let Some(bg) = cell.bg { style = style.bg(bg); }
+            if cell.bold      { style = style.add_modifier(Modifier::BOLD); }
+            if cell.italic    { style = style.add_modifier(Modifier::ITALIC); }
+            if cell.underline { style = style.add_modifier(Modifier::UNDERLINED); }
+            Span::styled(cell.ch.to_string(), style)
         }).collect();
-        f.render_widget(Paragraph::new(Line::from(spans)), Rect { x: ix, y: iy + row, width: iw, height: 1 });
+        f.render_widget(Paragraph::new(Line::from(spans)), Rect { x: ix, y: iy + row_idx as u16, width: iw, height: 1 });
     }
 
-    let (cr, cc) = screen.cursor_position();
+    let (cr, cc) = screen.cursor;
     if cr < ih && cc < iw {
-        let def = vt100::Cell::default();
-        let cell = screen.cell(cr, cc).unwrap_or(&def);
-        let ch = cell.contents().chars().next().unwrap_or(' ');
+        let ch = screen.lines.get(cr as usize)
+            .and_then(|l| l.cells.get(cc as usize))
+            .map(|c| c.ch)
+            .unwrap_or(' ');
         f.render_widget(
             Paragraph::new(Span::styled(ch.to_string(), Style::default().bg(ACCENT2).fg(Color::Black))),
             Rect { x: ix + cc, y: iy + cr, width: 1, height: 1 },
@@ -274,10 +271,3 @@ fn draw_rename_popup(f: &mut Frame, app: &App) {
     );
 }
 
-fn vt_color(c: vt100::Color) -> Option<Color> {
-    match c {
-        vt100::Color::Rgb(r, g, b) => Some(Color::Rgb(r, g, b)),
-        vt100::Color::Idx(i)       => Some(Color::Indexed(i)),
-        vt100::Color::Default      => None,
-    }
-}
