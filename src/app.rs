@@ -109,8 +109,9 @@ pub struct App {
     pub topbar_area: Rect,
     pub content_area: Rect,
     pub new_task_area: Rect,
-    pub tab_areas: Vec<Rect>,   // one per tab in current task
+    pub tab_areas: Vec<Rect>,
     pub new_tab_area: Rect,
+    pub tab_scroll: usize,       // first visible tab index in topbar
     pub last_click: Option<(u16, u16, std::time::Instant)>,
 }
 
@@ -133,7 +134,7 @@ impl App {
             sidebar_list_area: Rect::default(), sidebar_area: Rect::default(),
             topbar_area: Rect::default(), content_area: Rect::default(),
             new_task_area: Rect::default(), tab_areas: vec![], new_tab_area: Rect::default(),
-            last_click: None,
+            tab_scroll: 0, last_click: None,
         }
     }
 
@@ -160,6 +161,7 @@ impl App {
         let max = self.tasks.len().saturating_sub(1) as i32;
         let next = (self.selected() as i32 + delta).clamp(0, max) as usize;
         self.list_state.select(Some(next));
+        self.tab_scroll = 0;
     }
 
     pub fn spawn_active_pty(&mut self) {

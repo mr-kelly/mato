@@ -289,7 +289,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "manager-tui"
+name = "matx"
 version = "0.1.0"
 dependencies = [
  "crossterm",

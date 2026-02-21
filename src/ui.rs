@@ -45,6 +45,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     let tr = main_rows[1].height.saturating_sub(2);
     let tc = main_rows[1].width.saturating_sub(2);
     app.resize_all_ptys(tr, tc);
+    app.spawn_active_pty(); // ensure active tab always has a PTY
 
     app.sidebar_area = cols[0];
     app.topbar_area  = main_rows[0];
@@ -133,17 +134,45 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect) {
     );
 
     let task = &app.tasks[app.selected()];
-    let inner = Rect { x: area.x + 1, y: area.y + 1, width: area.width.saturating_sub(2), height: 1 };
+    let inner_w = area.width.saturating_sub(2);
+    let inner = Rect { x: area.x + 1, y: area.y + 1, width: inner_w, height: 1 };
 
-    // Build tab spans and record click areas
+    // Ensure active tab is visible: adjust tab_scroll
+    let at = task.active_tab;
+    if at < app.tab_scroll { app.tab_scroll = at; }
+    // measure widths to find if active tab is past the right edge
+    let plus_w = 7u16; // "  ＋  " + space
+    let tab_widths: Vec<u16> = task.tabs.iter().map(|t| format!("  {}  ", t.name).len() as u16 + 1).collect();
+    // scroll forward until active tab fits
+    loop {
+        let mut used = plus_w;
+        let mut last_visible = app.tab_scroll;
+        for i in app.tab_scroll..task.tabs.len() {
+            if used + tab_widths[i] > inner_w { break; }
+            used += tab_widths[i];
+            last_visible = i;
+        }
+        if at <= last_visible || app.tab_scroll >= at { break; }
+        app.tab_scroll += 1;
+    }
+
     app.tab_areas.clear();
     let mut x = inner.x;
     let mut spans: Vec<Span> = vec![];
 
-    for (i, tab) in task.tabs.iter().enumerate() {
-        let is_active = i == task.active_tab;
+    // left scroll indicator
+    if app.tab_scroll > 0 {
+        spans.push(Span::styled("‹ ", Style::default().fg(ACCENT2)));
+        x += 2;
+    }
+
+    let mut available = inner_w.saturating_sub(plus_w + if app.tab_scroll > 0 { 2 } else { 0 });
+    for i in app.tab_scroll..task.tabs.len() {
+        let tab = &task.tabs[i];
         let label = format!("  {}  ", tab.name);
         let w = label.len() as u16;
+        if w + 1 > available { break; }
+        let is_active = i == task.active_tab;
         let style = if is_active {
             Style::default().fg(BG).bg(ACCENT).add_modifier(Modifier::BOLD)
         } else {
@@ -153,11 +182,17 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect) {
         spans.push(Span::raw(" "));
         app.tab_areas.push(Rect { x, y: inner.y, width: w, height: 1 });
         x += w + 1;
+        available = available.saturating_sub(w + 1);
+    }
+
+    // right scroll indicator if more tabs exist
+    let last_rendered = app.tab_scroll + app.tab_areas.len();
+    if last_rendered < task.tabs.len() {
+        spans.push(Span::styled(" ›", Style::default().fg(ACCENT2)));
     }
 
     // "+" new tab button
     let plus = "  ＋  ";
-    let plus_w = plus.len() as u16;
     spans.push(Span::styled(plus, Style::default().fg(ACCENT2)));
     app.new_tab_area = Rect { x, y: inner.y, width: plus_w, height: 1 };
 

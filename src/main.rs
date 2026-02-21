@@ -3,6 +3,8 @@ mod id;
 mod persistence;
 mod ui;
 mod input;
+mod terminal_provider;
+mod pty_provider;
 
 use std::{io, time::Duration};
 
@@ -128,9 +130,16 @@ fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
         }
         MouseEventKind::ScrollUp => {
             if in_rect(col, row, app.sidebar_area) { app.nav(-1); }
+            else if in_rect(col, row, app.topbar_area) {
+                app.tab_scroll = app.tab_scroll.saturating_sub(1);
+            }
         }
         MouseEventKind::ScrollDown => {
             if in_rect(col, row, app.sidebar_area) { app.nav(1); }
+            else if in_rect(col, row, app.topbar_area) {
+                let max = app.tasks[app.selected()].tabs.len().saturating_sub(1);
+                if app.tab_scroll < max { app.tab_scroll += 1; }
+            }
         }
         _ => {}
     }
