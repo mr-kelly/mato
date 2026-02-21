@@ -15,6 +15,20 @@ use crate::config::Config;
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const VERSION_URL: &str = "https://mato.sh/version.txt";
 
+fn is_disconnect_error(err: &anyhow::Error) -> bool {
+    if let Some(ioe) = err.downcast_ref::<std::io::Error>() {
+        matches!(
+            ioe.kind(),
+            std::io::ErrorKind::BrokenPipe
+                | std::io::ErrorKind::ConnectionReset
+                | std::io::ErrorKind::ConnectionAborted
+                | std::io::ErrorKind::UnexpectedEof
+        )
+    } else {
+        false
+    }
+}
+
 pub struct Daemon {
     tabs: Arc<DashMap<String, Arc<Mutex<PtyProvider>>>>,
     signals: SignalHandler,
@@ -105,7 +119,11 @@ impl Daemon {
                             
                             tokio::spawn(async move {
                                 if let Err(e) = handle_client(stream, tabs, config, client_id, latest_version).await {
-                                    tracing::error!("Client #{} error: {}", client_id, e);
+                                    if is_disconnect_error(&e) {
+                                        tracing::debug!("Client #{} disconnected during IO: {}", client_id, e);
+                                    } else {
+                                        tracing::error!("Client #{} error: {}", client_id, e);
+                                    }
                                 }
                                 let remaining = client_count.fetch_sub(1, Ordering::Relaxed) - 1;
                                 tracing::info!("Client #{} disconnected (remaining: {})", client_id, remaining);
@@ -232,7 +250,7 @@ pub async fn handle_client(
                     let content = (*tab.lock()).get_screen(rows, cols);
                     ServerMsg::Screen { tab_id, content }
                 } else {
-                    tracing::warn!("Tab not found: {}", tab_id);
+                    tracing::debug!("Tab not found: {}", tab_id);
                     ServerMsg::Error { message: "tab not found".into() }
                 }
             }
@@ -255,17 +273,17 @@ pub async fn handle_client(
                 if let Some((_, entry)) = tabs.remove(&tab_id) {
                     tracing::info!("Closing PTY for tab {}", tab_id);
                     drop(entry);
-                    ServerMsg::Welcome { version: "ok".into() }
+                    continue;
                 } else {
-                    tracing::warn!("Attempted to close non-existent tab {}", tab_id);
-                    ServerMsg::Error { message: "tab not found".into() }
+                    tracing::debug!("Attempted to close non-existent tab {}", tab_id);
+                    continue;
                 }
             }
             ClientMsg::Scroll { tab_id, delta } => {
                 if let Some(entry) = tabs.get(&tab_id) {
                     entry.lock().scroll(delta);
                 }
-                ServerMsg::Welcome { version: "ok".into() }
+                continue;
             }
         };
 

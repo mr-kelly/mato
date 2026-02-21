@@ -176,14 +176,14 @@ impl DaemonProvider {
                     }
                     Some(ServerMsg::Error { message }) => {
                         let now = Instant::now();
-                        let should_log = last_error_log
-                            .map(|t| now.duration_since(t) >= Duration::from_secs(2))
-                            .unwrap_or(true);
-                        if should_log {
-                            tracing::error!("GetScreen error for tab {}: {}", tab_id, message);
-                            last_error_log = Some(now);
-                        }
                         if message == "tab not found" {
+                            let should_log = last_error_log
+                                .map(|t| now.duration_since(t) >= Duration::from_secs(2))
+                                .unwrap_or(true);
+                            if should_log {
+                                tracing::debug!("GetScreen miss for tab {}: {}", tab_id, message);
+                                last_error_log = Some(now);
+                            }
                             let should_respawn = last_respawn_attempt
                                 .map(|t| now.duration_since(t) >= Duration::from_secs(1))
                                 .unwrap_or(true);
@@ -195,6 +195,14 @@ impl DaemonProvider {
                                     cols: cols.max(1),
                                 };
                                 Self::send_msg_no_response_static(&socket_path, &spawn);
+                            }
+                        } else {
+                            let should_log = last_error_log
+                                .map(|t| now.duration_since(t) >= Duration::from_secs(2))
+                                .unwrap_or(true);
+                            if should_log {
+                                tracing::error!("GetScreen error for tab {}: {}", tab_id, message);
+                                last_error_log = Some(now);
                             }
                         }
                     }
