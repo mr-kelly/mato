@@ -1,0 +1,58 @@
+{
+  "tasks": [
+    {
+      "id": "dev-coding",
+      "name": "💻 Development",
+      "tabs": [
+        {
+          "id": "tab-editor",
+          "name": "📝 Editor"
+        },
+        {
+          "id": "tab-server",
+          "name": "🚀 Dev Server"
+        },
+        {
+          "id": "tab-logs",
+          "name": "📋 Logs"
+        }
+      ],
+      "active_tab": 0
+    },
+    {
+      "id": "dev-git",
+      "name": "🔀 Git & Deploy",
+      "tabs": [
+        {
+          "id": "tab-git",
+          "name": "🌿 Git"
+        },
+        {
+          "id": "tab-deploy",
+          "name": "🚢 Deploy"
+        }
+      ],
+      "active_tab": 0
+    },
+    {
+      "id": "dev-tools",
+      "name": "🛠️ Tools",
+      "tabs": [
+        {
+          "id": "tab-db",
+          "name": "🗄️ Database"
+        },
+        {
+          "id": "tab-docker",
+          "name": "🐳 Docker"
+        },
+        {
+          "id": "tab-monitor",
+          "name": "📊 Monitor"
+        }
+      ],
+      "active_tab": 0
+    }
+  ],
+  "active_task": 0
+}

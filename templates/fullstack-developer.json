@@ -1,0 +1,77 @@
+{
+  "tasks": [
+    {
+      "id": "project-main",
+      "name": "🚀 Main Project",
+      "tabs": [
+        {
+          "id": "tab-code",
+          "name": "💻 Code"
+        },
+        {
+          "id": "tab-frontend",
+          "name": "🎨 Frontend Dev"
+        },
+        {
+          "id": "tab-backend",
+          "name": "⚙️ Backend Dev"
+        },
+        {
+          "id": "tab-test",
+          "name": "🧪 Tests"
+        }
+      ],
+      "active_tab": 0
+    },
+    {
+      "id": "project-side",
+      "name": "💡 Side Project",
+      "tabs": [
+        {
+          "id": "tab-side-code",
+          "name": "💻 Code"
+        },
+        {
+          "id": "tab-side-server",
+          "name": "🚀 Server"
+        }
+      ],
+      "active_tab": 0
+    },
+    {
+      "id": "devops",
+      "name": "🔧 DevOps",
+      "tabs": [
+        {
+          "id": "tab-docker",
+          "name": "🐳 Docker"
+        },
+        {
+          "id": "tab-k8s",
+          "name": "☸️ Kubernetes"
+        },
+        {
+          "id": "tab-ci",
+          "name": "🔄 CI/CD"
+        }
+      ],
+      "active_tab": 0
+    },
+    {
+      "id": "learning",
+      "name": "📚 Learning",
+      "tabs": [
+        {
+          "id": "tab-tutorial",
+          "name": "📖 Tutorial"
+        },
+        {
+          "id": "tab-experiment",
+          "name": "🧪 Experiments"
+        }
+      ],
+      "active_tab": 0
+    }
+  ],
+  "active_task": 0
+}

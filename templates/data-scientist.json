@@ -1,0 +1,77 @@
+{
+  "tasks": [
+    {
+      "id": "data-analysis",
+      "name": "📊 Data Analysis",
+      "tabs": [
+        {
+          "id": "tab-jupyter",
+          "name": "📓 Jupyter"
+        },
+        {
+          "id": "tab-python",
+          "name": "🐍 Python"
+        },
+        {
+          "id": "tab-viz",
+          "name": "📈 Visualization"
+        }
+      ],
+      "active_tab": 0
+    },
+    {
+      "id": "ml-training",
+      "name": "🤖 ML Training",
+      "tabs": [
+        {
+          "id": "tab-train",
+          "name": "🏋️ Training"
+        },
+        {
+          "id": "tab-tensorboard",
+          "name": "📊 TensorBoard"
+        },
+        {
+          "id": "tab-gpu",
+          "name": "🎮 GPU Monitor"
+        }
+      ],
+      "active_tab": 0
+    },
+    {
+      "id": "data-pipeline",
+      "name": "🔄 Data Pipeline",
+      "tabs": [
+        {
+          "id": "tab-etl",
+          "name": "🔧 ETL"
+        },
+        {
+          "id": "tab-airflow",
+          "name": "🌊 Airflow"
+        },
+        {
+          "id": "tab-db",
+          "name": "🗄️ Database"
+        }
+      ],
+      "active_tab": 0
+    },
+    {
+      "id": "deployment",
+      "name": "🚀 Deployment",
+      "tabs": [
+        {
+          "id": "tab-api",
+          "name": "🔌 API"
+        },
+        {
+          "id": "tab-docker",
+          "name": "🐳 Docker"
+        }
+      ],
+      "active_tab": 0
+    }
+  ],
+  "active_task": 0
+}

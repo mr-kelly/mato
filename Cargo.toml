@@ -1,17 +1,39 @@
 [package]
-name = "matx"
-version = "0.1.0"
+name = "mato"
+version = "0.2.0"
 edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "Multi-Agent Terminal Office - A daemon-based persistent terminal multiplexer with 100% TMUX parity"
+homepage = "https://github.com/YOUR_USERNAME/mato"
+repository = "https://github.com/YOUR_USERNAME/mato"
+license = "MIT"
+keywords = ["terminal", "multiplexer", "tmux", "tui", "daemon"]
+categories = ["command-line-utilities"]
 
 [[bin]]
-name = "matx"
+name = "mato"
 path = "src/main.rs"
+
+[lib]
+name = "mato"
+path = "src/lib.rs"
 
 [dependencies]
 ratatui = "0.29"
 crossterm = "0.28"
 portable-pty = "0.8"
 vt100 = "0.15"
+vte = "0.15"
 libc = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+toml = "0.8"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+directories = "5"
+dashmap = "6"
+parking_lot = "0.12"
+daemonize = "0.5"
+chrono = "0.4"

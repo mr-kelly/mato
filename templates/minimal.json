@@ -1,0 +1,16 @@
+{
+  "tasks": [
+    {
+      "id": "task-1",
+      "name": "Task 1",
+      "tabs": [
+        {
+          "id": "tab-1",
+          "name": "Terminal 1"
+        }
+      ],
+      "active_tab": 0
+    }
+  ],
+  "active_task": 0
+}

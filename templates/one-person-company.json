@@ -1,0 +1,85 @@
+{
+  "tasks": [
+    {
+      "id": "dept-engineering",
+      "name": "🔧 Engineering",
+      "tabs": [
+        {
+          "id": "tab-frontend",
+          "name": "🎨 Frontend"
+        },
+        {
+          "id": "tab-backend",
+          "name": "⚙️ Backend"
+        },
+        {
+          "id": "tab-infra",
+          "name": "☁️ Infrastructure"
+        },
+        {
+          "id": "tab-testing",
+          "name": "🧪 Testing"
+        }
+      ],
+      "active_tab": 0
+    },
+    {
+      "id": "dept-product",
+      "name": "📦 Product",
+      "tabs": [
+        {
+          "id": "tab-design",
+          "name": "🎨 Design"
+        },
+        {
+          "id": "tab-docs",
+          "name": "📚 Documentation"
+        },
+        {
+          "id": "tab-research",
+          "name": "🔍 Research"
+        }
+      ],
+      "active_tab": 0
+    },
+    {
+      "id": "dept-marketing",
+      "name": "📢 Marketing",
+      "tabs": [
+        {
+          "id": "tab-content",
+          "name": "✍️ Content"
+        },
+        {
+          "id": "tab-social",
+          "name": "📱 Social Media"
+        },
+        {
+          "id": "tab-analytics",
+          "name": "📊 Analytics"
+        }
+      ],
+      "active_tab": 0
+    },
+    {
+      "id": "dept-operations",
+      "name": "⚡ Operations",
+      "tabs": [
+        {
+          "id": "tab-support",
+          "name": "💬 Support"
+        },
+        {
+          "id": "tab-finance",
+          "name": "💰 Finance"
+        },
+        {
+          "id": "tab-admin",
+          "name": "📋 Admin"
+        }
+      ],
+      "active_tab": 0
+    }
+  ],
+  "active_task": 0
+}

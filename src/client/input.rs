@@ -4,11 +4,12 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use crate::app::{App, EscMode, Focus};
+use crate::client::app::{App, EscMode, Focus};
 
 pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
     if key.code == KeyCode::Esc && key.kind == KeyEventKind::Repeat { return false; }
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+    let alt = key.modifiers.contains(KeyModifiers::ALT);
 
     // Rename mode intercepts all keys
     if app.rename.is_some() {
@@ -18,6 +19,19 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
             KeyCode::Backspace => { if let Some((_, buf)) = &mut app.rename { buf.pop(); } }
             KeyCode::Char(c) if !ctrl => { if let Some((_, buf)) = &mut app.rename { buf.push(c); } }
             _ => {}
+        }
+        return false;
+    }
+
+    // Alt+1-9: Quick tab switching
+    if alt && matches!(key.code, KeyCode::Char('1'..='9')) {
+        if let KeyCode::Char(c) = key.code {
+            let idx = (c as u8 - b'1') as usize;
+            let task = app.cur_task_mut();
+            if idx < task.tabs.len() {
+                task.active_tab = idx;
+                app.tab_scroll = idx.saturating_sub(5); // Center the view
+            }
         }
         return false;
     }
@@ -50,6 +64,32 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
         match key.code {
             KeyCode::Up   | KeyCode::Char('w') => { app.focus = Focus::Topbar;  return false; }
             KeyCode::Left | KeyCode::Char('a') => { app.focus = Focus::Sidebar; return false; }
+            _ => {}
+        }
+    }
+
+    // Ctrl+PageUp/PageDown: Switch tabs (works in any focus)
+    if ctrl {
+        match key.code {
+            KeyCode::PageUp => {
+                let i = app.selected();
+                let at = app.tasks[i].active_tab;
+                if at > 0 {
+                    app.tasks[i].active_tab = at - 1;
+                    app.spawn_active_pty();
+                }
+                return false;
+            }
+            KeyCode::PageDown => {
+                let i = app.selected();
+                let len = app.tasks[i].tabs.len();
+                let at = app.tasks[i].active_tab;
+                if at + 1 < len {
+                    app.tasks[i].active_tab = at + 1;
+                    app.spawn_active_pty();
+                }
+                return false;
+            }
             _ => {}
         }
     }

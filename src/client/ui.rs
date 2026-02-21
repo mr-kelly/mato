@@ -5,7 +5,7 @@ use ratatui::{
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame,
 };
-use crate::app::{App, EscMode, Focus, RenameTarget};
+use crate::client::app::{App, EscMode, Focus, RenameTarget};
 
 pub const BG:         Color = Color::Rgb(18,  18,  28);
 pub const SURFACE:    Color = Color::Rgb(28,  28,  42);
@@ -60,6 +60,12 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     if app.rename.is_some() {
         draw_rename_popup(f, app);
     }
+    
+    // Show cursor when in terminal focus
+    if app.focus == Focus::Content && app.rename.is_none() {
+        // Cursor position is already set by draw_terminal
+        // Just ensure it's visible
+    }
 }
 
 fn draw_statusbar(f: &mut Frame, app: &App, area: Rect) {
@@ -108,9 +114,11 @@ fn draw_sidebar(f: &mut Frame, app: &mut App, area: Rect) {
 
     let items: Vec<ListItem> = app.tasks.iter().enumerate().map(|(i, t)| {
         let sel = app.list_state.selected() == Some(i);
+        let all_idle = !t.tabs.is_empty() && t.tabs.iter().all(|tab| app.idle_tabs.contains(&tab.id));
+        let name = if all_idle { format!("{} ·", t.name) } else { t.name.clone() };
         ListItem::new(Line::from(vec![
             Span::styled(if sel { " ▶ " } else { "   " }, Style::default().fg(ACCENT)),
-            Span::styled(t.name.clone(), Style::default().fg(if sel { FG } else { FG_DIM })),
+            Span::styled(name, Style::default().fg(if sel { FG } else { FG_DIM })),
         ])).style(Style::default().bg(if sel { SEL_BG } else { SURFACE }))
     }).collect();
 
@@ -169,7 +177,12 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect) {
     let mut available = inner_w.saturating_sub(plus_w + if app.tab_scroll > 0 { 2 } else { 0 });
     for i in app.tab_scroll..task.tabs.len() {
         let tab = &task.tabs[i];
-        let label = format!("  {}  ", tab.name);
+        let idle = app.idle_tabs.contains(&tab.id);
+        let label = if idle {
+            format!("  {} ·  ", tab.name)
+        } else {
+            format!("  {}  ", tab.name)
+        };
         let w = label.len() as u16;
         if w + 1 > available { break; }
         let is_active = i == task.active_tab;
@@ -195,6 +208,17 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect) {
     let plus = "  ＋  ";
     spans.push(Span::styled(plus, Style::default().fg(ACCENT2)));
     app.new_tab_area = Rect { x, y: inner.y, width: plus_w, height: 1 };
+
+    // Daemon status indicator (right side)
+    let daemon_status = " ⚡ ";
+    let status_w = daemon_status.len() as u16;
+    let status_x = inner.x + inner_w - status_w;
+    if status_x > x + plus_w {
+        f.render_widget(
+            Paragraph::new(Span::styled(daemon_status, Style::default().fg(ACCENT2))),
+            Rect { x: status_x, y: inner.y, width: status_w, height: 1 }
+        );
+    }
 
     f.render_widget(Paragraph::new(Line::from(spans)), inner);
 }
@@ -232,14 +256,8 @@ fn draw_terminal(f: &mut Frame, app: &App, area: Rect) {
 
     let (cr, cc) = screen.cursor;
     if cr < ih && cc < iw {
-        let ch = screen.lines.get(cr as usize)
-            .and_then(|l| l.cells.get(cc as usize))
-            .map(|c| c.ch)
-            .unwrap_or(' ');
-        f.render_widget(
-            Paragraph::new(Span::styled(ch.to_string(), Style::default().bg(ACCENT2).fg(Color::Black))),
-            Rect { x: ix + cc, y: iy + cr, width: 1, height: 1 },
-        );
+        // Set terminal cursor position instead of rendering a block
+        f.set_cursor_position((ix + cc, iy + cr));
     }
 }
 

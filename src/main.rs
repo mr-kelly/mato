@@ -1,12 +1,16 @@
-mod app;
-mod id;
-mod persistence;
-mod ui;
-mod input;
+mod client;
 mod terminal_provider;
-mod pty_provider;
+mod terminal_emulator;
+mod protocol;
+mod daemon_modules;
+mod providers;
+mod emulators;
+mod config;
+mod utils;
+mod error;
 
-use std::{io, time::Duration};
+use std::time::Duration;
+use error::{MatoError, Result};
 
 #[cfg(unix)]
 extern crate libc;
@@ -18,24 +22,79 @@ use crossterm::{
 };
 use ratatui::{backend::CrosstermBackend, layout::Rect, Terminal};
 
-use app::{App, Focus};
-use persistence::save_state;
-use ui::draw;
-use input::handle_key;
+use client::{App, save_state};
+use client::ui::draw;
+use client::input::handle_key;
+use client::app::Focus;
 
-fn main() -> io::Result<()> {
+fn main() -> Result<()> {
+    // Check for --version flag
+    if std::env::args().any(|a| a == "--version" || a == "-v") {
+        println!("mato {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
+    // Check for --daemon flag
+    if std::env::args().any(|a| a == "--daemon") {
+        let foreground = std::env::args().any(|a| a == "--foreground");
+        return daemon_modules::run_daemon(foreground).map_err(MatoError::from);
+    }
+
+    // Check for --status flag
+    if std::env::args().any(|a| a == "--status") {
+        return daemon_modules::show_status().map_err(MatoError::from);
+    }
+
+    // Setup client logging
+    let log_path = utils::get_client_log_path();
+    if let Ok(log_file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+    {
+        let _ = tracing_subscriber::fmt()
+            .with_writer(log_file)
+            .with_ansi(false)
+            .try_init();
+        tracing::info!("=== Client starting ===");
+    }
+
+    // Check if this is first run (no state file)
+    let state_path = utils::get_state_file_path();
+    if !state_path.exists() {
+        client::show_onboarding_tui()?;
+    }
+
+    // Ensure daemon is running
+    daemon_modules::ensure_daemon_running()?;
+
+    run_client().map_err(|e| {
+        eprintln!("Error: {}", e);
+        e
+    })
+}
+
+fn run_client() -> Result<()> {
     enable_raw_mode()?;
-    let mut stdout = io::stdout();
+    let mut stdout = std::io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
+    terminal.show_cursor()?;  // Show cursor at startup
 
     let mut app = App::new();
     terminal.draw(|f| draw(f, &mut app))?;
     app.spawn_active_pty();
 
+    let mut idle_counter = 0u32;
     loop {
         terminal.draw(|f| draw(f, &mut app))?;
-        if event::poll(Duration::from_millis(16))? {
+        idle_counter += 1;
+        if idle_counter >= 30 {
+            app.refresh_idle_status();
+            idle_counter = 0;
+        }
+        // Poll at 10fps to reduce GetScreen RPC overhead
+        if event::poll(Duration::from_millis(100))? {
             match event::read()? {
                 Event::Key(key) => {
                     if handle_key(&mut app, key) { break; }
