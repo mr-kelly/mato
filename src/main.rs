@@ -3,8 +3,6 @@ mod id;
 mod persistence;
 mod ui;
 mod input;
-mod terminal_provider;
-mod pty_provider;
 
 use std::{io, time::Duration};
 
