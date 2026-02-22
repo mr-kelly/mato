@@ -276,8 +276,8 @@ fn run_client() -> Result<()> {
     let mut mouse_capture_enabled = true;
 
     let mut app = App::new();
-    terminal.draw(|f| draw(f, &mut app))?;
     app.spawn_active_pty();
+    terminal.draw(|f| draw(f, &mut app))?;
     let mut screen = ScreenState::Main;
     let mut last_input_at = Instant::now() - Duration::from_secs(10);
 
@@ -334,7 +334,7 @@ fn run_client() -> Result<()> {
                 }
 
                 if let Some(elapsed) = app.finish_tab_switch_measurement() {
-                    tracing::info!("Tab switch first-frame latency: {}ms", elapsed.as_millis());
+                    tracing::debug!("Tab switch first-frame latency: {}ms", elapsed.as_millis());
                 }
 
                 // Apply pending resize after user stops resizing

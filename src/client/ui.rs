@@ -543,7 +543,14 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     };
     let screen = tab.provider.get_screen(ih, iw);
     let screen_rows = (screen.lines.len() as u16).min(ih);
-    let row_base = ih.saturating_sub(screen_rows);
+    // Copy mode prefers bottom-aligned viewport for scrollback reading.
+    // Normal mode should stay top-aligned to avoid startup offset when
+    // PTY rows temporarily lag behind UI rows.
+    let row_base = if app.copy_mode {
+        ih.saturating_sub(screen_rows)
+    } else {
+        0
+    };
 
     if screen.bell {
         app.pending_bell = true;

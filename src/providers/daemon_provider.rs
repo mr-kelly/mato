@@ -122,6 +122,8 @@ impl DaemonProvider {
 
     fn send_msg_static(socket_path: &str, msg: &ClientMsg) -> Option<ServerMsg> {
         let mut stream = StdUnixStream::connect(socket_path).ok()?;
+        let _ = stream.set_read_timeout(Some(Duration::from_millis(500)));
+        let _ = stream.set_write_timeout(Some(Duration::from_millis(200)));
 
         let json = serde_json::to_vec(msg).ok()?;
         stream.write_all(&json).ok()?;
@@ -259,7 +261,7 @@ impl DaemonProvider {
 
         thread::spawn(move || {
             let mut last_error_log: Option<Instant> = None;
-            let mut last_respawn_attempt: Option<Instant> = None;
+
             let mut stream: Option<StdUnixStream> = None;
             let mut read_buf: Vec<u8> = Vec::with_capacity(256 * 1024);
             let mut subscribed_size: (u16, u16) = (0, 0);
@@ -278,7 +280,7 @@ impl DaemonProvider {
                     }
                     stream = None; // drop subscription connection
                     subscribed_size = (0, 0);
-                    thread::sleep(Duration::from_millis(500));
+                    thread::sleep(Duration::from_millis(50));
                     continue;
                 }
 
@@ -296,6 +298,12 @@ impl DaemonProvider {
 
                 // Connect and subscribe if needed
                 if stream.is_none() {
+                    tracing::debug!(
+                        "[worker] tab={} connecting to subscribe (rows={} cols={})",
+                        tab_id,
+                        rows,
+                        cols
+                    );
                     if let Ok(s) = StdUnixStream::connect(&socket_path) {
                         // Safety timeout for partial reads; poll() avoids blocking normally
                         let _ = s.set_read_timeout(Some(Duration::from_millis(5)));
@@ -314,9 +322,13 @@ impl DaemonProvider {
                             {
                                 subscribed_size = (rows, cols);
                                 stream = Some(s);
-                                tracing::debug!("Subscribed to tab {} (push mode)", tab_id);
+                                tracing::debug!("[worker] tab={} subscribe sent OK", tab_id);
+                            } else {
+                                tracing::warn!("[worker] tab={} subscribe write failed", tab_id);
                             }
                         }
+                    } else {
+                        tracing::debug!("[worker] tab={} connect failed", tab_id);
                     }
                     if stream.is_none() {
                         thread::sleep(Duration::from_millis(100));
@@ -429,32 +441,23 @@ impl DaemonProvider {
                     Some(ServerMsg::Error { message }) => {
                         let now = Instant::now();
                         if message == "tab not found" {
+                            // Worker must NOT spawn the tab — that's the main thread's job (spawn()).
+                            // If we spawn here with rows=1,cols=1 we race and create a 1x1 terminal.
+                            // Just wait and retry Subscribe; the main thread will have called spawn().
                             let should_log = last_error_log
                                 .map(|t| now.duration_since(t) >= Duration::from_secs(2))
                                 .unwrap_or(true);
                             if should_log {
-                                tracing::debug!("GetScreen miss for tab {}: {}", tab_id, message);
+                                tracing::debug!(
+                                    "[worker] tab={} 'tab not found', retrying subscribe (main thread handles spawn)",
+                                    tab_id
+                                );
                                 last_error_log = Some(now);
-                            }
-                            let should_respawn = last_respawn_attempt
-                                .map(|t| now.duration_since(t) >= Duration::from_secs(1))
-                                .unwrap_or(true);
-                            if should_respawn {
-                                last_respawn_attempt = Some(now);
-                                let spawn = ClientMsg::Spawn {
-                                    tab_id: tab_id.clone(),
-                                    rows: rows.max(1),
-                                    cols: cols.max(1),
-                                    cwd: None,
-                                    shell: None,
-                                    env: None,
-                                };
-                                Self::send_msg_no_response_static(&socket_path, &spawn);
                             }
                             // Reconnect after error
                             stream = None;
                             subscribed_size = (0, 0);
-                            thread::sleep(Duration::from_millis(200));
+                            thread::sleep(Duration::from_millis(100));
                         } else {
                             let should_log = last_error_log
                                 .map(|t| now.duration_since(t) >= Duration::from_secs(2))
@@ -486,12 +489,19 @@ impl Drop for DaemonProvider {
 
 impl TerminalProvider for DaemonProvider {
     fn spawn(&mut self, rows: u16, cols: u16) {
-        self.current_size = (rows, cols); // Track size
+        self.current_size = (rows, cols);
         if let Ok(mut s) = self.screen_requested_size.lock() {
             *s = (rows, cols);
         }
+        // Mark as active so worker reconnects immediately instead of sleeping
+        if let Ok(mut t) = self.last_screen_request_at.lock() {
+            *t = Instant::now();
+        }
         self.invalidate_screen_cache();
-        self.send_msg(ClientMsg::Spawn {
+        // Send Spawn FIRST (sync — waits for daemon to register the tab),
+        // THEN start the worker. This prevents the worker's Subscribe from
+        // racing ahead and getting "tab not found" before Spawn completes.
+        let _resp = self.send_msg(ClientMsg::Spawn {
             tab_id: self.tab_id.clone(),
             rows,
             cols,
@@ -499,6 +509,7 @@ impl TerminalProvider for DaemonProvider {
             shell: None,
             env: None,
         });
+        self.start_screen_worker_if_needed();
     }
 
     fn resize(&mut self, rows: u16, cols: u16) {
@@ -510,6 +521,9 @@ impl TerminalProvider for DaemonProvider {
         self.current_size = (rows, cols);
         if let Ok(mut s) = self.screen_requested_size.lock() {
             *s = (rows, cols);
+        }
+        if let Ok(mut t) = self.last_screen_request_at.lock() {
+            *t = Instant::now();
         }
         self.invalidate_screen_cache();
 
@@ -593,8 +607,8 @@ impl TerminalProvider for DaemonProvider {
                 if message == "tab not found" {
                     let _ = self.send_msg(ClientMsg::Spawn {
                         tab_id: self.tab_id.clone(),
-                        rows: self.current_size.0.max(1),
-                        cols: self.current_size.1.max(1),
+                        rows: rows.max(1),
+                        cols: cols.max(1),
                         cwd: None,
                         shell: None,
                         env: None,

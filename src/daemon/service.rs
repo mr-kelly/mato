@@ -126,7 +126,7 @@ impl Daemon {
                     match result {
                         Ok((stream, _)) => {
                             let client_id = self.client_count.fetch_add(1, Ordering::Relaxed) + 1;
-                            tracing::info!("Client #{} connecting (total: {})", client_id, client_id);
+                            tracing::debug!("Client #{} connecting (total: {})", client_id, client_id);
 
                             let tabs = self.tabs.clone();
                             let config = self.config.clone();
@@ -142,7 +142,7 @@ impl Daemon {
                                     }
                                 }
                                 let remaining = client_count.fetch_sub(1, Ordering::Relaxed) - 1;
-                                tracing::info!("Client #{} disconnected (remaining: {})", client_id, remaining);
+                                tracing::debug!("Client #{} disconnected (remaining: {})", client_id, remaining);
                             });
                         }
                         Err(e) => {
@@ -237,7 +237,7 @@ pub async fn handle_client(
     client_id: usize,
     latest_version: Arc<Mutex<Option<String>>>,
 ) -> Result<()> {
-    tracing::info!("Client #{} handler started", client_id);
+    tracing::debug!("Client #{} handler started", client_id);
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
     let mut line = String::new();
@@ -249,7 +249,7 @@ pub async fn handle_client(
         let msg: ClientMsg = {
             let buf = reader.fill_buf().await?;
             if buf.is_empty() {
-                tracing::info!("Client #{} disconnected", client_id);
+                tracing::debug!("Client #{} disconnected", client_id);
                 break;
             }
             if buf[0] == 0x00 {
@@ -270,7 +270,7 @@ pub async fn handle_client(
                 line.clear();
                 let n = reader.read_line(&mut line).await?;
                 if n == 0 {
-                    tracing::info!("Client #{} disconnected", client_id);
+                    tracing::debug!("Client #{} disconnected", client_id);
                     break;
                 }
                 match serde_json::from_str(&line) {
@@ -297,23 +297,43 @@ pub async fn handle_client(
                 env,
             } => {
                 if tabs.contains_key(&tab_id) {
-                    tracing::info!("Tab {} already exists", tab_id);
+                    tracing::debug!(
+                        "[daemon] Spawn tab={} already exists (total tabs: {})",
+                        tab_id,
+                        tabs.len()
+                    );
                     // Don't resize on reconnect - it would clear the screen
                     // Client will send explicit Resize if needed
                     ServerMsg::Welcome {
                         version: "already exists".into(),
                     }
                 } else {
-                    tracing::info!("Spawning new tab {} ({}x{})", tab_id, rows, cols);
-                    let mut provider = PtyProvider::new();
-                    provider.spawn_with_options(
+                    tracing::debug!(
+                        "[daemon] Spawn NEW tab={} ({}x{}) total_before={}",
+                        tab_id,
                         rows,
                         cols,
-                        cwd.as_deref(),
-                        shell.as_deref(),
-                        env.as_deref(),
+                        tabs.len()
                     );
-                    tabs.insert(tab_id.clone(), Arc::new(Mutex::new(provider)));
+                    // Insert BEFORE spawn_with_options so concurrent Subscribe
+                    // requests can find the tab immediately (not after shell fork).
+                    let provider = Arc::new(Mutex::new(PtyProvider::new()));
+                    tabs.insert(tab_id.clone(), provider.clone());
+                    tracing::debug!(
+                        "[daemon] Spawn tab={} inserted, total tabs now: {}",
+                        tab_id,
+                        tabs.len()
+                    );
+                    {
+                        let mut p = provider.lock();
+                        p.spawn_with_options(
+                            rows,
+                            cols,
+                            cwd.as_deref(),
+                            shell.as_deref(),
+                            env.as_deref(),
+                        );
+                    }
                     ServerMsg::Welcome {
                         version: "spawned".into(),
                     }
@@ -471,6 +491,7 @@ pub async fn handle_client(
                     None
                 };
                 let Some(notify) = notify else {
+                    tracing::debug!("[daemon] Subscribe tab={} not found", tab_id);
                     let json = serde_json::to_vec(&ServerMsg::Error {
                         message: "tab not found".into(),
                     })?;
@@ -479,8 +500,9 @@ pub async fn handle_client(
                     writer.flush().await?;
                     continue;
                 };
+                tracing::debug!("[daemon] Subscribe tab={} found", tab_id);
 
-                tracing::info!(
+                tracing::debug!(
                     "Client #{} subscribed to tab {} (push mode)",
                     client_id,
                     tab_id
@@ -674,7 +696,7 @@ pub async fn handle_client(
                         break;
                     }
                 }
-                tracing::info!("Client #{} push loop ended for tab {}", client_id, tab_id);
+                tracing::debug!("Client #{} push loop ended for tab {}", client_id, tab_id);
                 break; // Exit handle_client after push loop ends
             }
         };

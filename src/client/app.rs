@@ -537,6 +537,7 @@ impl App {
             .desks
             .push(Desk::new(format!("Desk {n}")));
         self.select_desk(self.offices[self.current_office].desks.len() - 1);
+        self.spawn_active_pty();
         self.dirty = true;
     }
 

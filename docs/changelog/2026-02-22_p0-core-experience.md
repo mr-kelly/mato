@@ -424,3 +424,56 @@ Implement P0 items from roadmap.md that are critical for daily user experience.
   - Moves Mato closer to tmux-level rendering efficiency
 - **Architecture insight**: tmux sends escape sequences (zero client render overhead), Mato keeps ratatui for chrome (sidebar/topbar/statusbar) but now uses direct buffer writes for the content area — hybrid approach gets best of both worlds.
 - **Files changed**: `src/client/ui.rs` (content rendering loop rewritten)
+
+
+### 36. Fix CJK Wide-Char Rendering in Direct Buffer Mode
+- **Problem**: Chinese/CJK characters displayed incorrectly after direct buffer write refactor.
+- **Root cause**: Emulator outputs wide chars as two cells: `[ch='中', display_width=2]` + `[ch='\0', display_width=0]` (spacer). Old Span code naturally gave spacers zero width, but new code used `bx += cell.display_width.max(1)` which advanced spacers by 1 column, shifting all subsequent characters right.
+- **Fix**:
+  - Skip `display_width == 0` cells entirely (`continue`) — they are spacer placeholders
+  - Remove `.max(1)` from `bx` advance — no longer needed since spacers are skipped
+  - Use `reset()` instead of `set_skip(true)` for wide-char continuation cells (matches ratatui convention per `Buffer::set_stringn`)
+- **Files changed**: `src/client/ui.rs`
+
+### 37. Content Rendering Code Quality Polish
+- **Optimizations applied**:
+  1. `f.buffer_mut()` hoisted out of row loop — one borrow instead of per-row
+  2. `bg_style` hoisted out of row loop — one `Style::default().bg(term_bg)` instead of per-row
+  3. Modifier flags accumulated with bitwise `|=` then single `add_modifier()` call — replaces 7 separate `add_modifier()` calls (each copies the Style struct)
+  4. Wide-char continuation `reset()` bounded by `cx < bx_end` — prevents writing outside content area
+  5. `bx_end = ix + iw` cached — avoids repeated addition in inner loop
+- **Impact**: Tighter inner loop, fewer allocations, safer boundary handling
+- **Files changed**: `src/client/ui.rs`
+
+### 38. Startup Spawn Size Race Fix (Terminal Occasionally Not Rendering)
+- **Symptom**: On startup, terminal sometimes failed to appear or looked broken/undersized.
+- **Root cause**: In `DaemonProvider::get_screen`, the fallback `Spawn` on `tab not found` used `current_size` (which can be `0x0` during startup). This could create a `1x1` PTY before normal sizing landed.
+- **Fix**:
+  - Fallback spawn now uses the current requested screen size (`rows/cols`) from the same `get_screen` call.
+  - Prevents accidental `1x1` PTY creation during startup races.
+- **Files changed**:
+  - `src/providers/daemon_provider.rs`
+
+### 39. High-frequency Log Noise Reduction
+- **Problem**: Runtime logs were dominated by high-frequency connection/retry lifecycle lines, making real errors harder to spot and adding avoidable log I/O.
+- **Fixes**:
+  - Downgraded frequent worker subscribe/retry logs from `info/warn` to `debug`.
+  - Downgraded daemon client connect/disconnect lifecycle logs to `debug`.
+  - Removed heavy `known_tabs` subscribe logging on every subscribe attempt.
+  - Downgraded tab-switch latency metric to `debug`.
+- **Impact**:
+  - Cleaner `client.log`/`daemon.log` at normal verbosity.
+  - Better signal-to-noise for actionable warnings/errors.
+- **Files changed**:
+  - `src/providers/daemon_provider.rs`
+  - `src/daemon/service.rs`
+  - `src/main.rs`
+
+### 40. Initial Terminal Vertical Offset Fix (Top-alignment in Normal Mode)
+- **Symptom**: Initial terminal content could appear shifted downward with extra blank lines.
+- **Root cause**: Bottom-alignment row offset introduced for Copy Mode was also applied in normal mode.
+- **Fix**:
+  - Keep bottom-alignment only in Copy Mode.
+  - Force top-alignment in normal terminal mode.
+- **Files changed**:
+  - `src/client/ui.rs`
