@@ -1,4 +1,5 @@
 use crate::client::app::{App, Focus, JumpMode, RenameTarget, JUMP_LABELS};
+use crate::terminal_provider::CursorShape;
 use crate::theme::{ThemeColors, BUILTIN_THEMES};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -7,6 +8,7 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Clear, List, ListItem, Paragraph},
     Frame,
 };
+use unicode_width::UnicodeWidthStr;
 
 fn border_style(t: &ThemeColors, active: bool) -> Style {
     if t.follow_terminal {
@@ -41,6 +43,10 @@ fn border_type(t: &ThemeColors, active: bool) -> BorderType {
     } else {
         BorderType::Plain
     }
+}
+
+fn display_width(text: &str) -> u16 {
+    UnicodeWidthStr::width(text) as u16
 }
 
 pub fn draw(f: &mut Frame, app: &mut App) {
@@ -337,11 +343,12 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     if at < app.tab_scroll {
         app.tab_scroll = at;
     }
-    let plus_w = 7u16;
+    let plus = "  ＋  ";
+    let plus_w = display_width(plus);
     let tab_widths: Vec<u16> = task
         .tabs
         .iter()
-        .map(|tb| format!("  {}  ", tb.name).len() as u16 + 1)
+        .map(|tb| display_width(&format!("  {}  ", tb.name)) + 1)
         .collect();
     loop {
         let mut used = plus_w;
@@ -388,7 +395,7 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
         } else {
             format!("  {}  ", tab.name)
         };
-        let w = label.len() as u16;
+        let w = display_width(&label);
         if w + 1 > available {
             break;
         }
@@ -430,7 +437,6 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
         spans.push(Span::styled(" ›", Style::default().fg(t.accent2())));
     }
 
-    let plus = "  ＋  ";
     let plus_style = if t.follow_terminal {
         Style::default().add_modifier(Modifier::BOLD | Modifier::UNDERLINED)
     } else {
@@ -503,8 +509,13 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     let (iw, ih) = (area.width.saturating_sub(2), area.height.saturating_sub(2));
     let screen = tab.provider.get_screen(ih, iw);
 
+    if screen.bell {
+        app.pending_bell = true;
+    }
+
     for row_idx in 0..ih {
         let spans: Vec<Span> = if let Some(line) = screen.lines.get(row_idx as usize) {
+            let mut render_width = 0usize;
             let mut cells: Vec<Span> = line
                 .cells
                 .iter()
@@ -524,19 +535,41 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
                     }
                     if cell.underline {
                         style = style.add_modifier(Modifier::UNDERLINED);
+                        if let Some(uc) = cell.underline_color {
+                            style = style.underline_color(uc);
+                        }
+                    }
+                    if cell.dim {
+                        style = style.add_modifier(Modifier::DIM);
+                    }
+                    if cell.reverse {
+                        style = style.add_modifier(Modifier::REVERSED);
+                    }
+                    if cell.strikethrough {
+                        style = style.add_modifier(Modifier::CROSSED_OUT);
+                    }
+                    if cell.hidden {
+                        style = style.add_modifier(Modifier::HIDDEN);
                     }
                     let glyph = if cell.ch == '\0' {
                         String::new()
                     } else {
-                        cell.ch.to_string()
+                        let mut s = cell.ch.to_string();
+                        if let Some(ref zw) = cell.zerowidth {
+                            for &c in zw {
+                                s.push(c);
+                            }
+                        }
+                        s
                     };
+                    render_width += usize::from(cell.display_width);
                     Span::styled(glyph, style)
                 })
                 .collect();
-            // Pad to full width with black background
-            if cells.len() < iw as usize {
+            // Pad to full visible width, accounting for zero-width spacer cells.
+            if render_width < iw as usize {
                 cells.push(Span::styled(
-                    " ".repeat(iw as usize - cells.len()),
+                    " ".repeat(iw as usize - render_width),
                     Style::default().bg(term_bg),
                 ));
             }
@@ -559,25 +592,71 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     }
 
     let (cr, cc) = screen.cursor;
-    if cr < ih && cc < iw {
-        f.set_cursor_position((ix + cc, iy + cr));
-        use crate::terminal_provider::CursorShape;
-        use crossterm::{cursor, execute};
-        if app.last_cursor_shape.as_ref() != Some(&screen.cursor_shape) {
-            let _ = match &screen.cursor_shape {
-                CursorShape::Beam => {
-                    execute!(std::io::stdout(), cursor::SetCursorStyle::BlinkingBar)
+    // Hardware cursor is always hidden (terminal.hide_cursor at startup).
+    // We use a software cursor overlay rendered in the buffer instead.
+    // For Hidden cursor shape (e.g. Claude Code), skip the overlay entirely —
+    // the inner TUI app renders its own visual cursor via INVERSE text.
+    if ih > 0 && iw > 0 && screen.cursor_shape != CursorShape::Hidden {
+        let cursor_row = cr.min(ih.saturating_sub(1));
+        let cursor_col = cc.min(iw.saturating_sub(1));
+        let visual_cc = screen
+            .lines
+            .get(cursor_row as usize)
+            .map(|line| {
+                line.cells
+                    .iter()
+                    .take(cursor_col as usize)
+                    .map(|cell| usize::from(cell.display_width))
+                    .sum::<usize>() as u16
+            })
+            .unwrap_or(cursor_col);
+        let cursor_x = ix + visual_cc.min(iw.saturating_sub(1));
+        let cursor_y = iy + cursor_row;
+
+        // Software cursor overlay: render a visible caret in the buffer.
+        let line = screen.lines.get(cursor_row as usize);
+        let mut glyph = " ".to_string();
+        let mut caret_style = Style::default().bg(term_bg).add_modifier(Modifier::REVERSED);
+        if let Some(line) = line {
+            let mut idx = cc as usize;
+            if idx >= line.cells.len() && !line.cells.is_empty() {
+                idx = line.cells.len() - 1;
+            }
+            let mut cell = line.cells.get(idx);
+            if matches!(cell, Some(c) if c.ch == '\0') && idx > 0 {
+                cell = line.cells.get(idx - 1);
+            }
+            if let Some(cell) = cell {
+                if cell.ch != '\0' {
+                    glyph = cell.ch.to_string();
                 }
-                CursorShape::Underline => execute!(
-                    std::io::stdout(),
-                    cursor::SetCursorStyle::BlinkingUnderScore
-                ),
-                CursorShape::Block => {
-                    execute!(std::io::stdout(), cursor::SetCursorStyle::DefaultUserShape)
+                if let Some(fg) = cell.fg {
+                    caret_style = caret_style.fg(fg);
                 }
-            };
-            app.last_cursor_shape = Some(screen.cursor_shape.clone());
+                if let Some(bg) = cell.bg {
+                    caret_style = caret_style.bg(bg);
+                }
+                if cell.bold {
+                    caret_style = caret_style.add_modifier(Modifier::BOLD);
+                }
+                if cell.italic {
+                    caret_style = caret_style.add_modifier(Modifier::ITALIC);
+                }
+                if cell.underline {
+                    caret_style = caret_style.add_modifier(Modifier::UNDERLINED);
+                }
+                caret_style = caret_style.add_modifier(Modifier::REVERSED);
+            }
         }
+        f.render_widget(
+            Paragraph::new(Line::from(vec![Span::styled(glyph, caret_style)])),
+            Rect {
+                x: cursor_x,
+                y: cursor_y,
+                width: 1,
+                height: 1,
+            },
+        );
     }
 }
 
@@ -617,10 +696,11 @@ fn draw_jump_mode(f: &mut Frame, app: &App, t: &ThemeColors) {
                 if let Some(area_idx) = app.tab_area_tab_indices.iter().position(|i| *i == *tab_idx)
                 {
                     if let Some(tab_area) = app.tab_areas.get(area_idx) {
+                        let label_x = tab_area.x + tab_area.width.saturating_sub(3) / 2;
                         f.render_widget(
                             Paragraph::new(Span::styled(format!("[{}]", label), jump_fg)),
                             Rect {
-                                x: tab_area.x + 1,
+                                x: label_x,
                                 y: tab_area.y,
                                 width: 3,
                                 height: 1,

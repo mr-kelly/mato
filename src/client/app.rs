@@ -3,12 +3,13 @@ use crate::theme::ThemeColors;
 use crate::{
     client::persistence::{load_state, SavedState},
     providers::DaemonProvider,
-    terminal_provider::{CursorShape, TerminalProvider},
+    terminal_provider::TerminalProvider,
     utils::new_id,
 };
 use ratatui::{layout::Rect, widgets::ListState};
 use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, BufReader, Write};
+use std::path::Path;
 use std::os::unix::net::UnixStream;
 use std::sync::mpsc::{self, Receiver};
 use std::thread;
@@ -244,14 +245,14 @@ pub struct App {
     mouse_mode_cache: Option<MouseModeCache>,
     active_status_rx: Option<Receiver<HashSet<String>>>,
     tab_switch_started_at: Option<Instant>,
-    pub last_cursor_shape: Option<CursorShape>,
+    pub pending_bell: bool,
 }
 
 impl App {
     pub fn new() -> Self {
         let mut list_state = ListState::default();
-        let (offices, current_office) = if let Ok(s) = load_state() {
-            let offices = s
+        let (offices, current_office): (Vec<Office>, usize) = if let Ok(s) = load_state() {
+            let offices: Vec<Office> = s
                 .offices
                 .into_iter()
                 .map(|o| {
@@ -280,11 +281,20 @@ impl App {
                     }
                 })
                 .collect();
-            (offices, s.current_office)
+            if offices.is_empty() {
+                (vec![Office::new("Default")], 0)
+            } else {
+                (offices, s.current_office)
+            }
         } else {
             (vec![Office::new("Default")], 0)
         };
-        let active_desk = offices[current_office].active_desk;
+        let current_office = current_office.min(offices.len().saturating_sub(1));
+        let active_desk = offices[current_office]
+            .active_desk
+            .min(offices[current_office].desks.len().saturating_sub(1));
+        let mut offices = offices;
+        offices[current_office].active_desk = active_desk;
         list_state.select(Some(active_desk));
         Self {
             offices,
@@ -320,20 +330,21 @@ impl App {
             show_settings: false,
             settings_selected: crate::theme::selected_index(),
             update_available: None,
-            last_update_check: Instant::now() - std::time::Duration::from_secs(290),
+            // Force first update check immediately after startup.
+            last_update_check: Instant::now() - std::time::Duration::from_secs(3601),
             should_show_onboarding: false,
             office_delete_confirm: None,
             mouse_mode_cache: None,
             active_status_rx: None,
             tab_switch_started_at: None,
-            last_cursor_shape: None,
+            pending_bell: false,
         }
     }
 
     #[allow(dead_code)]
     pub fn from_saved(state: SavedState) -> Self {
         let mut list_state = ListState::default();
-        let offices = state
+        let mut offices = state
             .offices
             .into_iter()
             .map(|o| {
@@ -361,9 +372,16 @@ impl App {
                     active_desk: o.active_desk,
                 }
             })
-            .collect();
-        let current_office = state.current_office;
-        list_state.select(Some(0));
+            .collect::<Vec<_>>();
+        if offices.is_empty() {
+            offices.push(Office::new("Default"));
+        }
+        let current_office = state.current_office.min(offices.len().saturating_sub(1));
+        let active_desk = offices[current_office]
+            .active_desk
+            .min(offices[current_office].desks.len().saturating_sub(1));
+        offices[current_office].active_desk = active_desk;
+        list_state.select(Some(active_desk));
 
         Self {
             offices,
@@ -399,13 +417,14 @@ impl App {
             show_settings: false,
             settings_selected: crate::theme::selected_index(),
             update_available: None,
-            last_update_check: Instant::now() - std::time::Duration::from_secs(290),
+            // Force first update check immediately after startup.
+            last_update_check: Instant::now() - std::time::Duration::from_secs(3601),
             should_show_onboarding: false,
             office_delete_confirm: None,
             mouse_mode_cache: None,
             active_status_rx: None,
             tab_switch_started_at: None,
-            last_cursor_shape: None,
+            pending_bell: false,
         }
     }
 
@@ -431,6 +450,21 @@ impl App {
         self.list_state.selected().unwrap_or(0)
     }
 
+    pub fn select_desk(&mut self, desk_idx: usize) {
+        if self.offices.is_empty() {
+            self.list_state.select(None);
+            return;
+        }
+        let max = self.offices[self.current_office].desks.len().saturating_sub(1);
+        let idx = desk_idx.min(max);
+        let prev = self.selected();
+        self.list_state.select(Some(idx));
+        self.offices[self.current_office].active_desk = idx;
+        if prev != idx {
+            self.dirty = true;
+        }
+    }
+
     #[allow(dead_code)]
     pub fn active_desk(&self) -> usize {
         self.selected()
@@ -445,7 +479,7 @@ impl App {
         if office_idx < self.offices.len() {
             self.current_office = office_idx;
             let active_desk = self.offices[office_idx].active_desk;
-            self.list_state.select(Some(active_desk));
+            self.select_desk(active_desk);
             self.tab_scroll = 0;
             self.mark_tab_switch();
             self.spawn_active_pty();
@@ -458,8 +492,7 @@ impl App {
         self.offices[self.current_office]
             .desks
             .push(Desk::new(format!("Desk {n}")));
-        self.list_state
-            .select(Some(self.offices[self.current_office].desks.len() - 1));
+        self.select_desk(self.offices[self.current_office].desks.len() - 1);
         self.dirty = true;
     }
 
@@ -488,9 +521,7 @@ impl App {
         }
 
         self.offices[self.current_office].desks.remove(idx);
-        self.list_state.select(Some(
-            idx.min(self.offices[self.current_office].desks.len() - 1),
-        ));
+        self.select_desk(idx.min(self.offices[self.current_office].desks.len() - 1));
         self.dirty = true;
     }
 
@@ -501,11 +532,12 @@ impl App {
             .saturating_sub(1) as i32;
         let next = (self.selected() as i32 + delta).clamp(0, max) as usize;
         let changed = self.selected() != next;
-        self.list_state.select(Some(next));
+        self.select_desk(next);
         self.tab_scroll = 0;
         if changed {
             self.mark_tab_switch();
             self.spawn_active_pty();
+            self.dirty = true;
         }
     }
 
@@ -671,6 +703,7 @@ impl App {
     /// Handle jump mode character selection
     pub fn handle_jump_selection(&mut self, c: char) {
         let targets = self.jump_targets();
+        let origin_focus = self.focus;
 
         // Map character to target
         if let Some(idx) = JUMP_LABELS.chars().position(|ch| ch == c) {
@@ -678,16 +711,24 @@ impl App {
                 let (kind, task_idx, tab_idx) = targets[idx];
                 match kind {
                     't' => {
-                        // Jump to desk and focus sidebar.
-                        self.list_state.select(Some(task_idx));
-                        self.focus = Focus::Sidebar;
+                        // Jump to desk target.
+                        self.select_desk(task_idx);
+                        self.focus = match origin_focus {
+                            Focus::Content => Focus::Content,
+                            Focus::Topbar => Focus::Sidebar,
+                            Focus::Sidebar => Focus::Sidebar,
+                        };
                         self.mark_tab_switch();
                         self.spawn_active_pty();
                     }
                     'b' => {
-                        // Jump to tab and focus topbar.
+                        // Jump to tab target.
                         self.offices[self.current_office].desks[task_idx].active_tab = tab_idx;
-                        self.focus = Focus::Topbar;
+                        self.focus = match origin_focus {
+                            Focus::Content => Focus::Content,
+                            Focus::Sidebar => Focus::Topbar,
+                            Focus::Topbar => Focus::Topbar,
+                        };
                         self.mark_tab_switch();
                         self.spawn_active_pty();
                     }
@@ -852,15 +893,19 @@ impl App {
     }
 
     pub fn refresh_update_status(&mut self) {
+        let socket_path = crate::utils::get_socket_path();
+        self.refresh_update_status_from_socket(socket_path);
+    }
+
+    pub fn refresh_update_status_from_socket<P: AsRef<Path>>(&mut self, socket_path: P) {
         use std::time::Duration;
         if self.last_update_check.elapsed() < Duration::from_secs(3600) {
             return;
         }
         self.last_update_check = Instant::now();
-        let socket_path = crate::utils::get_socket_path();
         use std::io::{BufRead, BufReader, Write};
         use std::os::unix::net::UnixStream;
-        let Ok(mut stream) = UnixStream::connect(&socket_path) else {
+        let Ok(mut stream) = UnixStream::connect(socket_path.as_ref()) else {
             return;
         };
         let msg = serde_json::to_vec(&ClientMsg::GetUpdateStatus).unwrap();

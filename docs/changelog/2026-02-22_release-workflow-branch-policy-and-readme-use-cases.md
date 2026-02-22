@@ -238,6 +238,54 @@ Observed result:
   - Formula file/class are selected by branch:
     - `main` -> `mato.rb` / `Mato`
     - `develop` -> `mato-alpha.rb` / `MatoAlpha`
+
+---
+
+## 12) Terminal Cursor Debugging (Claude/Gemini/Codex)
+
+### Problem statement
+Observed inconsistent cursor behavior across CLI apps in terminal tabs:
+- `codex-cli`: cursor mostly correct.
+- `gemini-cli`: intermittent invisible cursor, later stabilized.
+- `claude code`: cursor frequently invisible or visually offset from input area.
+
+### Key findings
+- For `claude code`, runtime logs repeatedly showed:
+  - `cursor_shape=Hidden`
+  - `cursor_row` valid (non-zero, changing with layout)
+  - `cursor_col=0` (often fixed)
+- This indicates the emulator is providing cursor data, but the terminal mode semantics differ from apps that expose a visible hardware cursor.
+
+### Implementation iterations (chronological)
+1. Added explicit display width model for cells:
+   - `ScreenCell.display_width` (0/1/2).
+   - Wide-char spacer cells mapped to zero width.
+2. Switched cursor X calculation to visual-width sum (not raw cell index).
+3. Removed direct `crossterm` cursor style/show/hide calls from render path to avoid API-layer conflict with ratatui frame cursor management.
+4. Added software cursor overlay (tui-term style) in UI buffer rendering.
+5. Introduced low-frequency cursor debug logging for targeted tabs (`claude/gemini/codex`) capturing:
+   - tab metadata
+   - cursor shape/row/col
+   - visible area dimensions
+6. Migrated Alacritty screen extraction toward renderable content iterator flow (`display_iter`) and richer cell attributes (`dim/reverse/strikethrough/hidden`).
+7. Tested multiple Hidden-cursor fallback heuristics (row shift / row-tail inference); kept conservative behavior and removed aggressive heuristics that caused right-edge drift.
+
+### Current status at end of session
+- Cross-app cursor behavior improved for `gemini-cli` and remains correct for `codex-cli`.
+- `claude code` remains the hard case due to persistent `Hidden` cursor shape semantics and non-trivial input-area mapping.
+- Debug instrumentation now exists to support reproducible diagnosis in subsequent sessions.
+
+### Files touched in this debugging track
+- `src/terminal_provider.rs`
+- `src/emulators/alacritty_emulator.rs`
+- `src/emulators/vt100_emulator.rs`
+- `src/client/ui.rs`
+- `src/client/app.rs`
+- `tests/daemon_tests.rs`
+
+### Notes for next session
+- Keep using cursor-debug telemetry as the primary truth source before adding new heuristics.
+- Prefer a single unified cursor policy over app-specific hardcoded exceptions when possible.
   - Added explicit `conflicts_with` declaration in generated formula content to avoid ambiguous binary collision.
 
 ### Tap repository updates
@@ -537,3 +585,232 @@ Observed result:
 ### Result
 - No missing language keys remain for template names at office/desk/tab levels.
 - Templates are structurally ready for incremental translation polishing without further schema change.
+
+---
+
+## 25) Jump Mode Focus Routing by Origin Focus
+
+### Requested behavior
+- If Jump Mode is entered from `Content`:
+  - jump to tab target -> stay in `Content`
+  - jump to desk target -> stay in `Content`
+- If Jump Mode is entered from `Sidebar`:
+  - jump to tab target -> focus `Topbar`
+  - jump to desk target -> focus `Sidebar`
+- If Jump Mode is entered from `Topbar`:
+  - jump to desk target -> focus `Sidebar`
+  - jump to tab target -> focus `Topbar`
+
+### Implementation
+- Updated `src/client/app.rs` (`handle_jump_selection`):
+  - capture `origin_focus` before applying jump
+  - route final focus based on `(origin_focus, target_kind)` instead of fixed target focus
+
+### Result
+- Jump behavior now preserves flow intent for `Content` users while keeping expected cross-focus behavior between `Sidebar` and `Topbar`.
+
+---
+
+## 26) Update Notification Strategy Fix + Unit Tests
+
+### Observation
+- `https://mato.sh/version.txt` currently returns `0.6.0`.
+- Previous logic used string inequality (`remote != current`), which could produce false positives when remote is older/different format.
+
+### Fix
+- Updated daemon update comparison in `src/daemon/daemon.rs`:
+  - parse versions with SemVer (`semver` crate), including optional `v` prefix
+  - notify only when `remote > current`
+  - invalid/empty remote text now yields no update
+
+### Tests
+- Added unit tests for update decision function:
+  - same version => no update
+  - newer patch => update
+  - older remote => no update
+  - prerelease -> stable => update
+  - stable current vs prerelease remote => no update
+  - `v` prefix compatibility
+  - invalid remote text => no update
+
+---
+
+## 27) End-to-End UpdateStatus Protocol Integration Test
+
+### Goal
+- Verify update notification data path through real Unix socket protocol handling.
+
+### Added test
+- `tests/integration_tests.rs`
+  - added `start_daemon_with_latest(...)` helper to seed daemon-side `latest_version`
+  - added `daemon_get_update_status_round_trip`:
+    - client sends `ClientMsg::GetUpdateStatus`
+    - daemon responds with `ServerMsg::UpdateStatus { latest: Some(\"0.6.1\") }`
+    - test asserts exact round-trip payload
+
+### Why this matters
+- This complements unit tests of version comparison with an integration-level protocol validation.
+
+---
+
+## 28) App-Level End-to-End Update Refresh Integration Test
+
+### Goal
+- Verify `App::refresh_update_status()` behavior end-to-end with a real Unix socket daemon handler, not only protocol-level checks.
+
+### Implementation
+- Updated `src/client/app.rs`:
+  - kept `refresh_update_status()` as default entry point
+  - added `refresh_update_status_from_socket(...)` to allow socket-path injection in tests while preserving production behavior
+- Added test in `tests/integration_tests.rs`:
+  - `app_refresh_update_status_round_trip`
+  - starts in-process daemon socket with seeded latest version (`0.6.2`)
+  - sets `app.last_update_check` older than 1 hour
+  - calls `app.refresh_update_status_from_socket(...)`
+  - asserts `app.update_available == Some("0.6.2")`
+
+### Validation
+- `source ~/.cargo/env && cargo test -q app_refresh_update_status_round_trip --test integration_tests` passed
+- `source ~/.cargo/env && cargo test -q` passed (full suite)
+
+---
+
+## 29) Update Check Robustness Tests (Throttle + Connection Failure)
+
+### Goal
+- Close two remaining gaps in `App` update-check behavior:
+- ensure 1-hour throttle prevents unnecessary checks
+- ensure daemon socket connection failure does not overwrite existing update state
+
+### Added tests
+- `tests/integration_tests.rs`
+  - `app_refresh_update_status_throttled_within_one_hour`
+    - daemon advertises a newer version (`9.9.9`)
+    - app check is within 1-hour throttle window
+    - assert `update_available` remains unchanged (`None`)
+  - `app_refresh_update_status_connection_failure_does_not_overwrite_state`
+    - app starts with `update_available = Some("0.6.0")`
+    - socket path is missing/unreachable
+    - assert previous state is preserved
+
+### Validation
+- `source ~/.cargo/env && cargo test -q --test integration_tests app_refresh_update_status_throttled_within_one_hour` passed
+- `source ~/.cargo/env && cargo test -q --test integration_tests app_refresh_update_status_connection_failure_does_not_overwrite_state` passed
+- `source ~/.cargo/env && cargo test -q` passed (full suite)
+
+---
+
+## 30) Fix Active Desk Persistence on Restart
+
+### Report
+- After exit and reopen, app did not return to the previously active desk.
+
+### Root cause
+- Desk selection mostly updated only `list_state`.
+- Persisted state (`SavedOffice.active_desk`) was not updated when changing desk via navigation/click/jump.
+- On next startup, restored desk could be stale.
+
+### Fix
+- Added unified desk selection API in `src/client/app.rs`:
+  - `select_desk(...)` now synchronizes:
+    - `list_state.selected()`
+    - `offices[current_office].active_desk`
+    - `dirty` when selection changes
+- Replaced direct desk-selection writes to use unified API:
+  - `switch_office(...)`
+  - `new_desk(...)`
+  - `close_desk(...)`
+  - `nav(...)`
+  - jump-mode desk target in `handle_jump_selection(...)`
+  - sidebar mouse click in `src/main.rs`
+- Startup hardening:
+  - clamp restored `current_office` and `active_desk` in `App::new` and `App::from_saved`
+  - fallback to default office when loaded/supplied offices are empty
+
+### Verification
+- Added persistence assertion update in `tests/daemon_tests.rs`:
+  - `save_and_load_state_roundtrip` now navigates to desk index 1, saves state, and asserts restored `active_desk == 1`.
+
+---
+
+## 31) Fix Delayed Initial Update Banner Check
+
+### Symptom
+- Update banner could remain hidden right after startup, even when local version was intentionally lower than remote.
+
+### Root cause
+- `App` initialized `last_update_check` to `now - 290s`.
+- Client throttle is 1 hour (`3600s`), so first `GetUpdateStatus` request was delayed by ~55 minutes.
+
+### Fix
+- Updated `src/client/app.rs` constructor paths (`new` and `from_saved`) to initialize:
+  - `last_update_check = now - 3601s`
+- This guarantees the first UI loop can check update status immediately after startup.
+
+### Validation
+- `source ~/.cargo/env && cargo test -q --test integration_tests app_refresh_update_status_round_trip` passed
+- `source ~/.cargo/env && cargo test -q` passed (full suite)
+
+---
+
+## 32) Detect Client/Daemon Version Mismatch at Startup
+
+### Problem
+- After upgrading `mato`, an old daemon process could still be reused via existing socket.
+- This leads to client/daemon version drift until manual `mato --kill`.
+
+### Change
+- `src/daemon/daemon.rs`
+  - `ClientMsg::Hello` now returns daemon `CARGO_PKG_VERSION` (instead of fixed `"0.1"`).
+- `src/main.rs`
+  - after `ensure_daemon_running()`, client performs handshake (`Hello`) to read daemon version
+  - if daemon version differs from client version, show prompt:
+    - `Restart daemon now to use the new version? [Y/n]`
+  - on confirm, run:
+    - `mato --kill` equivalent (`daemon::kill_all()`)
+    - start daemon again (`daemon::ensure_daemon_running()`)
+  - if restart still reports mismatch, emit warning
+
+### Outcome
+- Upgrade flow is now safer and explicit.
+- Users are prompted to recycle stale daemon process immediately when versions diverge.
+
+---
+
+## 33) Clarify Daemon-Restart Prompt Impact (Safer Default)
+
+### Problem
+- Version mismatch prompt asked for restart, but did not clearly explain side effects.
+- Users could assume restart is non-disruptive.
+
+### Change
+- Updated `src/main.rs` restart confirmation text to explicitly state:
+  - all running TTY/shell processes will be terminated
+  - other running `mato` clients will be closed
+  - layout/state is kept, but live process state is lost
+- Changed prompt default from accept to deny:
+  - from `[Y/n]` to `[y/N]`
+  - empty input now means **No**
+
+### Outcome
+- User decision at upgrade time is now informed and safer by default.
+
+---
+
+## 34) Fix Jump-Mode Label Alignment on Topbar Tabs
+
+### Problem
+- In Jump Mode, topbar labels (`[a]`, `[b]`, ...) could appear visually misaligned with tabs.
+- This was more obvious with emoji/CJK tab names.
+
+### Root cause
+- Topbar width/layout logic used byte length (`String::len`) instead of terminal display width.
+- Jump label X position used a fixed offset relative to tab start.
+
+### Fix
+- Updated `src/client/ui.rs`:
+  - switched tab width calculations to display width (`unicode_width::UnicodeWidthStr`)
+  - adjusted Jump label rendering for topbar tabs to center inside each tab area
+
+### Result
+- Jump labels now align consistently with rendered tabs, including multilingual/emoji names.

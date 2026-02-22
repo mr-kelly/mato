@@ -10,6 +10,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Placeholder for upcoming changes.
 
+## [0.7.0] - 2026-02-22
+
+**Terminal Rendering Overhaul + Cursor/Bell Pipeline Release**
+
+### Added
+- Bell forwarding from terminal emulator events to host terminal output.
+- Full terminal cell attribute transport/render support additions:
+  - `reverse` (INVERSE)
+  - `dim`
+  - `strikethrough`
+  - `hidden`
+  - extended underline mode mapping
+  - underline color support
+  - zero-width combining character handling
+  - explicit cell display width metadata
+- Cursor telemetry during debugging (`cursor-debug`) for reproducible diagnosis across CLI apps.
+
+### Changed
+- Alacritty screen extraction path moved to renderable display iteration model.
+- Cursor shape handling switched to DECTCEM-aware renderable cursor semantics.
+- Cursor rendering approach simplified toward software-overlay behavior in the content layer.
+- Terminal mode detection for bracketed paste/mouse now reads native `TermMode` flags (removed manual byte-sequence scanning and tail buffering).
+- vt100 adapter updated to populate expanded screen-cell fields consistently with the new render model.
+
+### Fixed
+- Claude Code cursor visibility failure caused by missing INVERSE attribute propagation.
+- Stale bottom cursor artifact by aligning cursor visibility handling with hidden cursor mode.
+- Terminal title reset behavior now clears stale titles on `ResetTitle`.
+
 ## [0.6.0] - 2026-02-22
 
 **Terminal Resilience + Website Refresh Release**
@@ -170,7 +199,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Links
 
-[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/mr-kelly/mato/releases/tag/v0.7.0
 [0.6.0]: https://github.com/mr-kelly/mato/releases/tag/v0.6.0
 [0.5.1]: https://github.com/mr-kelly/mato/releases/tag/v0.5.1
 [0.5.0]: https://github.com/mr-kelly/mato/releases/tag/v0.5.0

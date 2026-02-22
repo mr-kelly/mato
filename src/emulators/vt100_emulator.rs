@@ -2,6 +2,7 @@ use crate::terminal_emulator::TerminalEmulator;
 use crate::terminal_provider::{ScreenCell, ScreenContent, ScreenLine};
 use ratatui::style::Color;
 use std::sync::{Arc, Mutex};
+use unicode_width::UnicodeWidthChar;
 
 pub struct Vt100Emulator {
     parser: Arc<Mutex<vt100::Parser>>,
@@ -31,13 +32,25 @@ impl TerminalEmulator for Vt100Emulator {
                 let def = vt100::Cell::default();
                 let cell = screen.cell(row, col).unwrap_or(&def);
                 let ch = cell.contents().chars().next().unwrap_or(' ');
+                let display_width = if ch == '\0' {
+                    0
+                } else {
+                    UnicodeWidthChar::width(ch).unwrap_or(1).clamp(1, 2) as u8
+                };
                 cells.push(ScreenCell {
                     ch,
+                    display_width,
                     fg: vt_color(cell.fgcolor()),
                     bg: vt_color(cell.bgcolor()),
                     bold: cell.bold(),
                     italic: cell.italic(),
                     underline: cell.underline(),
+                    dim: false,
+                    reverse: cell.inverse(),
+                    strikethrough: false,
+                    hidden: false,
+                    underline_color: None,
+                    zerowidth: None,
                 });
             }
             lines.push(ScreenLine { cells });
@@ -51,6 +64,7 @@ impl TerminalEmulator for Vt100Emulator {
             cursor: (cr, cc),
             title: None,
             cursor_shape: crate::terminal_provider::CursorShape::Block,
+            bell: false,
         }
     }
 

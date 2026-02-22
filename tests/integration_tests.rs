@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use dashmap::DashMap;
+use mato::client::app::App;
 use parking_lot::Mutex;
 
 use mato::config::Config;
@@ -13,9 +14,13 @@ use mato::daemon::daemon::handle_client;
 use mato::protocol::{ClientMsg, ServerMsg};
 use mato::providers::PtyProvider;
 
-fn start_daemon(socket_path: &str) -> Arc<DashMap<String, Arc<Mutex<PtyProvider>>>> {
+fn start_daemon_with_latest(
+    socket_path: &str,
+    latest: Option<&str>,
+) -> Arc<DashMap<String, Arc<Mutex<PtyProvider>>>> {
     let tabs: Arc<DashMap<String, Arc<Mutex<PtyProvider>>>> = Arc::new(DashMap::new());
     let tabs_clone = tabs.clone();
+    let latest_version_value = latest.map(|s| s.to_string());
     let path_thread = socket_path.to_string();
     let path_wait = socket_path.to_string();
 
@@ -28,8 +33,8 @@ fn start_daemon(socket_path: &str) -> Arc<DashMap<String, Arc<Mutex<PtyProvider>
                 if let Ok((stream, _)) = listener.accept().await {
                     let tabs = tabs_clone.clone();
                     let config = Arc::new(Mutex::new(Config::default()));
+                    let latest_version = Arc::new(parking_lot::Mutex::new(latest_version_value.clone()));
                     tokio::spawn(async move {
-                        let latest_version = Arc::new(parking_lot::Mutex::new(None));
                         let _ = handle_client(stream, tabs, config, 1, latest_version).await;
                     });
                 }
@@ -44,6 +49,10 @@ fn start_daemon(socket_path: &str) -> Arc<DashMap<String, Arc<Mutex<PtyProvider>
         }
     }
     tabs
+}
+
+fn start_daemon(socket_path: &str) -> Arc<DashMap<String, Arc<Mutex<PtyProvider>>>> {
+    start_daemon_with_latest(socket_path, None)
 }
 
 fn send_recv(socket_path: &str, msg: &ClientMsg) -> ServerMsg {
@@ -174,4 +183,61 @@ fn daemon_spawn_twice_is_idempotent() {
     }
     std::thread::sleep(Duration::from_millis(100));
     assert_eq!(tabs.iter().filter(|e| e.key() == "tab-dup").count(), 1);
+}
+
+#[test]
+fn daemon_get_update_status_round_trip() {
+    let socket = "/tmp/mato_test_update_status.sock";
+    start_daemon_with_latest(socket, Some("0.6.1"));
+    let resp = send_recv(socket, &ClientMsg::GetUpdateStatus);
+    match resp {
+        ServerMsg::UpdateStatus { latest } => {
+            assert_eq!(latest, Some("0.6.1".to_string()));
+        }
+        other => panic!("expected UpdateStatus, got {:?}", other),
+    }
+}
+
+#[test]
+fn app_refresh_update_status_round_trip() {
+    let socket = "/tmp/mato_test_app_update_status.sock";
+    start_daemon_with_latest(socket, Some("0.6.2"));
+
+    let mut app = App::new();
+    app.update_available = None;
+    app.last_update_check = std::time::Instant::now() - Duration::from_secs(3601);
+    app.refresh_update_status_from_socket(socket);
+
+    assert_eq!(app.update_available, Some("0.6.2".to_string()));
+}
+
+#[test]
+fn app_refresh_update_status_throttled_within_one_hour() {
+    let socket = "/tmp/mato_test_app_update_throttle.sock";
+    start_daemon_with_latest(socket, Some("9.9.9"));
+
+    let mut app = App::new();
+    app.update_available = None;
+    app.last_update_check = std::time::Instant::now();
+    app.refresh_update_status_from_socket(socket);
+
+    assert_eq!(
+        app.update_available, None,
+        "should not query daemon within throttle window"
+    );
+}
+
+#[test]
+fn app_refresh_update_status_connection_failure_does_not_overwrite_state() {
+    let mut app = App::new();
+    app.update_available = Some("0.6.0".to_string());
+    app.last_update_check = std::time::Instant::now() - Duration::from_secs(3601);
+
+    app.refresh_update_status_from_socket("/tmp/mato_test_missing_update_socket.sock");
+
+    assert_eq!(
+        app.update_available,
+        Some("0.6.0".to_string()),
+        "connection failure should keep previous update state"
+    );
 }

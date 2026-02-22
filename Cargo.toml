@@ -1,6 +1,6 @@
 [package]
 name = "mato"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
 description = "Multi-Agent Terminal Office - A daemon-based persistent terminal multiplexer"
@@ -39,3 +39,5 @@ daemonize = "0.5"
 chrono = "0.4"
 reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
 signal-hook = "0.3"
+semver = "1"
+unicode-width = "0.2"

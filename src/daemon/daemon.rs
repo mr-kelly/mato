@@ -6,6 +6,7 @@ use crate::terminal_provider::TerminalProvider;
 use anyhow::Result;
 use dashmap::DashMap;
 use parking_lot::Mutex;
+use semver::Version;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
@@ -14,6 +15,22 @@ use tokio::net::{UnixListener, UnixStream};
 
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const VERSION_URL: &str = "https://mato.sh/version.txt";
+
+fn parse_semver_like(input: &str) -> Option<Version> {
+    let s = input.trim().strip_prefix('v').unwrap_or(input.trim());
+    Version::parse(s).ok()
+}
+
+fn compute_update_available(remote_raw: &str, current_raw: &str) -> Option<String> {
+    let remote = remote_raw.trim();
+    if remote.is_empty() {
+        return None;
+    }
+    match (parse_semver_like(remote), parse_semver_like(current_raw)) {
+        (Some(remote_v), Some(current_v)) if remote_v > current_v => Some(remote.to_string()),
+        _ => None,
+    }
+}
 
 fn is_disconnect_error(err: &anyhow::Error) -> bool {
     if let Some(ioe) = err.downcast_ref::<std::io::Error>() {
@@ -76,12 +93,7 @@ impl Daemon {
                     match reqwest::get(VERSION_URL).await {
                         Ok(resp) if resp.status().is_success() => {
                             if let Ok(text) = resp.text().await {
-                                let remote = text.trim().to_string();
-                                let update = if remote != CURRENT_VERSION {
-                                    Some(remote)
-                                } else {
-                                    None
-                                };
+                                let update = compute_update_available(&text, CURRENT_VERSION);
                                 *latest_version.lock() = update;
                             }
                         }
@@ -169,6 +181,55 @@ impl Default for Daemon {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::compute_update_available;
+
+    #[test]
+    fn update_none_when_same_version() {
+        assert_eq!(compute_update_available("0.6.0", "0.6.0"), None);
+    }
+
+    #[test]
+    fn update_when_remote_newer_patch() {
+        assert_eq!(
+            compute_update_available("0.6.1", "0.6.0"),
+            Some("0.6.1".to_string())
+        );
+    }
+
+    #[test]
+    fn no_update_when_remote_older() {
+        assert_eq!(compute_update_available("0.5.9", "0.6.0"), None);
+    }
+
+    #[test]
+    fn update_from_prerelease_to_stable() {
+        assert_eq!(
+            compute_update_available("0.6.0", "0.6.0-alpha.1"),
+            Some("0.6.0".to_string())
+        );
+    }
+
+    #[test]
+    fn no_update_when_remote_prerelease_below_current_stable() {
+        assert_eq!(compute_update_available("0.6.0-alpha.2", "0.6.0"), None);
+    }
+
+    #[test]
+    fn accepts_v_prefix() {
+        assert_eq!(
+            compute_update_available("v0.6.1", "0.6.0"),
+            Some("v0.6.1".to_string())
+        );
+    }
+
+    #[test]
+    fn no_update_on_invalid_remote_text() {
+        assert_eq!(compute_update_available("latest", "0.6.0"), None);
+    }
+}
+
 pub async fn handle_client(
     stream: UnixStream,
     tabs: Arc<DashMap<String, Arc<Mutex<PtyProvider>>>>,
@@ -199,7 +260,7 @@ pub async fn handle_client(
 
         let response = match msg {
             ClientMsg::Hello { .. } => ServerMsg::Welcome {
-                version: "0.1".into(),
+                version: CURRENT_VERSION.into(),
             },
 
             ClientMsg::Spawn { tab_id, rows, cols } => {

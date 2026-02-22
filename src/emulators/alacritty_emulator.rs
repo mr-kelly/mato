@@ -1,24 +1,30 @@
 use alacritty_terminal::event::{Event, EventListener};
 use alacritty_terminal::grid::Dimensions;
 use alacritty_terminal::grid::Scroll;
-use alacritty_terminal::index::{Column, Line};
 use alacritty_terminal::term::cell::Flags;
-use alacritty_terminal::term::Config;
+use alacritty_terminal::term::{Config, TermMode};
 use alacritty_terminal::vte::ansi::{CursorShape as AlacrittyCursorShape, Processor};
 use alacritty_terminal::Term;
 use ratatui::style::Color;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::terminal_emulator::TerminalEmulator;
 use crate::terminal_provider::{CursorShape, ScreenCell, ScreenContent, ScreenLine};
 
 #[derive(Clone)]
-struct TitleCapture(Arc<Mutex<Option<String>>>);
+struct EventCapture {
+    title: Arc<Mutex<Option<String>>>,
+    bell: Arc<AtomicBool>,
+}
 
-impl EventListener for TitleCapture {
+impl EventListener for EventCapture {
     fn send_event(&self, event: Event) {
-        if let Event::Title(t) = event {
-            *self.0.lock().unwrap() = Some(t);
+        match event {
+            Event::Title(t) => *self.title.lock().unwrap() = Some(t),
+            Event::ResetTitle => *self.title.lock().unwrap() = None,
+            Event::Bell => self.bell.store(true, Ordering::Relaxed),
+            _ => {}
         }
     }
 }
@@ -47,20 +53,22 @@ struct AnsiThemePalette {
 }
 
 pub struct AlacrittyEmulator {
-    term: Term<TitleCapture>,
+    term: Term<EventCapture>,
     processor: Processor,
     title: Arc<Mutex<Option<String>>>,
+    bell: Arc<AtomicBool>,
     scroll_offset: i32,
-    bracketed_paste: bool,
-    mouse_mode: bool,
-    mode_tail: Vec<u8>,
     theme_palette: Option<AnsiThemePalette>,
 }
 
 impl AlacrittyEmulator {
     pub fn new(rows: u16, cols: u16) -> Self {
         let title = Arc::new(Mutex::new(None));
-        let listener = TitleCapture(Arc::clone(&title));
+        let bell = Arc::new(AtomicBool::new(false));
+        let listener = EventCapture {
+            title: Arc::clone(&title),
+            bell: Arc::clone(&bell),
+        };
         let size = TermSize {
             cols: cols as usize,
             lines: rows as usize,
@@ -75,10 +83,8 @@ impl AlacrittyEmulator {
             term,
             processor: Processor::new(),
             title,
+            bell,
             scroll_offset: 0,
-            bracketed_paste: false,
-            mouse_mode: false,
-            mode_tail: Vec::new(),
             theme_palette: if theme.follow_terminal {
                 None
             } else {
@@ -86,64 +92,11 @@ impl AlacrittyEmulator {
             },
         }
     }
-
-    fn update_terminal_modes(&mut self, bytes: &[u8]) {
-        const ENABLE: &[u8] = b"\x1b[?2004h";
-        const DISABLE: &[u8] = b"\x1b[?2004l";
-        const MOUSE_ENABLE_1000: &[u8] = b"\x1b[?1000h";
-        const MOUSE_ENABLE_1002: &[u8] = b"\x1b[?1002h";
-        const MOUSE_ENABLE_1003: &[u8] = b"\x1b[?1003h";
-        const MOUSE_DISABLE_1000: &[u8] = b"\x1b[?1000l";
-        const MOUSE_DISABLE_1002: &[u8] = b"\x1b[?1002l";
-        const MOUSE_DISABLE_1003: &[u8] = b"\x1b[?1003l";
-        let mut merged = Vec::with_capacity(self.mode_tail.len() + bytes.len());
-        merged.extend_from_slice(&self.mode_tail);
-        merged.extend_from_slice(bytes);
-
-        if merged.windows(ENABLE.len()).any(|w| w == ENABLE) {
-            self.bracketed_paste = true;
-        }
-        if merged.windows(DISABLE.len()).any(|w| w == DISABLE) {
-            self.bracketed_paste = false;
-        }
-        if merged
-            .windows(MOUSE_ENABLE_1000.len())
-            .any(|w| w == MOUSE_ENABLE_1000)
-            || merged
-                .windows(MOUSE_ENABLE_1002.len())
-                .any(|w| w == MOUSE_ENABLE_1002)
-            || merged
-                .windows(MOUSE_ENABLE_1003.len())
-                .any(|w| w == MOUSE_ENABLE_1003)
-        {
-            self.mouse_mode = true;
-        }
-        if merged
-            .windows(MOUSE_DISABLE_1000.len())
-            .any(|w| w == MOUSE_DISABLE_1000)
-            || merged
-                .windows(MOUSE_DISABLE_1002.len())
-                .any(|w| w == MOUSE_DISABLE_1002)
-            || merged
-                .windows(MOUSE_DISABLE_1003.len())
-                .any(|w| w == MOUSE_DISABLE_1003)
-        {
-            self.mouse_mode = false;
-        }
-
-        let keep = ENABLE.len().max(DISABLE.len()).saturating_sub(1);
-        if merged.len() > keep {
-            self.mode_tail = merged[merged.len() - keep..].to_vec();
-        } else {
-            self.mode_tail = merged;
-        }
-    }
 }
 
 impl TerminalEmulator for AlacrittyEmulator {
     fn process(&mut self, bytes: &[u8]) {
         self.processor.advance(&mut self.term, bytes);
-        self.update_terminal_modes(bytes);
         // Auto-scroll to bottom on new output
         self.scroll_offset = 0;
     }
@@ -161,53 +114,135 @@ impl TerminalEmulator for AlacrittyEmulator {
 
     fn get_screen(&self, rows: u16, cols: u16) -> ScreenContent {
         let grid = self.term.grid();
-        let cursor = grid.cursor.point;
-        let cursor_style = self.term.cursor_style();
+        let renderable = self.term.renderable_content();
+        let mut cursor = renderable.cursor.point;
         let title = self.title.lock().unwrap().clone();
 
-        let cursor_shape = match cursor_style.shape {
+        // Use renderable cursor shape which accounts for DECTCEM (cursor visibility).
+        // term.cursor_style() only gives the shape preference, not visibility.
+        let cursor_shape = match renderable.cursor.shape {
             AlacrittyCursorShape::Beam => CursorShape::Beam,
             AlacrittyCursorShape::Underline => CursorShape::Underline,
+            AlacrittyCursorShape::Hidden => CursorShape::Hidden,
             _ => CursorShape::Block,
         };
 
-        let mut lines = Vec::with_capacity(rows as usize);
-        let grid_rows = self.term.screen_lines() as i32;
-        let grid_cols = self.term.columns();
-        let render_rows = (rows as i32).min(grid_rows);
-        let render_cols = cols.min(grid_cols as u16);
+        // Some TUIs may report an off-screen renderable cursor transiently.
+        // Only in that case fall back to raw grid cursor.
+        let raw = grid.cursor.point;
+        let renderable_offscreen = cursor.line.0 < 0 || cursor.line.0 >= rows as i32;
+        if renderable_offscreen {
+            cursor = raw;
+        }
+        if cursor.line.0 >= 0 && cursor.column.0 > 0 {
+            let point_cell = &grid[cursor.line][cursor.column];
+            if point_cell.flags.intersects(Flags::WIDE_CHAR_SPACER) {
+                cursor.column -= 1;
+            }
+        }
 
-        for line in 0..render_rows {
-            let mut cells = Vec::with_capacity(cols as usize);
-            for col in 0..render_cols as usize {
-                let cell = &grid[Line(line)][Column(col)];
-                let spacer = cell
+        let grid_cols = self.term.columns() as usize;
+        let render_rows = (rows as usize).min(self.term.screen_lines());
+        let render_cols = (cols as usize).min(grid_cols);
+
+        let mut lines = vec![
+            ScreenLine {
+                cells: Vec::with_capacity(render_cols)
+            };
+            render_rows
+        ];
+
+        let mut first_visible_line: Option<i32> = None;
+        for indexed in renderable.display_iter {
+            let abs_line = indexed.point.line.0;
+            let col = indexed.point.column.0;
+            let base = *first_visible_line.get_or_insert(abs_line);
+            let row = abs_line - base;
+            if row < 0 {
+                continue;
+            }
+            let row = row as usize;
+            if row >= render_rows || col >= render_cols {
+                continue;
+            }
+            let cell = indexed.cell;
+            let spacer = cell
+                .flags
+                .intersects(Flags::WIDE_CHAR_SPACER | Flags::LEADING_WIDE_CHAR_SPACER);
+            let display_width = if spacer {
+                0
+            } else if cell.flags.contains(Flags::WIDE_CHAR) {
+                2
+            } else {
+                1
+            };
+            let zerowidth = if spacer {
+                None
+            } else {
+                cell.zerowidth()
+                    .filter(|zw| !zw.is_empty())
+                    .map(|zw| zw.to_vec())
+            };
+            let underline_color = cell
+                .underline_color()
+                .and_then(|c| self.ansi_color_to_ratatui(c));
+            lines[row].cells.push(ScreenCell {
+                ch: if spacer { '\0' } else { cell.c },
+                display_width,
+                fg: self.ansi_color_to_ratatui(cell.fg),
+                bg: self.ansi_color_to_ratatui(cell.bg),
+                bold: cell.flags.contains(Flags::BOLD),
+                italic: cell.flags.contains(Flags::ITALIC),
+                underline: cell
                     .flags
-                    .intersects(Flags::WIDE_CHAR_SPACER | Flags::LEADING_WIDE_CHAR_SPACER);
-                cells.push(ScreenCell {
-                    // Spacer cells are placeholders for wide chars; render them as zero-width.
-                    ch: if spacer { '\0' } else { cell.c },
-                    fg: self.ansi_color_to_ratatui(cell.fg),
-                    bg: self.ansi_color_to_ratatui(cell.bg),
-                    bold: cell
-                        .flags
-                        .contains(alacritty_terminal::term::cell::Flags::BOLD),
-                    italic: cell
-                        .flags
-                        .contains(alacritty_terminal::term::cell::Flags::ITALIC),
-                    underline: cell
-                        .flags
-                        .contains(alacritty_terminal::term::cell::Flags::UNDERLINE),
+                    .intersects(Flags::UNDERLINE | Flags::DOUBLE_UNDERLINE | Flags::UNDERCURL | Flags::DOTTED_UNDERLINE | Flags::DASHED_UNDERLINE),
+                dim: cell
+                    .flags
+                    .contains(Flags::DIM),
+                reverse: cell
+                    .flags
+                    .contains(Flags::INVERSE),
+                strikethrough: cell
+                    .flags
+                    .contains(Flags::STRIKEOUT),
+                hidden: cell
+                    .flags
+                    .contains(Flags::HIDDEN),
+                underline_color,
+                zerowidth,
+            });
+        }
+
+        // Ensure each row has enough cells for stable cursor/math paths.
+        for line in &mut lines {
+            while line.cells.len() < render_cols {
+                line.cells.push(ScreenCell {
+                    ch: ' ',
+                    display_width: 1,
+                    fg: None,
+                    bg: None,
+                    bold: false,
+                    italic: false,
+                    underline: false,
+                    dim: false,
+                    reverse: false,
+                    strikethrough: false,
+                    hidden: false,
+                    underline_color: None,
+                    zerowidth: None,
                 });
             }
-            lines.push(ScreenLine { cells });
         }
 
         ScreenContent {
             lines,
-            cursor: (cursor.line.0 as u16, cursor.column.0 as u16),
+            cursor: (
+                cursor.line.0.max(0) as u16,
+                cursor.column.0.max(0) as u16,
+            ),
             title,
             cursor_shape,
+            bell: self.bell.swap(false, Ordering::Relaxed),
         }
     }
 
@@ -218,11 +253,11 @@ impl TerminalEmulator for AlacrittyEmulator {
     }
 
     fn bracketed_paste_enabled(&self) -> bool {
-        self.bracketed_paste
+        self.term.mode().contains(TermMode::BRACKETED_PASTE)
     }
 
     fn mouse_mode_enabled(&self) -> bool {
-        self.mouse_mode
+        self.term.mode().intersects(TermMode::MOUSE_MODE)
     }
 }
 

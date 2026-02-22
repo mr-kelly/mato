@@ -25,6 +25,9 @@ pub struct ScreenContent {
     pub cursor: (u16, u16),
     pub title: Option<String>,
     pub cursor_shape: CursorShape,
+    /// Bell (BEL) was triggered since last screen fetch.
+    #[serde(default)]
+    pub bell: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -32,6 +35,7 @@ pub enum CursorShape {
     Block,
     Beam,
     Underline,
+    Hidden,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,6 +46,8 @@ pub struct ScreenLine {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScreenCell {
     pub ch: char,
+    #[serde(default = "default_display_width")]
+    pub display_width: u8,
     #[serde(with = "color_serde")]
     pub fg: Option<Color>,
     #[serde(with = "color_serde")]
@@ -49,6 +55,24 @@ pub struct ScreenCell {
     pub bold: bool,
     pub italic: bool,
     pub underline: bool,
+    #[serde(default)]
+    pub dim: bool,
+    #[serde(default)]
+    pub reverse: bool,
+    #[serde(default)]
+    pub strikethrough: bool,
+    #[serde(default)]
+    pub hidden: bool,
+    /// Underline color (SGR 58); None means use fg color.
+    #[serde(default, with = "color_serde")]
+    pub underline_color: Option<Color>,
+    /// Zero-width / combining characters attached to this cell.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub zerowidth: Option<Vec<char>>,
+}
+
+fn default_display_width() -> u8 {
+    1
 }
 
 mod color_serde {
@@ -86,6 +110,7 @@ impl Default for ScreenContent {
             cursor: (0, 0),
             title: None,
             cursor_shape: CursorShape::Block,
+            bell: false,
         }
     }
 }

@@ -133,6 +133,18 @@ fn alacritty_resize_preserves_content() {
     );
 }
 
+#[test]
+fn alacritty_wide_char_sets_display_width_and_spacer() {
+    let mut emu = AlacrittyEmulator::new(24, 80);
+    emu.process("中".as_bytes());
+    let screen = emu.get_screen(24, 80);
+    let row = &screen.lines[0].cells;
+    assert_eq!(row[0].ch, '中');
+    assert_eq!(row[0].display_width, 2);
+    assert_eq!(row[1].ch, '\0');
+    assert_eq!(row[1].display_width, 0);
+}
+
 // ── persistence ───────────────────────────────────────────────────────────────
 
 use mato::client::persistence::{SavedDesk, SavedOffice, SavedState, SavedTab};
@@ -266,9 +278,11 @@ fn save_and_load_state_roundtrip() {
     with_temp_config("save_load", || {
         let mut app = make_app(vec![null_task("Work", 2), null_task("Play", 1)]);
         app.offices[0].desks[0].active_tab = 1;
+        app.nav(1);
         mato::client::persistence::save_state(&app).unwrap();
         let restored = mato::client::persistence::load_state().unwrap();
         assert_eq!(restored.offices[0].desks.len(), 2);
+        assert_eq!(restored.offices[0].active_desk, 1);
         assert_eq!(restored.offices[0].desks[0].name, "Work");
         assert_eq!(restored.offices[0].desks[0].tabs.len(), 2);
         assert_eq!(restored.offices[0].desks[0].active_tab, 1);

@@ -12,6 +12,9 @@ mod theme;
 mod utils;
 
 use error::{MatoError, Result};
+use protocol::{ClientMsg, ServerMsg};
+use std::io::{BufRead, BufReader, Write};
+use std::os::unix::net::UnixStream;
 use std::time::Duration;
 
 use crossterm::{
@@ -126,11 +129,78 @@ fn main() -> Result<()> {
 
     // Ensure daemon is running
     daemon::ensure_daemon_running()?;
+    ensure_daemon_version_compatible()?;
 
     run_client().map_err(|e| {
         eprintln!("Error: {}", e);
         e
     })
+}
+
+fn daemon_version() -> Option<String> {
+    let socket_path = utils::get_socket_path();
+    let mut stream = UnixStream::connect(&socket_path).ok()?;
+    let hello = ClientMsg::Hello {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+    };
+    let json = serde_json::to_vec(&hello).ok()?;
+    stream.write_all(&json).ok()?;
+    stream.write_all(b"\n").ok()?;
+    stream.flush().ok()?;
+
+    let mut line = String::new();
+    BufReader::new(&stream).read_line(&mut line).ok()?;
+    match serde_json::from_str::<ServerMsg>(&line).ok()? {
+        ServerMsg::Welcome { version } => Some(version),
+        _ => None,
+    }
+}
+
+fn confirm_daemon_restart(client_version: &str, daemon_version: &str) -> bool {
+    eprintln!(
+        "Daemon version mismatch: daemon={}, client={}.",
+        daemon_version, client_version
+    );
+    eprintln!("Restarting daemon will:");
+    eprintln!("- terminate all running TTY/shell processes");
+    eprintln!("- close other running mato clients");
+    eprintln!("- keep layout/state from saved config, but lose live process state");
+    eprint!("Restart daemon now to use the new version? [y/N]: ");
+    let _ = std::io::stderr().flush();
+    let mut input = String::new();
+    if std::io::stdin().read_line(&mut input).is_err() {
+        return false;
+    }
+    let answer = input.trim().to_ascii_lowercase();
+    answer == "y" || answer == "yes"
+}
+
+fn ensure_daemon_version_compatible() -> Result<()> {
+    let client_version = env!("CARGO_PKG_VERSION");
+    let Some(daemon_ver) = daemon_version() else {
+        return Ok(());
+    };
+
+    if daemon_ver == client_version {
+        return Ok(());
+    }
+
+    if confirm_daemon_restart(client_version, &daemon_ver) {
+        daemon::kill_all()?;
+        daemon::ensure_daemon_running()?;
+        if let Some(v) = daemon_version() {
+            if v != client_version {
+                eprintln!(
+                    "Warning: daemon restarted but version is still {} (expected {}).",
+                    v, client_version
+                );
+            }
+        }
+    } else {
+        eprintln!("Continuing with existing daemon version {}.", daemon_ver);
+    }
+
+    Ok(())
 }
 
 fn print_help() {
@@ -162,7 +232,7 @@ fn run_client() -> Result<()> {
         crossterm::event::EnableBracketedPaste
     )?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
-    terminal.show_cursor()?; // Show cursor at startup
+    terminal.hide_cursor()?;
 
     let mut app = App::new();
     terminal.draw(|f| draw(f, &mut app))?;
@@ -180,10 +250,7 @@ fn run_client() -> Result<()> {
                 crossterm::event::EnableBracketedPaste
             )?;
             terminal.clear()?;
-            app.last_cursor_shape = None;
         }
-
-        // Update active status and spinner animation
         app.refresh_active_status();
         app.refresh_update_status();
         app.update_spinner();
@@ -191,6 +258,13 @@ fn run_client() -> Result<()> {
         app.sync_focus_events();
 
         terminal.draw(|f| draw(f, &mut app))?;
+
+        // Forward bell (BEL) from inner terminal to host terminal.
+        if app.pending_bell {
+            app.pending_bell = false;
+            let _ = execute!(terminal.backend_mut(), crossterm::style::Print("\x07"));
+        }
+
         if let Some(elapsed) = app.finish_tab_switch_measurement() {
             tracing::info!("Tab switch first-frame latency: {}ms", elapsed.as_millis());
         }
@@ -282,7 +356,6 @@ fn run_client() -> Result<()> {
                 crossterm::event::EnableBracketedPaste
             )?;
             terminal.clear()?;
-            app.last_cursor_shape = None;
         }
     }
 
@@ -369,7 +442,7 @@ fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
                             lc == col && lr == row && t.elapsed().as_millis() < 400
                         })
                         .unwrap_or(false);
-                    app.list_state.select(Some(idx));
+                    app.select_desk(idx);
                     if is_double {
                         app.focus = Focus::Content;
                         app.spawn_active_pty();
