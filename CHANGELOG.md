@@ -7,8 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-02-22
+
 ### Added
-- Placeholder for upcoming changes.
+- **Resize strategy**: configurable `resize_strategy` in config (`sync`/`fixed`). Default `sync` mode properly resizes PTY and emulator when terminal window changes, fixing vim/htop/lazygit rendering.
+- **Per-tab spawn options**: `Spawn` protocol now supports optional `cwd`, `shell`, and `env` fields for per-tab working directory, shell, and environment variables.
+- **Compatibility smoke tests**: `tests/compat/smoke_test.sh` for automated TUI app compatibility validation.
+
+### Changed
+- AlacrittyEmulator now implements real `resize()` using `term.resize()` instead of no-op.
+- Daemon resize handler respects config strategy instead of always ignoring resize.
+
+### Performance
+- **Persistent write connection**: Input/Paste/Resize/Scroll messages now reuse a single persistent Unix socket connection instead of opening a new connection per keystroke. Reduces per-keystroke overhead from ~1-2ms to ~0.01ms.
+- **Keystroke-triggered screen refresh**: Screen worker wakes immediately via Condvar after input instead of waiting up to 40ms polling cycle. Combined with adaptive main loop (5ms poll after keystroke, 30ms active, 200ms idle), total input-to-echo latency reduced from ~40-120ms to ~5-15ms.
+- **Zero-copy screen reads**: Eliminated `try_clone()` (dup syscall) per screen fetch frame. Reads directly into reusable 256KB buffer with 8KB chunk I/O.
+- **Batch event drain**: Main loop now drains ALL pending crossterm events before rendering instead of one-per-frame.
+- **Post-wake burst**: After keystroke wake, screen worker does 2 rapid re-fetches at 5ms to catch echo faster.
+- **Binary screen protocol (MessagePack)**: Screen responses now use MessagePack instead of JSON. 8x smaller payloads (400KB → 50KB per frame for 80x24). Other messages stay JSON for compatibility.
+- **Screen hash dedup**: Daemon tracks content hash per connection. When screen hasn't changed, sends tiny `ScreenUnchanged` response instead of full frame. Eliminates redundant serialization/transfer when idle.
+- **Push-mode screen updates**: Client subscribes to tab via `Subscribe` message. Daemon pushes screen updates when PTY has output instead of client polling. Eliminates polling overhead entirely — updates arrive within ~2ms of PTY output.
+- **Binary input protocol**: Input/Paste messages use MessagePack framing over the subscribe connection for single-handler echo path. Eliminates JSON serialization overhead.
+- **Conditional render**: Main loop tracks `screen_generation` counter from push mode. Skips `terminal.draw()` when screen content hasn't changed. Reduces idle CPU usage.
+- **Echo spin**: After content keystroke, main loop spins up to 3ms checking for screen_generation bump to catch echo in the same render frame.
+- **Adaptive poll**: Main loop poll timeout: 1ms after input, 8ms follow-up, 16ms active, 100ms idle.
+- **poll(2)-based socket reads**: Worker thread uses `libc::poll()` to check socket readability before calling `read_response()`. When no data available, sleeps only 200µs instead of blocking up to 5ms. 25x faster channel drain cycle.
+- **Skip coalesce after input**: Daemon push loop skips 500µs coalesce check when the trigger was interactive input (Input/Paste). Bulk output still coalesces normally.
+- **Pre-allocated push frame buffer**: Daemon push loop reuses a single buffer for frame construction instead of allocating ~50KB per push.
+
+### Fixed
+- **ESC passthrough**: ESC now passes through to shell applications (vim, fzf, htop) in Content focus. Use double-ESC (within 300ms) to enter Jump Mode from Content. Non-Content focus unchanged.
+- **Rename popup visibility/latency in Sidebar/Topbar**: pressing `r` could set rename state without immediate popup visibility. Main-loop key handling now refreshes UI timing for any Main-screen key, so rename popup appears immediately without requiring an extra click/focus change.
+- **Jump Mode `r` behavior consistency**: in Jump Mode, `r` now correctly maps by focus (`Sidebar`/`Topbar` => Rename, `Content` => Restart terminal) and supports both `r`/`R`.
 
 ## [0.7.1] - 2026-02-22
 
@@ -231,7 +261,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Links
 
-[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/mr-kelly/mato/releases/tag/v0.8.0
 [0.7.1]: https://github.com/mr-kelly/mato/releases/tag/v0.7.1
 [0.7.0]: https://github.com/mr-kelly/mato/releases/tag/v0.7.0
 [0.6.0]: https://github.com/mr-kelly/mato/releases/tag/v0.6.0

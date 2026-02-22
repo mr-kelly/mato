@@ -2,5 +2,10 @@
 # Location: ~/.config/mato/config.toml
 
 # Terminal emulator to use
-# Options: "vt100" (default, basic ANSI) or "vte" (better compatibility)
-emulator = "vte"
+# Options: "vt100" (basic ANSI) or "alacritty" (default, better compatibility)
+emulator = "alacritty"
+
+# Resize strategy when terminal window size changes
+# Options: "sync" (default, resize PTY - correct for vim/htop/etc)
+#          "fixed" (keep PTY at original size - safe but TUI apps won't adapt)
+resize_strategy = "sync"

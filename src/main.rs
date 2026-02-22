@@ -15,7 +15,7 @@ use error::{MatoError, Result};
 use protocol::{ClientMsg, ServerMsg};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crossterm::{
     cursor::MoveTo,
@@ -273,11 +273,13 @@ fn run_client() -> Result<()> {
     )?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
     terminal.hide_cursor()?;
+    let mut mouse_capture_enabled = true;
 
     let mut app = App::new();
     terminal.draw(|f| draw(f, &mut app))?;
     app.spawn_active_pty();
     let mut screen = ScreenState::Main;
+    let mut last_input_at = Instant::now() - Duration::from_secs(10);
 
     loop {
         // Check if we resumed from suspend (SIGCONT)
@@ -291,15 +293,39 @@ fn run_client() -> Result<()> {
                 crossterm::event::EnableBracketedPaste
             )?;
             terminal.clear()?;
+            mouse_capture_enabled = true;
         }
         match &mut screen {
             ScreenState::Main => {
+                // Keep mouse capture enabled globally so Topbar/Sidebar remain clickable
+                // even while Content is focused. Exception: Copy Mode, where we
+                // deliberately let the host terminal own mouse selection/copy.
+                let desired_mouse_capture = !app.copy_mode;
+                if desired_mouse_capture != mouse_capture_enabled {
+                    if desired_mouse_capture {
+                        execute!(terminal.backend_mut(), EnableMouseCapture)?;
+                    } else {
+                        execute!(terminal.backend_mut(), DisableMouseCapture)?;
+                    }
+                    mouse_capture_enabled = desired_mouse_capture;
+                }
+
                 app.refresh_active_status();
                 app.refresh_update_status();
-                app.update_spinner();
                 app.sync_tab_titles();
                 app.sync_focus_events();
-                terminal.draw(|f| draw(f, &mut app))?;
+
+                // Skip render if screen content hasn't changed (push mode dedup)
+                let current_gen = app.active_provider_screen_generation();
+                let ui_changed = app.dirty
+                    || app.pending_bell
+                    || (!app.copy_mode && current_gen != app.last_rendered_screen_gen);
+
+                if ui_changed || last_input_at.elapsed() < Duration::from_millis(100) {
+                    app.update_spinner();
+                    terminal.draw(|f| draw(f, &mut app))?;
+                    app.last_rendered_screen_gen = current_gen;
+                }
 
                 // Forward bell (BEL) from inner terminal to host terminal.
                 if app.pending_bell {
@@ -319,23 +345,43 @@ fn run_client() -> Result<()> {
             }
         }
 
-        // Poll at ~12fps for smooth animation (80ms spinner frame + some overhead)
-        let timeout = match &screen {
+        // Adaptive poll: very short after recent input for fast echo,
+        // normal rate otherwise. With push mode, screen updates arrive
+        // asynchronously and bump screen_generation — we only render when needed.
+        let mut timeout = match &screen {
             ScreenState::Main => {
-                if app.has_active_tabs() || matches!(app.focus, client::app::Focus::Content) {
-                    Duration::from_millis(80) // Fast polling when active
+                let since_input = last_input_at.elapsed();
+                if since_input < Duration::from_millis(50) {
+                    Duration::from_millis(1) // Ultra-fast echo after input
+                } else if since_input < Duration::from_millis(200) {
+                    Duration::from_millis(8) // Quick follow-up for command output
+                } else if app.has_active_tabs() || matches!(app.focus, client::app::Focus::Content)
+                {
+                    Duration::from_millis(16) // ~60fps when active
                 } else {
-                    Duration::from_millis(200) // Slower when idle
+                    Duration::from_millis(100) // Idle
                 }
             }
             ScreenState::Onboarding(_) => Duration::from_millis(200),
         };
 
-        if event::poll(timeout)? {
+        // Drain ALL pending events before rendering to avoid wasting frames.
+        let mut should_break = false;
+        let mut had_content_input = false;
+        while event::poll(timeout)? {
+            // After first event, use zero timeout to drain remaining
+            timeout = Duration::ZERO;
             match event::read()? {
                 Event::Key(key) => match &mut screen {
                     ScreenState::Main => {
+                        // Any key in Main should trigger near-immediate UI redraw
+                        // (e.g. opening rename popup from Sidebar/Topbar).
+                        last_input_at = Instant::now();
+                        if matches!(app.focus, client::app::Focus::Content) {
+                            had_content_input = true;
+                        }
                         if handle_key(&mut app, key) {
+                            should_break = true;
                             break;
                         }
                         if app.dirty {
@@ -381,11 +427,30 @@ fn run_client() -> Result<()> {
                     if matches!(screen, ScreenState::Main)
                         && matches!(app.focus, client::app::Focus::Content)
                     {
+                        last_input_at = Instant::now();
                         app.pty_paste(&text);
                     }
                 }
                 _ => {}
             }
+        }
+
+        // Echo spin: after content input, briefly wait for echo to arrive
+        // so we can render it in the same frame — eliminates one poll cycle (~2ms).
+        if had_content_input && matches!(screen, ScreenState::Main) {
+            let pre_gen = app.active_provider_screen_generation();
+            let spin_deadline = Instant::now() + Duration::from_millis(3);
+            while Instant::now() < spin_deadline {
+                let new_gen = app.active_provider_screen_generation();
+                if new_gen != pre_gen {
+                    break; // Echo arrived!
+                }
+                std::thread::yield_now();
+            }
+        }
+
+        if should_break {
+            break;
         }
     }
 

@@ -240,12 +240,18 @@ pub struct App {
     pub last_update_check: Instant,
     /// Trigger onboarding for new office
     pub should_show_onboarding: bool,
+    /// Full-screen content-only copy/scroll mode.
+    pub copy_mode: bool,
     /// Office delete confirmation
     pub office_delete_confirm: Option<OfficeDeleteConfirm>,
     mouse_mode_cache: Option<MouseModeCache>,
     active_status_rx: Option<Receiver<HashSet<String>>>,
     tab_switch_started_at: Option<Instant>,
     pub pending_bell: bool,
+    /// Timestamp of last ESC press in Content focus (for double-ESC detection)
+    pub last_content_esc: Option<Instant>,
+    /// Frame generation for screen cache change detection
+    pub last_rendered_screen_gen: u64,
 }
 
 impl App {
@@ -333,11 +339,14 @@ impl App {
             // Force first update check immediately after startup.
             last_update_check: Instant::now() - std::time::Duration::from_secs(3601),
             should_show_onboarding: false,
+            copy_mode: false,
             office_delete_confirm: None,
             mouse_mode_cache: None,
             active_status_rx: None,
             tab_switch_started_at: None,
             pending_bell: false,
+            last_content_esc: None,
+            last_rendered_screen_gen: 0,
         }
     }
 
@@ -420,11 +429,14 @@ impl App {
             // Force first update check immediately after startup.
             last_update_check: Instant::now() - std::time::Duration::from_secs(3601),
             should_show_onboarding: false,
+            copy_mode: false,
             office_delete_confirm: None,
             mouse_mode_cache: None,
             active_status_rx: None,
             tab_switch_started_at: None,
             pending_bell: false,
+            last_content_esc: None,
+            last_rendered_screen_gen: 0,
         }
     }
 
@@ -551,6 +563,29 @@ impl App {
         self.offices[self.current_office].desks[i].tabs[at].spawn_pty(rows, cols);
     }
 
+    pub fn restart_active_pty(&mut self) {
+        let i = self.selected();
+        let at = self.offices[self.current_office].desks[i].active_tab;
+        let tab_id = self.offices[self.current_office].desks[i].tabs[at].id.clone();
+
+        let socket_path = crate::utils::get_socket_path();
+        if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(&socket_path) {
+            use crate::protocol::ClientMsg;
+            use std::io::Write;
+            let msg = ClientMsg::ClosePty {
+                tab_id: tab_id.clone(),
+            };
+            if let Ok(json) = serde_json::to_vec(&msg) {
+                let _ = stream.write_all(&json);
+                let _ = stream.write_all(b"\n");
+                let _ = stream.flush();
+            }
+        }
+
+        self.spawn_active_pty();
+        self.mark_tab_switch();
+    }
+
     pub fn resize_all_ptys(&mut self, rows: u16, cols: u16) {
         // Don't resize immediately - wait for user to stop resizing
         // This prevents content loss during window resize
@@ -602,6 +637,15 @@ impl App {
         self.offices[self.current_office].desks[i].tabs[at]
             .provider
             .scroll(delta);
+    }
+
+    pub fn active_provider_screen_generation(&self) -> u64 {
+        let i = self.selected();
+        let desk = &self.offices[self.current_office].desks[i];
+        if desk.tabs.is_empty() {
+            return 0;
+        }
+        desk.tabs[desk.active_tab].provider.screen_generation()
     }
 
     pub fn pty_mouse_mode_enabled(&mut self) -> bool {

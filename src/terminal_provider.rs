@@ -16,6 +16,7 @@ pub trait TerminalProvider: Send {
         false
     }
     fn get_screen(&self, rows: u16, cols: u16) -> ScreenContent;
+    fn screen_generation(&self) -> u64 { 0 }
     fn scroll(&mut self, _delta: i32) {}
 }
 

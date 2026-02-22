@@ -13,7 +13,13 @@ use std::{
 pub struct PtyProvider {
     pty: Option<PtyState>,
     pub last_output: Arc<Mutex<Instant>>,
-    current_size: (u16, u16), // Track current size to avoid unnecessary resizes
+    current_size: (u16, u16),
+    /// Per-tab spawn options (remembered for respawn)
+    spawn_cwd: Option<String>,
+    spawn_shell: Option<String>,
+    spawn_env: Option<Vec<(String, String)>>,
+    /// Notified whenever the PTY reader thread processes new output.
+    pub output_notify: Arc<tokio::sync::Notify>,
 }
 
 struct PtyState {
@@ -28,7 +34,11 @@ impl PtyProvider {
         Self {
             pty: None,
             last_output: Arc::new(Mutex::new(Instant::now())),
-            current_size: (24, 80), // Default size
+            current_size: (24, 80),
+            spawn_cwd: None,
+            spawn_shell: None,
+            spawn_env: None,
+            output_notify: Arc::new(tokio::sync::Notify::new()),
         }
     }
 
@@ -87,11 +97,29 @@ impl PtyProvider {
         self.pty.as_ref().and_then(|p| p.child.process_id())
     }
 
+    pub fn spawn_with_options(
+        &mut self,
+        rows: u16,
+        cols: u16,
+        cwd: Option<&str>,
+        shell: Option<&str>,
+        env: Option<&[(String, String)]>,
+    ) {
+        self.spawn_cwd = cwd.map(|s| s.to_string());
+        self.spawn_shell = shell.map(|s| s.to_string());
+        self.spawn_env = env.map(|e| e.to_vec());
+        self.current_size = (rows.max(1), cols.max(1));
+        self.ensure_running();
+    }
+
     fn spawn_with_shell(
         rows: u16,
         cols: u16,
         shell: &str,
+        cwd: Option<&str>,
+        env: Option<&[(String, String)]>,
         last_output: Arc<Mutex<Instant>>,
+        output_notify: Arc<tokio::sync::Notify>,
     ) -> Option<PtyState> {
         let pty_system = native_pty_system();
         let pair = match pty_system.openpty(PtySize {
@@ -110,6 +138,14 @@ impl PtyProvider {
         tracing::info!("Spawning PTY shell: {}", shell);
         let mut cmd = CommandBuilder::new(shell);
         cmd.env("TERM", "xterm-256color");
+        if let Some(dir) = cwd {
+            cmd.cwd(dir);
+        }
+        if let Some(vars) = env {
+            for (k, v) in vars {
+                cmd.env(k, v);
+            }
+        }
         let child = match pair.slave.spawn_command(cmd) {
             Ok(child) => child,
             Err(e) => {
@@ -131,13 +167,14 @@ impl PtyProvider {
             }
         };
         thread::spawn(move || {
-            let mut buf = [0u8; 4096];
+            let mut buf = [0u8; 16384];
             loop {
                 match reader.read(&mut buf) {
                     Ok(0) | Err(_) => break,
                     Ok(n) => {
                         emulator_clone.lock().unwrap().process(&buf[..n]);
                         *last_output_clone.lock().unwrap() = Instant::now();
+                        output_notify.notify_waiters();
                     }
                 }
             }
@@ -188,13 +225,18 @@ impl PtyProvider {
 
         self.pty = None;
 
-        let primary_shell = Self::resolve_shell();
+        let primary_shell = self
+            .spawn_shell
+            .clone()
+            .unwrap_or_else(Self::resolve_shell);
         let fallback_shell = "/bin/sh".to_string();
+        let cwd = self.spawn_cwd.as_deref();
+        let env = self.spawn_env.as_deref();
         let mut spawned =
-            Self::spawn_with_shell(rows, cols, &primary_shell, self.last_output.clone());
+            Self::spawn_with_shell(rows, cols, &primary_shell, cwd, env, self.last_output.clone(), self.output_notify.clone());
         if spawned.is_none() && primary_shell != fallback_shell {
             tracing::info!("Retrying PTY spawn with fallback shell: {}", fallback_shell);
-            spawned = Self::spawn_with_shell(rows, cols, &fallback_shell, self.last_output.clone());
+            spawned = Self::spawn_with_shell(rows, cols, &fallback_shell, cwd, env, self.last_output.clone(), self.output_notify.clone());
         }
 
         if let Some(state) = spawned {

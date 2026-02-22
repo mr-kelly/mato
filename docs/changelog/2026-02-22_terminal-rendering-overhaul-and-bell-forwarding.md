@@ -207,3 +207,18 @@ Low-risk cleanup and release preparation updates:
   - `Start from Scratch` at top
   - `Mato Creator Office` in second position
 - Expanded `Start from Scratch` template to 3 desks with 2 tabs each.
+
+### 16. Terminal Runtime Capability Audit + Roadmap Draft
+
+Created a full capability checklist and gap analysis for coding-agent execution:
+
+- Added `docs/todos/roadmap.md` with sectioned audit across:
+  - PTY/process lifecycle
+  - input system
+  - ANSI/render pipeline
+  - multiplexer/session model
+  - task/agent orchestration
+  - plugin extensibility
+  - persistence/config/security/testing
+- Marked each capability as implemented/partial/missing and listed prioritized execution phases (P0-P3), with shell/terminal core UX as top priority.
+- Updated `docs/todos/README.md` index to include the new roadmap.

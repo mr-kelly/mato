@@ -5,6 +5,7 @@ use crossterm::{
     terminal::{enable_raw_mode, EnterAlternateScreen},
 };
 use std::io;
+use std::time::{Duration, Instant};
 
 fn hard_disable_terminal_modes() {
     crate::terminal::restore_terminal_modes();
@@ -16,6 +17,30 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
     }
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     let alt = key.modifiers.contains(KeyModifiers::ALT);
+
+    // Emergency exit when daemon connection is unhealthy.
+    // This provides a reliable way out when the top-right status is blinking/disconnected.
+    if !app.daemon_connected {
+        if matches!(key.code, KeyCode::Char('q') | KeyCode::Char('Q'))
+            || (ctrl && key.code == KeyCode::Char('c'))
+        {
+            return true;
+        }
+    }
+
+    if app.copy_mode {
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('q') => app.copy_mode = false,
+            KeyCode::Up | KeyCode::Char('k') => app.pty_scroll(3),
+            KeyCode::Down | KeyCode::Char('j') => app.pty_scroll(-3),
+            KeyCode::PageUp => app.pty_scroll(20),
+            KeyCode::PageDown => app.pty_scroll(-20),
+            KeyCode::Char('g') => app.pty_scroll(1_000_000),
+            KeyCode::Char('G') => app.pty_scroll(-1_000_000),
+            _ => {}
+        }
+        return false;
+    }
 
     // Office delete confirmation intercepts keys
     if let Some(ref mut confirm) = app.office_delete_confirm {
@@ -127,6 +152,23 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
     if let JumpMode::Active = app.jump_mode {
         match key.code {
             KeyCode::Char('q') => return true, // Quit in Jump Mode
+            KeyCode::Char('c') if app.focus == Focus::Content => {
+                app.copy_mode = true;
+                app.jump_mode = JumpMode::None;
+            }
+            KeyCode::Char(c) if matches!(c, 'r' | 'R') && app.focus == Focus::Sidebar => {
+                let i = app.selected();
+                app.begin_rename_desk(i);
+                app.jump_mode = JumpMode::None;
+            }
+            KeyCode::Char(c) if matches!(c, 'r' | 'R') && app.focus == Focus::Topbar => {
+                app.begin_rename_tab();
+                app.jump_mode = JumpMode::None;
+            }
+            KeyCode::Char(c) if matches!(c, 'r' | 'R') && app.focus == Focus::Content => {
+                app.restart_active_pty();
+                app.jump_mode = JumpMode::None;
+            }
             KeyCode::Esc => {
                 app.jump_mode = JumpMode::None;
             }
@@ -206,8 +248,22 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
     }
 
     if key.code == KeyCode::Esc {
-        // Enter Jump Mode from any focus.
-        // Press Esc again in Jump Mode to cancel and return to the same focus.
+        if app.focus == Focus::Content {
+            // In Content focus: double-ESC (within 300ms) → Jump Mode.
+            // Single ESC → pass through to shell (vim, fzf, etc.).
+            let now = Instant::now();
+            if let Some(prev) = app.last_content_esc {
+                if now.duration_since(prev) < Duration::from_millis(300) {
+                    app.last_content_esc = None;
+                    app.jump_mode = JumpMode::Active;
+                    return false;
+                }
+            }
+            app.last_content_esc = Some(now);
+            app.pty_write(b"\x1b");
+            return false;
+        }
+        // Non-Content focus: single ESC enters Jump Mode
         app.jump_mode = JumpMode::Active;
         return false;
     }
@@ -239,7 +295,7 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
             }
             KeyCode::Char('n') => app.new_desk(),
             KeyCode::Char('x') => app.close_desk(),
-            KeyCode::Char('r') => {
+            KeyCode::Char(c) if matches!(c, 'r' | 'R') => {
                 let i = app.selected();
                 app.begin_rename_desk(i);
             }
@@ -284,7 +340,7 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
                 app.cur_desk_mut().close_tab();
                 app.dirty = true;
             }
-            KeyCode::Char('r') => app.begin_rename_tab(),
+            KeyCode::Char(c) if matches!(c, 'r' | 'R') => app.begin_rename_tab(),
             KeyCode::Enter => {
                 app.focus = Focus::Content;
                 app.spawn_active_pty();

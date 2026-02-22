@@ -61,34 +61,48 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         .constraints([Constraint::Min(0), Constraint::Length(1)])
         .split(f.area());
 
-    let cols = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(24), Constraint::Min(0)])
-        .split(root[0]);
+    if app.copy_mode {
+        app.sidebar_area = Rect::default();
+        app.topbar_area = Rect::default();
+        app.sidebar_list_area = Rect::default();
+        app.tab_areas.clear();
+        app.tab_area_tab_indices.clear();
+        app.new_desk_area = Rect::default();
+        app.new_tab_area = Rect::default();
+        app.content_area = root[0];
 
-    let main_rows = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(0)])
-        .split(cols[1]);
+        let tr = root[0].height.saturating_sub(2);
+        let tc = root[0].width.saturating_sub(2);
+        app.term_rows = tr;
+        app.term_cols = tc;
+        draw_terminal(f, app, root[0], &t);
+    } else {
+        let cols = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Length(24), Constraint::Min(0)])
+            .split(root[0]);
 
-    let tr = main_rows[1].height.saturating_sub(2);
-    let tc = main_rows[1].width.saturating_sub(2);
-    // Update dimensions for spawn (no resize triggered here)
-    app.term_rows = tr;
-    app.term_cols = tc;
+        let main_rows = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(3), Constraint::Min(0)])
+            .split(cols[1]);
 
-    app.sidebar_area = cols[0];
-    app.topbar_area = main_rows[0];
-    app.content_area = main_rows[1];
+        let tr = main_rows[1].height.saturating_sub(2);
+        let tc = main_rows[1].width.saturating_sub(2);
+        // Update dimensions for spawn (no resize triggered here)
+        app.term_rows = tr;
+        app.term_cols = tc;
 
-    draw_sidebar(f, app, cols[0], &t);
-    draw_topbar(f, app, main_rows[0], &t);
-    draw_terminal(f, app, main_rows[1], &t);
+        app.sidebar_area = cols[0];
+        app.topbar_area = main_rows[0];
+        app.content_area = main_rows[1];
+
+        draw_sidebar(f, app, cols[0], &t);
+        draw_topbar(f, app, main_rows[0], &t);
+        draw_terminal(f, app, main_rows[1], &t);
+    }
     draw_statusbar(f, app, root[1], &t);
 
-    if app.rename.is_some() {
-        draw_rename_popup(f, app, &t);
-    }
     if let JumpMode::Active = app.jump_mode {
         draw_jump_mode(f, app, &t);
     }
@@ -101,6 +115,10 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     if app.office_delete_confirm.is_some() {
         draw_office_delete_confirm(f, app, &t);
     }
+    // Keep rename popup on top of all overlays so it is always visible.
+    if app.rename.is_some() {
+        draw_rename_popup(f, app, &t);
+    }
 }
 
 fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
@@ -109,13 +127,23 @@ fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
         Focus::Topbar => "Topbar",
         Focus::Content => "Content",
     };
-    let keys: &[(&str, &str)] = if app.rename.is_some() {
+    let keys: &[(&str, &str)] = if app.copy_mode {
+        &[
+            ("↑/k", "Scroll Up"),
+            ("↓/j", "Scroll Down"),
+            ("PgUp/PgDn", "Fast Scroll"),
+            ("g/G", "Bottom/Top"),
+            ("Esc/q", "Exit Copy"),
+        ]
+    } else if app.rename.is_some() {
         &[("Enter", "Confirm"), ("Esc", "Cancel")]
     } else if let JumpMode::Active = app.jump_mode {
         // In Jump Mode, always show explicit focus targets as separate keys.
         match app.focus {
             Focus::Content => &[
                 ("a-z/A-Z", "Jump"),
+                ("c", "Copy Mode"),
+                ("r", "Restart Terminal"),
                 ("←", "Focus Sidebar"),
                 ("↑", "Focus Tabbar"),
                 ("q", "Quit"),
@@ -123,6 +151,7 @@ fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
             ],
             Focus::Topbar => &[
                 ("a-z/A-Z", "Jump"),
+                ("r", "Rename"),
                 ("←", "Focus Sidebar"),
                 ("↓", "Focus Content"),
                 ("q", "Quit"),
@@ -130,6 +159,7 @@ fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
             ],
             Focus::Sidebar => &[
                 ("a-z/A-Z", "Jump"),
+                ("r", "Rename"),
                 ("→", "Focus Content"),
                 ("↑", "Focus Tabbar"),
                 ("Esc", "Cancel"),
@@ -156,7 +186,7 @@ fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
                 ("Esc", "Jump"),
                 ("q", "Quit"),
             ],
-            Focus::Content => &[("Esc", "Jump"), ("keys→shell", "")],
+            Focus::Content => &[("Esc·Esc", "Jump"), ("keys→shell", "")],
         }
     };
     let focus_badge_style = if t.follow_terminal {
@@ -481,36 +511,54 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     let tab = task.active_tab_ref();
 
     let term_bg = t.bg();
-    f.render_widget(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_type(border_type(t, active))
-            .title(Span::styled(
-                format!(
-                    " {} ",
-                    match app.terminal_titles.get(&tab.id) {
-                        Some(term_title) if !term_title.is_empty() =>
-                            format!("{} : {}", tab.name, term_title),
-                        _ => tab.name.clone(),
-                    }
-                ),
-                title_style(t, active),
-            ))
-            .border_style(border_style(t, active))
-            .style(Style::default().bg(term_bg)),
-        area,
-    );
-
-    let (ix, iy) = (area.x + 1, area.y + 1);
-    let (iw, ih) = (area.width.saturating_sub(2), area.height.saturating_sub(2));
+    let (ix, iy, iw, ih) = if app.copy_mode {
+        f.render_widget(
+            Block::default().style(Style::default().bg(term_bg)),
+            area,
+        );
+        (area.x, area.y, area.width, area.height)
+    } else {
+        f.render_widget(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(border_type(t, active))
+                .title(Span::styled(
+                    format!(
+                        " {} ",
+                        match app.terminal_titles.get(&tab.id) {
+                            Some(term_title) if !term_title.is_empty() =>
+                                format!("{} : {}", tab.name, term_title),
+                            _ => tab.name.clone(),
+                        }
+                    ),
+                    title_style(t, active),
+                ))
+                .border_style(border_style(t, active))
+                .style(Style::default().bg(term_bg)),
+            area,
+        );
+        (
+            area.x + 1,
+            area.y + 1,
+            area.width.saturating_sub(2),
+            area.height.saturating_sub(2),
+        )
+    };
     let screen = tab.provider.get_screen(ih, iw);
+    let screen_rows = (screen.lines.len() as u16).min(ih);
+    let row_base = ih.saturating_sub(screen_rows);
 
     if screen.bell {
         app.pending_bell = true;
     }
 
     for row_idx in 0..ih {
-        let spans: Vec<Span> = if let Some(line) = screen.lines.get(row_idx as usize) {
+        let src_row = if row_idx < row_base {
+            None
+        } else {
+            Some((row_idx - row_base) as usize)
+        };
+        let spans: Vec<Span> = if let Some(line) = src_row.and_then(|r| screen.lines.get(r)) {
             let mut render_width = 0usize;
             let mut cells: Vec<Span> = line
                 .cells
@@ -592,8 +640,8 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     // We use a software cursor overlay rendered in the buffer instead.
     // For Hidden cursor shape (e.g. Claude Code), skip the overlay entirely —
     // the inner TUI app renders its own visual cursor via INVERSE text.
-    if ih > 0 && iw > 0 && screen.cursor_shape != CursorShape::Hidden {
-        let cursor_row = cr.min(ih.saturating_sub(1));
+    if !app.copy_mode && ih > 0 && iw > 0 && screen.cursor_shape != CursorShape::Hidden {
+        let cursor_row = cr.min(screen_rows.saturating_sub(1));
         let cursor_col = cc.min(iw.saturating_sub(1));
         let visual_cc = screen
             .lines
@@ -607,7 +655,7 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
             })
             .unwrap_or(cursor_col);
         let cursor_x = ix + visual_cc.min(iw.saturating_sub(1));
-        let cursor_y = iy + cursor_row;
+        let cursor_y = iy + row_base + cursor_row;
 
         // Software cursor overlay: render a visible caret in the buffer.
         let line = screen.lines.get(cursor_row as usize);
@@ -721,9 +769,9 @@ fn draw_jump_mode(f: &mut Frame, app: &App, t: &ThemeColors) {
 
     // Help text varies by focus
     let help_line_3 = match app.focus {
-        Focus::Content => " ← Sidebar | ↑ Tabbar | q quit | ESC cancel ",
-        Focus::Topbar => " ← Sidebar | ↓ Content | q quit | ESC cancel ",
-        Focus::Sidebar => " → Content | ↑ Tabbar | ESC cancel ",
+        Focus::Content => " c CopyMode | r Restart | ← Sidebar | ↑ Tabbar | q quit | ESC cancel ",
+        Focus::Topbar => " r Rename | ← Sidebar | ↓ Content | q quit | ESC cancel ",
+        Focus::Sidebar => " r Rename | → Content | ↑ Tabbar | ESC cancel ",
     };
 
     f.render_widget(

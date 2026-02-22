@@ -1,6 +1,6 @@
 /// Integration tests: spin up handle_client in-process via a real Unix socket,
 /// verify the full daemon protocol round-trip without forking.
-use std::io::{BufRead, BufReader, Write};
+use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::sync::Arc;
 use std::time::Duration;
@@ -58,13 +58,33 @@ fn start_daemon(socket_path: &str) -> Arc<DashMap<String, Arc<Mutex<PtyProvider>
 
 fn send_recv(socket_path: &str, msg: &ClientMsg) -> ServerMsg {
     let mut stream = UnixStream::connect(socket_path).expect("connect");
+    stream.set_read_timeout(Some(Duration::from_secs(5))).ok();
     let json = serde_json::to_vec(msg).unwrap();
     stream.write_all(&json).unwrap();
     stream.write_all(b"\n").unwrap();
     stream.flush().unwrap();
-    let mut line = String::new();
-    BufReader::new(&stream).read_line(&mut line).unwrap();
-    serde_json::from_str(&line).expect("parse response")
+    // Read first byte to determine format
+    let mut first = [0u8; 1];
+    stream.read_exact(&mut first).expect("read first byte");
+    if first[0] == 0x00 {
+        // Binary frame: 4-byte LE length + bincode payload
+        let mut len_bytes = [0u8; 4];
+        stream.read_exact(&mut len_bytes).expect("read length");
+        let len = u32::from_le_bytes(len_bytes) as usize;
+        let mut buf = vec![0u8; len];
+        stream.read_exact(&mut buf).expect("read payload");
+        rmp_serde::from_slice(&buf).expect("parse msgpack response")
+    } else {
+        // JSON line
+        let mut buf = vec![first[0]];
+        let mut byte = [0u8; 1];
+        loop {
+            stream.read_exact(&mut byte).expect("read byte");
+            if byte[0] == b'\n' { break; }
+            buf.push(byte[0]);
+        }
+        serde_json::from_slice(&buf).expect("parse response")
+    }
 }
 
 // ── tests ─────────────────────────────────────────────────────────────────────
@@ -91,8 +111,7 @@ fn daemon_spawn_creates_tab() {
         &ClientMsg::Spawn {
             tab_id: "tab-1".into(),
             rows: 24,
-            cols: 80,
-        },
+            cols: 80, cwd: None, shell: None, env: None },
     );
     std::thread::sleep(Duration::from_millis(100));
     assert!(tabs.contains_key("tab-1"));
@@ -107,8 +126,7 @@ fn daemon_get_screen_returns_screen() {
         &ClientMsg::Spawn {
             tab_id: "tab-s".into(),
             rows: 24,
-            cols: 80,
-        },
+            cols: 80, cwd: None, shell: None, env: None },
     );
     std::thread::sleep(Duration::from_millis(100));
     let resp = send_recv(
@@ -150,8 +168,7 @@ fn daemon_get_idle_status_includes_spawned_tab() {
         &ClientMsg::Spawn {
             tab_id: "tab-idle".into(),
             rows: 24,
-            cols: 80,
-        },
+            cols: 80, cwd: None, shell: None, env: None },
     );
     std::thread::sleep(Duration::from_millis(100));
     let resp = send_recv(socket, &ClientMsg::GetIdleStatus);
@@ -178,8 +195,7 @@ fn daemon_spawn_twice_is_idempotent() {
             &ClientMsg::Spawn {
                 tab_id: "tab-dup".into(),
                 rows: 24,
-                cols: 80,
-            },
+                cols: 80, cwd: None, shell: None, env: None },
         );
     }
     std::thread::sleep(Duration::from_millis(100));

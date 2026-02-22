@@ -1,52 +1,115 @@
 use crate::protocol::{ClientMsg, ServerMsg};
 use crate::terminal_provider::{ScreenContent, TerminalProvider};
-use std::io::{BufRead, BufReader, Write};
+use std::io::Write;
+use std::os::unix::io::AsRawFd;
 use std::os::unix::net::UnixStream as StdUnixStream;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
 struct ScreenCacheEntry {
-    rows: u16,
-    cols: u16,
-    fetched_at: Instant,
     content: ScreenContent,
 }
 
 pub struct DaemonProvider {
     tab_id: String,
     socket_path: String,
-    current_size: (u16, u16), // Track size to avoid unnecessary resizes
+    current_size: (u16, u16),
     screen_cache: Arc<Mutex<Option<ScreenCacheEntry>>>,
     screen_requested_size: Arc<Mutex<(u16, u16)>>,
     last_screen_request_at: Arc<Mutex<Instant>>,
     worker_running: Arc<AtomicBool>,
+    write_stream: Option<StdUnixStream>,
+    /// Channel to send messages to worker for writing on subscribe connection
+    worker_tx: Arc<Mutex<Option<mpsc::Sender<Vec<u8>>>>>,
+    screen_generation: Arc<AtomicU64>,
 }
 
 impl DaemonProvider {
-    fn send_msg_on_stream(stream: &mut StdUnixStream, msg: &ClientMsg) -> Option<ServerMsg> {
+    /// Read a response from a stream. Supports binary frames (0x00 prefix) and JSON lines.
+    /// Returns Ok(Some(msg)) on data, Ok(None) on timeout, Err on disconnect/error.
+    fn read_response(stream: &mut StdUnixStream, buf: &mut Vec<u8>) -> Result<Option<ServerMsg>, ()> {
+        let mut first = [0u8; 1];
+        match std::io::Read::read_exact(stream, &mut first) {
+            Ok(()) => {}
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock
+                || e.kind() == std::io::ErrorKind::TimedOut => {
+                return Ok(None); // Timeout
+            }
+            Err(_) => return Err(()), // Real disconnect
+        }
+
+        if first[0] == 0x00 {
+            let mut len_bytes = [0u8; 4];
+            if std::io::Read::read_exact(stream, &mut len_bytes).is_err() {
+                return Err(());
+            }
+            let len = u32::from_le_bytes(len_bytes) as usize;
+            buf.clear();
+            buf.resize(len, 0);
+            if std::io::Read::read_exact(stream, buf).is_err() {
+                return Err(());
+            }
+            Ok(rmp_serde::from_slice(buf).ok())
+        } else {
+            buf.clear();
+            buf.push(first[0]);
+            let mut chunk = [0u8; 8192];
+            loop {
+                match std::io::Read::read(stream, &mut chunk) {
+                    Ok(0) => return Err(()),
+                    Ok(n) => {
+                        if let Some(nl) = chunk[..n].iter().position(|&b| b == b'\n') {
+                            buf.extend_from_slice(&chunk[..nl]);
+                            break;
+                        }
+                        buf.extend_from_slice(&chunk[..n]);
+                    }
+                    Err(_) => return Err(()),
+                }
+            }
+            Ok(serde_json::from_slice(buf).ok())
+        }
+    }
+
+    /// Non-blocking check if socket has data ready to read via poll(2).
+    fn socket_readable(stream: &StdUnixStream) -> bool {
+        let fd = stream.as_raw_fd();
+        let mut pfd = libc::pollfd {
+            fd,
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        unsafe { libc::poll(&mut pfd, 1, 0) > 0 && (pfd.revents & libc::POLLIN) != 0 }
+    }
+
+    #[allow(dead_code)]
+    fn send_msg_on_stream(
+        stream: &mut StdUnixStream,
+        msg: &ClientMsg,
+        read_buf: &mut Vec<u8>,
+    ) -> Option<ServerMsg> {
         let json = serde_json::to_vec(msg).ok()?;
         stream.write_all(&json).ok()?;
         stream.write_all(b"\n").ok()?;
         stream.flush().ok()?;
-
-        // Use a cloned fd for buffered line reads without taking ownership.
-        let mut reader = BufReader::new(stream.try_clone().ok()?);
-        let mut line = String::new();
-        reader.read_line(&mut line).ok()?;
-        serde_json::from_str(&line).ok()
+        Self::read_response(stream, read_buf).ok().flatten()
     }
 
     pub fn new(tab_id: String, socket_path: String) -> Self {
         Self {
             tab_id,
             socket_path,
-            current_size: (0, 0), // Will be set on first spawn/resize
+            current_size: (0, 0),
             screen_cache: Arc::new(Mutex::new(None)),
             screen_requested_size: Arc::new(Mutex::new((0, 0))),
             last_screen_request_at: Arc::new(Mutex::new(Instant::now())),
             worker_running: Arc::new(AtomicBool::new(false)),
+            write_stream: None,
+            worker_tx: Arc::new(Mutex::new(None)),
+            screen_generation: Arc::new(AtomicU64::new(0)),
         }
     }
 
@@ -58,11 +121,8 @@ impl DaemonProvider {
         stream.write_all(b"\n").ok()?;
         stream.flush().ok()?;
 
-        // Read response
-        let mut reader = BufReader::new(&stream);
-        let mut line = String::new();
-        reader.read_line(&mut line).ok()?;
-        serde_json::from_str(&line).ok()
+        let mut buf = Vec::with_capacity(64 * 1024);
+        Self::read_response(&mut stream, &mut buf).ok().flatten()
     }
 
     fn send_msg(&self, msg: ClientMsg) -> Option<ServerMsg> {
@@ -90,8 +150,38 @@ impl DaemonProvider {
         }
     }
 
-    fn send_msg_no_response(&self, msg: ClientMsg) {
-        Self::send_msg_no_response_static(&self.socket_path, &msg);
+    /// Send fire-and-forget message over the persistent write connection.
+    /// Uses binary (MessagePack) framing for minimal serialization overhead.
+    fn send_msg_no_response(&mut self, msg: ClientMsg) {
+        let bin = match rmp_serde::to_vec(&msg) {
+            Ok(b) => b,
+            Err(_) => return,
+        };
+        let len = (bin.len() as u32).to_le_bytes();
+
+        // Try writing on the existing stream
+        if let Some(ref mut stream) = self.write_stream {
+            if stream.write_all(&[0x00]).is_ok()
+                && stream.write_all(&len).is_ok()
+                && stream.write_all(&bin).is_ok()
+                && stream.flush().is_ok()
+            {
+                return;
+            }
+            self.write_stream = None;
+        }
+
+        // (Re)connect
+        if let Ok(stream) = StdUnixStream::connect(&self.socket_path) {
+            let _ = stream.set_write_timeout(Some(Duration::from_millis(100)));
+            self.write_stream = Some(stream);
+            if let Some(ref mut s) = self.write_stream {
+                let _ = s.write_all(&[0x00]);
+                let _ = s.write_all(&len);
+                let _ = s.write_all(&bin);
+                let _ = s.flush();
+            }
+        }
     }
 
     fn invalidate_screen_cache(&self) {
@@ -109,17 +199,25 @@ impl DaemonProvider {
             return;
         }
 
+        let (tx, rx) = mpsc::channel::<Vec<u8>>();
+        if let Ok(mut wtx) = self.worker_tx.lock() {
+            *wtx = Some(tx);
+        }
+
         let socket_path = self.socket_path.clone();
         let tab_id = self.tab_id.clone();
         let requested_size = self.screen_requested_size.clone();
         let last_screen_request_at = self.last_screen_request_at.clone();
         let cache = self.screen_cache.clone();
         let running = self.worker_running.clone();
+        let screen_gen = self.screen_generation.clone();
 
         thread::spawn(move || {
             let mut last_error_log: Option<Instant> = None;
             let mut last_respawn_attempt: Option<Instant> = None;
             let mut stream: Option<StdUnixStream> = None;
+            let mut read_buf: Vec<u8> = Vec::with_capacity(256 * 1024);
+            let mut subscribed_size: (u16, u16) = (0, 0);
 
             while running.load(Ordering::Relaxed) {
                 let now = Instant::now();
@@ -127,15 +225,14 @@ impl DaemonProvider {
                     Ok(t) => now.duration_since(*t),
                     Err(_) => Duration::from_secs(10),
                 };
-                // This provider is not currently being rendered (background tab):
-                // stop hitting daemon aggressively.
+                // Background tab: slow down or stop
                 if since_last_request > Duration::from_secs(2) {
-                    // No demand for a while: tear down this worker entirely to reduce
-                    // thread count when many tabs exist.
                     if since_last_request > Duration::from_secs(30) {
                         running.store(false, Ordering::Relaxed);
                         break;
                     }
+                    stream = None; // drop subscription connection
+                    subscribed_size = (0, 0);
                     thread::sleep(Duration::from_millis(500));
                     continue;
                 }
@@ -152,37 +249,108 @@ impl DaemonProvider {
                     continue;
                 }
 
-                let msg = ClientMsg::GetScreen {
-                    tab_id: tab_id.clone(),
-                    rows,
-                    cols,
-                };
+                // Connect and subscribe if needed
                 if stream.is_none() {
                     if let Ok(s) = StdUnixStream::connect(&socket_path) {
-                        let _ = s.set_read_timeout(Some(Duration::from_millis(200)));
-                        let _ = s.set_write_timeout(Some(Duration::from_millis(200)));
-                        stream = Some(s);
+                        // Safety timeout for partial reads; poll() avoids blocking normally
+                        let _ = s.set_read_timeout(Some(Duration::from_millis(5)));
+                        let _ = s.set_write_timeout(Some(Duration::from_millis(100)));
+                        // Send Subscribe message
+                        let sub_msg = ClientMsg::Subscribe {
+                            tab_id: tab_id.clone(),
+                            rows,
+                            cols,
+                        };
+                        if let Ok(json) = serde_json::to_vec(&sub_msg) {
+                            let mut s = s;
+                            if s.write_all(&json).is_ok()
+                                && s.write_all(b"\n").is_ok()
+                                && s.flush().is_ok()
+                            {
+                                subscribed_size = (rows, cols);
+                                stream = Some(s);
+                                tracing::debug!("Subscribed to tab {} (push mode)", tab_id);
+                            }
+                        }
+                    }
+                    if stream.is_none() {
+                        thread::sleep(Duration::from_millis(100));
+                        continue;
                     }
                 }
-                let response = if let Some(s) = stream.as_mut() {
-                    Self::send_msg_on_stream(s, &msg)
+
+                // If size changed, send Resize on the subscription connection
+                if subscribed_size != (rows, cols) {
+                    if let Some(ref mut s) = stream {
+                        let resize_msg = ClientMsg::Resize {
+                            tab_id: tab_id.clone(),
+                            rows,
+                            cols,
+                        };
+                        if let Ok(bin) = rmp_serde::to_vec(&resize_msg) {
+                            let len = (bin.len() as u32).to_le_bytes();
+                            if s.write_all(&[0x00]).is_ok()
+                                && s.write_all(&len).is_ok()
+                                && s.write_all(&bin).is_ok()
+                                && s.flush().is_ok()
+                            {
+                                subscribed_size = (rows, cols);
+                            }
+                        }
+                    }
+                }
+
+                // Drain pending outgoing messages (Input/Paste) from channel
+                // and write them on the subscribe stream for single-connection echo
+                if let Some(ref mut s) = stream {
+                    let mut wrote = false;
+                    while let Ok(frame) = rx.try_recv() {
+                        let _ = s.write_all(&frame);
+                        wrote = true;
+                    }
+                    if wrote {
+                        let _ = s.flush();
+                    }
+                }
+
+                // Read pushed screen update — use poll() to avoid blocking when no data
+                let readable = stream.as_ref().map_or(false, |s| Self::socket_readable(s));
+                let response = if readable {
+                    if let Some(ref mut s) = stream {
+                        match Self::read_response(s, &mut read_buf) {
+                            Ok(msg) => {
+                                // After read, drain any messages that arrived during the read
+                                let mut wrote = false;
+                                while let Ok(frame) = rx.try_recv() {
+                                    let _ = s.write_all(&frame);
+                                    wrote = true;
+                                }
+                                if wrote {
+                                    let _ = s.flush();
+                                }
+                                msg
+                            }
+                            Err(()) => {
+                                stream = None;
+                                subscribed_size = (0, 0);
+                                thread::sleep(Duration::from_millis(100));
+                                continue;
+                            }
+                        }
+                    } else {
+                        None
+                    }
                 } else {
+                    // No data on socket — brief sleep to keep drain cycle fast
+                    thread::sleep(Duration::from_micros(200));
                     None
                 };
 
-                if response.is_none() {
-                    stream = None;
-                }
-
                 match response {
                     Some(ServerMsg::Screen { content, .. }) => {
+                        screen_gen.fetch_add(1, Ordering::Relaxed);
                         if let Ok(mut c) = cache.lock() {
-                            *c = Some(ScreenCacheEntry {
-                                rows,
-                                cols,
-                                fetched_at: Instant::now(),
-                                content,
-                            });
+                            *c = Some(ScreenCacheEntry { content });
                         }
                     }
                     Some(ServerMsg::Error { message }) => {
@@ -204,27 +372,32 @@ impl DaemonProvider {
                                     tab_id: tab_id.clone(),
                                     rows: rows.max(1),
                                     cols: cols.max(1),
+                                    cwd: None,
+                                    shell: None,
+                                    env: None,
                                 };
                                 Self::send_msg_no_response_static(&socket_path, &spawn);
                             }
+                            // Reconnect after error
+                            stream = None;
+                            subscribed_size = (0, 0);
+                            thread::sleep(Duration::from_millis(200));
                         } else {
                             let should_log = last_error_log
                                 .map(|t| now.duration_since(t) >= Duration::from_secs(2))
                                 .unwrap_or(true);
                             if should_log {
-                                tracing::error!("GetScreen error for tab {}: {}", tab_id, message);
+                                tracing::error!("Push error for tab {}: {}", tab_id, message);
                                 last_error_log = Some(now);
                             }
                         }
                     }
+                    None => {
+                        // Timeout — normal in push mode, just wait for next push.
+                        // But if we've never received data on this subscription,
+                        // something may be wrong — reconnect after extended silence.
+                    }
                     _ => {}
-                }
-
-                // Active tab (recent requests) gets smoother refresh; inactive gets lower load.
-                if since_last_request <= Duration::from_millis(200) {
-                    thread::sleep(Duration::from_millis(40));
-                } else {
-                    thread::sleep(Duration::from_millis(200));
                 }
             }
             running.store(false, Ordering::Relaxed);
@@ -249,6 +422,9 @@ impl TerminalProvider for DaemonProvider {
             tab_id: self.tab_id.clone(),
             rows,
             cols,
+            cwd: None,
+            shell: None,
+            env: None,
         });
     }
 
@@ -273,18 +449,46 @@ impl TerminalProvider for DaemonProvider {
     }
 
     fn write(&mut self, bytes: &[u8]) {
-        // Fire and forget - no response needed
-        self.send_msg_no_response(ClientMsg::Input {
+        let msg = ClientMsg::Input {
             tab_id: self.tab_id.clone(),
             data: bytes.to_vec(),
-        });
+        };
+        // Try worker channel first (same connection as subscribe = faster echo)
+        if let Ok(wtx) = self.worker_tx.lock() {
+            if let Some(ref tx) = *wtx {
+                if let Ok(bin) = rmp_serde::to_vec(&msg) {
+                    let mut frame = Vec::with_capacity(5 + bin.len());
+                    frame.push(0x00);
+                    frame.extend_from_slice(&(bin.len() as u32).to_le_bytes());
+                    frame.extend_from_slice(&bin);
+                    if tx.send(frame).is_ok() {
+                        return;
+                    }
+                }
+            }
+        }
+        self.send_msg_no_response(msg);
     }
 
     fn paste(&mut self, text: &str) {
-        self.send_msg_no_response(ClientMsg::Paste {
+        let msg = ClientMsg::Paste {
             tab_id: self.tab_id.clone(),
             data: text.to_string(),
-        });
+        };
+        if let Ok(wtx) = self.worker_tx.lock() {
+            if let Some(ref tx) = *wtx {
+                if let Ok(bin) = rmp_serde::to_vec(&msg) {
+                    let mut frame = Vec::with_capacity(5 + bin.len());
+                    frame.push(0x00);
+                    frame.extend_from_slice(&(bin.len() as u32).to_le_bytes());
+                    frame.extend_from_slice(&bin);
+                    if tx.send(frame).is_ok() {
+                        return;
+                    }
+                }
+            }
+        }
+        self.send_msg_no_response(msg);
     }
 
     fn mouse_mode_enabled(&self) -> bool {
@@ -318,13 +522,6 @@ impl TerminalProvider for DaemonProvider {
 
         if let Ok(cache) = self.screen_cache.lock() {
             if let Some(entry) = cache.as_ref() {
-                if entry.rows == rows
-                    && entry.cols == cols
-                    && entry.fetched_at.elapsed() < Duration::from_secs(2)
-                {
-                    return entry.content.clone();
-                }
-                // Return most recent content while worker catches up to a new size.
                 return entry.content.clone();
             }
         }
@@ -337,13 +534,9 @@ impl TerminalProvider for DaemonProvider {
             cols,
         }) {
             Some(ServerMsg::Screen { content, .. }) => {
+                self.screen_generation.fetch_add(1, Ordering::Relaxed);
                 if let Ok(mut cache) = self.screen_cache.lock() {
-                    *cache = Some(ScreenCacheEntry {
-                        rows,
-                        cols,
-                        fetched_at: Instant::now(),
-                        content: content.clone(),
-                    });
+                    *cache = Some(ScreenCacheEntry { content: content.clone() });
                 }
                 content
             }
@@ -353,15 +546,14 @@ impl TerminalProvider for DaemonProvider {
                         tab_id: self.tab_id.clone(),
                         rows: self.current_size.0.max(1),
                         cols: self.current_size.1.max(1),
+                        cwd: None,
+                        shell: None,
+                        env: None,
                     });
                     if let Some(content) = self.get_screen_sync(rows, cols) {
+                        self.screen_generation.fetch_add(1, Ordering::Relaxed);
                         if let Ok(mut cache) = self.screen_cache.lock() {
-                            *cache = Some(ScreenCacheEntry {
-                                rows,
-                                cols,
-                                fetched_at: Instant::now(),
-                                content: content.clone(),
-                            });
+                            *cache = Some(ScreenCacheEntry { content: content.clone() });
                         }
                         return content;
                     }
@@ -385,9 +577,25 @@ impl TerminalProvider for DaemonProvider {
     }
 
     fn scroll(&mut self, delta: i32) {
-        self.send_msg_no_response(ClientMsg::Scroll {
-            tab_id: self.tab_id.clone(),
-            delta,
-        });
+        Self::send_msg_no_response_static(
+            &self.socket_path,
+            &ClientMsg::Scroll {
+                tab_id: self.tab_id.clone(),
+                delta,
+            },
+        );
+        // Ensure scroll feedback is visible immediately in copy-mode interactions.
+        let rows = self.current_size.0.max(1);
+        let cols = self.current_size.1.max(1);
+        if let Some(content) = self.get_screen_sync(rows, cols) {
+            self.screen_generation.fetch_add(1, Ordering::Relaxed);
+            if let Ok(mut cache) = self.screen_cache.lock() {
+                *cache = Some(ScreenCacheEntry { content });
+            }
+        }
+    }
+
+    fn screen_generation(&self) -> u64 {
+        self.screen_generation.load(Ordering::Relaxed)
     }
 }

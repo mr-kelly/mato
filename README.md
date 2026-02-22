@@ -108,15 +108,78 @@ Start with the perfect setup. Choose from 6 curated templates:
 
 ## 📽️ Showcase
 
+<table border="0">
+<tr>
+<td width="50%" valign="top">
+
+<img src="docs/images/screenshot-0.png" alt="Offices, Desks, and Tabs workspace layout in Mato" width="100%">
+
+**1) Offices -> Desks -> Tabs UI**
+
+Image description: A structured workspace hierarchy where Offices contain multiple Desks, and each Desk contains Tabs for parallel terminal workflows.
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/images/screenshot-0.png" alt="Real-time spinner indicators showing active AI tasks in tabs and desks" width="100%">
+
+**2) Spinner Activity (AI is working)**
+
+Image description: Live spinner indicators appear on active tabs/desks when an AI agent or process produces output, so you can see progress at a glance.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+<img src="docs/images/screenshot-0.png" alt="Two SSH clients attached to the same Mato daemon showing synchronized workspace state" width="100%">
+
+**3) Multi-Client Sync**
+
+Image description: Two SSH clients attach to the same running Mato daemon and view the same workspace state in sync.
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/images/screenshot-0.png" alt="Onboarding template selector with prebuilt office templates" width="100%">
+
+**4) Prebuilt Templates**
+
+Image description: Fast onboarding with prebuilt templates for different workflows, so teams can start from a sensible office layout.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+<img src="docs/images/screenshot-0.png" alt="AI agents continue running in the background after terminal or SSH disconnect" width="100%">
+
+**5) Background Runtime Persistence**
+
+Image description: AI agents keep running in the background even if your terminal process exits or SSH disconnects; when you open `mato` again, you return to the same live workspace automatically (no explicit detach/attach workflow).
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/images/screenshot-0.png" alt="Mouse interaction in TUI: clicking desks and tabs directly" width="100%">
+
+**6) Mouse Support in a TUI**
+
+Image description: Native mouse interaction for clicking tabs and desks; terminal-first UX with practical GUI-like navigation support.
+
+</td>
+</tr>
+</table>
+
 ---
 
 ## ⌨️ Shortcut Philosophy
 
-Mato follows the **"Rule of One"**: Only one key (`Esc`) is reserved by the system. Everything else belongs to your shell.
+Mato follows the **"Rule of One"**: you don't need to memorize shortcuts. `Esc` is the only state-switch key, and everything else stays with your shell.
 
 | Key | Action | Context |
 | :--- | :--- | :--- |
-| **`Esc`** | **Jump / Teleport** | Global |
+| **`Esc`** | **Switch State (Jump / Back)** | Global |
 | `n` | Create New | Sidebar/Topbar |
 | `x` | Close / Terminate | Sidebar/Topbar |
 | `r` | Rename | Sidebar/Topbar |

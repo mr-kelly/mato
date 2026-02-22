@@ -97,19 +97,24 @@ impl AlacrittyEmulator {
 impl TerminalEmulator for AlacrittyEmulator {
     fn process(&mut self, bytes: &[u8]) {
         self.processor.advance(&mut self.term, bytes);
-        // Auto-scroll to bottom on new output
-        self.scroll_offset = 0;
+        // Keep scroll_offset in sync with terminal's real display offset.
+        self.scroll_offset = self.term.grid().display_offset() as i32;
     }
 
     fn scroll(&mut self, delta: i32) {
-        self.scroll_offset += delta;
         let max = self.term.grid().history_size() as i32;
-        self.scroll_offset = self.scroll_offset.clamp(0, max);
-        if self.scroll_offset == 0 {
+        let prev = self.term.grid().display_offset() as i32;
+        let next = (prev + delta).clamp(0, max);
+        let applied = next - prev;
+        if applied == 0 {
+            return;
+        }
+        if next == 0 {
             self.term.scroll_display(Scroll::Bottom);
         } else {
-            self.term.scroll_display(Scroll::Delta(-delta));
+            self.term.scroll_display(Scroll::Delta(applied));
         }
+        self.scroll_offset = self.term.grid().display_offset() as i32;
     }
 
     fn get_screen(&self, rows: u16, cols: u16) -> ScreenContent {
@@ -152,12 +157,11 @@ impl TerminalEmulator for AlacrittyEmulator {
             render_rows
         ];
 
-        let mut first_visible_line: Option<i32> = None;
+        let visible_top_line = -(renderable.display_offset as i32);
         for indexed in renderable.display_iter {
             let abs_line = indexed.point.line.0;
             let col = indexed.point.column.0;
-            let base = *first_visible_line.get_or_insert(abs_line);
-            let row = abs_line - base;
+            let row = abs_line - visible_top_line;
             if row < 0 {
                 continue;
             }
@@ -239,10 +243,12 @@ impl TerminalEmulator for AlacrittyEmulator {
         }
     }
 
-    fn resize(&mut self, _rows: u16, _cols: u16) {
-        // Do NOT resize the terminal emulator - that clears the screen.
-        // The PTY process size (TIOCSWINSZ) is handled by PtyProvider directly.
-        // We render by clipping/padding in get_screen.
+    fn resize(&mut self, rows: u16, cols: u16) {
+        let size = TermSize {
+            cols: cols as usize,
+            lines: rows as usize,
+        };
+        self.term.resize(size);
     }
 
     fn bracketed_paste_enabled(&self) -> bool {

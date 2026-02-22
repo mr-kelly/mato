@@ -10,6 +10,12 @@ pub enum ClientMsg {
         tab_id: String,
         rows: u16,
         cols: u16,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        cwd: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        shell: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        env: Option<Vec<(String, String)>>,
     },
     Input {
         tab_id: String,
@@ -42,6 +48,13 @@ pub enum ClientMsg {
         tab_id: String,
         delta: i32,
     },
+    /// Subscribe to push-based screen updates for a tab.
+    /// Daemon will push Screen/ScreenUnchanged whenever PTY has new output.
+    Subscribe {
+        tab_id: String,
+        rows: u16,
+        cols: u16,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,6 +66,8 @@ pub enum ServerMsg {
         tab_id: String,
         content: ScreenContent,
     },
+    /// Screen content hasn't changed since last GetScreen on this connection.
+    ScreenUnchanged,
     Error {
         message: String,
     },

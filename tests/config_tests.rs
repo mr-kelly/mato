@@ -10,6 +10,7 @@ fn test_default_config() {
 fn test_config_serialization() {
     let config = Config {
         emulator: "vte".to_string(),
+        resize_strategy: mato::config::ResizeStrategy::Sync,
     };
 
     let toml = toml::to_string(&config).unwrap();

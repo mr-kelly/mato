@@ -531,13 +531,13 @@ Observed inconsistent cursor behavior across CLI apps in terminal tabs:
 ## 22) `Financial Trader` Expanded + Full Tab Localization
 
 ### Requested adjustment
-- Rename template toward `金融股票交易`.
+- Rename template toward `Financial Stock Trading`.
 - Add more desks for secondary-market analyst/trader workflow.
 - Ensure tabs are multilingual (not just desk labels).
 
 ### Implemented changes
 - Reworked `templates/financial-trader.json`:
-  - template/office naming updated to `Financial Stock Trading` (`zh-CN`/`zh-TW`: `金融股票交易`)
+  - template/office naming updated to `Financial Stock Trading` (localized naming aligned)
   - expanded from 5 desks / 15 tabs to **8 desks / 24 tabs**
   - added desks:
     - `Sector Rotation`

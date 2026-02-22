@@ -133,8 +133,13 @@ fn esc_from_sidebar_enters_jump_mode() {
 
 #[test]
 fn esc_from_content_enters_jump_mode() {
+    // Double-ESC from Content enters Jump Mode
     let mut app = make_app(vec![make_task("T")]);
     app.focus = Focus::Content;
+    // First ESC: passes through to shell, records timestamp
+    handle_key(&mut app, key(KeyCode::Esc));
+    assert_eq!(app.jump_mode, JumpMode::None);
+    // Second ESC (within 300ms): enters Jump Mode
     handle_key(&mut app, key(KeyCode::Esc));
     assert_eq!(app.jump_mode, JumpMode::Active);
 }

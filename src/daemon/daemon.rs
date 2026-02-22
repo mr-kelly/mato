@@ -10,7 +10,7 @@ use semver::Version;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -241,20 +241,45 @@ pub async fn handle_client(
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
     let mut line = String::new();
+    let mut bin_buf: Vec<u8> = Vec::with_capacity(4096);
+    let mut last_screen_hash: u64 = 0;
 
     loop {
-        line.clear();
-        let n = reader.read_line(&mut line).await?;
-        if n == 0 {
-            tracing::info!("Client #{} disconnected", client_id);
-            break;
-        }
-
-        let msg: ClientMsg = match serde_json::from_str(&line) {
-            Ok(m) => m,
-            Err(e) => {
-                tracing::error!("Failed to parse message: {} | Line: {}", e, line.trim());
-                continue;
+        // Read first byte to detect binary (0x00) vs JSON
+        let msg: ClientMsg = {
+            let buf = reader.fill_buf().await?;
+            if buf.is_empty() {
+                tracing::info!("Client #{} disconnected", client_id);
+                break;
+            }
+            if buf[0] == 0x00 {
+                // Binary frame: 0x00 + 4-byte LE length + MessagePack payload
+                reader.consume(1);
+                let len = reader.read_u32_le().await? as usize;
+                let mut payload = vec![0u8; len];
+                reader.read_exact(&mut payload).await?;
+                match rmp_serde::from_slice(&payload) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        tracing::error!("Failed to parse binary message: {}", e);
+                        continue;
+                    }
+                }
+            } else {
+                // JSON line
+                line.clear();
+                let n = reader.read_line(&mut line).await?;
+                if n == 0 {
+                    tracing::info!("Client #{} disconnected", client_id);
+                    break;
+                }
+                match serde_json::from_str(&line) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        tracing::error!("Failed to parse message: {} | Line: {}", e, line.trim());
+                        continue;
+                    }
+                }
             }
         };
 
@@ -263,7 +288,7 @@ pub async fn handle_client(
                 version: CURRENT_VERSION.into(),
             },
 
-            ClientMsg::Spawn { tab_id, rows, cols } => {
+            ClientMsg::Spawn { tab_id, rows, cols, cwd, shell, env } => {
                 if tabs.contains_key(&tab_id) {
                     tracing::info!("Tab {} already exists", tab_id);
                     // Don't resize on reconnect - it would clear the screen
@@ -274,7 +299,7 @@ pub async fn handle_client(
                 } else {
                     tracing::info!("Spawning new tab {} ({}x{})", tab_id, rows, cols);
                     let mut provider = PtyProvider::new();
-                    provider.spawn(rows, cols);
+                    provider.spawn_with_options(rows, cols, cwd.as_deref(), shell.as_deref(), env.as_deref());
                     tabs.insert(tab_id.clone(), Arc::new(Mutex::new(provider)));
                     ServerMsg::Welcome {
                         version: "spawned".into(),
@@ -316,24 +341,54 @@ pub async fn handle_client(
             }
 
             ClientMsg::Resize { tab_id, rows, cols } => {
-                // DON'T resize the PTY! This would clear the screen.
-                // The PTY should keep running at its original size.
-                // Only the client's display needs to adapt to window size.
-                tracing::debug!(
-                    "Ignoring resize request for tab {} ({}x{}) - PTY size is fixed",
-                    tab_id,
-                    rows,
-                    cols
-                );
+                let strategy = _config.lock().resize_strategy.clone();
+                if strategy == crate::config::ResizeStrategy::Sync {
+                    if let Some(tab) = tabs.get(&tab_id) {
+                        let mut tab = tab.lock();
+                        tab.resize(rows.max(1), cols.max(1));
+                        tracing::debug!(
+                            "Resized tab {} to {}x{} (sync mode)",
+                            tab_id, rows, cols
+                        );
+                    }
+                } else {
+                    tracing::debug!(
+                        "Ignoring resize for tab {} ({}x{}) - fixed mode",
+                        tab_id, rows, cols
+                    );
+                }
                 continue;
             }
 
             ClientMsg::GetScreen { tab_id, rows, cols } => {
                 if let Some(tab) = tabs.get(&tab_id) {
-                    let mut tab = tab.lock();
-                    tab.spawn(rows.max(1), cols.max(1));
-                    let content = tab.get_screen(rows, cols);
-                    ServerMsg::Screen { tab_id, content }
+                    let (bin, hash) = {
+                        let mut tab = tab.lock();
+                        tab.spawn(rows.max(1), cols.max(1));
+                        let content = tab.get_screen(rows, cols);
+                        let response = ServerMsg::Screen { tab_id, content };
+                        let bin = rmp_serde::to_vec(&response).unwrap_or_default();
+                        let hash = {
+                            use std::hash::{Hash, Hasher};
+                            let mut h = std::collections::hash_map::DefaultHasher::new();
+                            bin.hash(&mut h);
+                            h.finish()
+                        };
+                        (bin, hash)
+                    }; // MutexGuard dropped here, before any .await
+                    if hash == last_screen_hash {
+                        let json = serde_json::to_vec(&ServerMsg::ScreenUnchanged)?;
+                        writer.write_all(&json).await?;
+                        writer.write_all(b"\n").await?;
+                    } else {
+                        last_screen_hash = hash;
+                        let len = (bin.len() as u32).to_le_bytes();
+                        writer.write_all(&[0x00]).await?;
+                        writer.write_all(&len).await?;
+                        writer.write_all(&bin).await?;
+                    }
+                    writer.flush().await?;
+                    continue;
                 } else {
                     tracing::debug!("Tab not found: {}", tab_id);
                     ServerMsg::Error {
@@ -390,11 +445,190 @@ pub async fn handle_client(
                 }
                 continue;
             }
+
+            ClientMsg::Subscribe { tab_id, rows, cols } => {
+                // Enter push mode: continuously push screen updates on PTY output.
+                // This takes over the connection — no more request/response.
+                let notify = if let Some(entry) = tabs.get(&tab_id) {
+                    let mut tab = entry.lock();
+                    tab.spawn(rows.max(1), cols.max(1));
+                    let n = tab.output_notify.clone();
+                    drop(tab);
+                    Some(n)
+                } else {
+                    None
+                };
+                let Some(notify) = notify else {
+                    let json = serde_json::to_vec(&ServerMsg::Error {
+                        message: "tab not found".into(),
+                    })?;
+                    writer.write_all(&json).await?;
+                    writer.write_all(b"\n").await?;
+                    writer.flush().await?;
+                    continue;
+                };
+
+                tracing::info!("Client #{} subscribed to tab {} (push mode)", client_id, tab_id);
+                let mut sub_rows = rows;
+                let mut sub_cols = cols;
+                line.clear();
+
+                // Send initial screen immediately so client doesn't wait
+                if let Some(entry) = tabs.get(&tab_id) {
+                    let (bin, hash) = {
+                        let tab = entry.lock();
+                        let content = tab.get_screen(sub_rows, sub_cols);
+                        let response = ServerMsg::Screen { tab_id: tab_id.clone(), content };
+                        let bin = rmp_serde::to_vec(&response).unwrap_or_default();
+                        let hash = {
+                            use std::hash::{Hash, Hasher};
+                            let mut h = std::collections::hash_map::DefaultHasher::new();
+                            bin.hash(&mut h);
+                            h.finish()
+                        };
+                        (bin, hash)
+                    };
+                    last_screen_hash = hash;
+                    let len = (bin.len() as u32).to_le_bytes();
+                    let mut frame = Vec::with_capacity(5 + bin.len());
+                    frame.push(0x00);
+                    frame.extend_from_slice(&len);
+                    frame.extend_from_slice(&bin);
+                    let _ = writer.write_all(&frame).await;
+                    let _ = writer.flush().await;
+                }
+
+                // Push loop: wait for PTY output, then send screen
+                let mut skip_coalesce = false;
+                let mut push_frame_buf: Vec<u8> = Vec::with_capacity(64 * 1024);
+                loop {
+                    // Wait for output or timeout (200ms max to catch missed notifies)
+                    tokio::select! {
+                        _ = notify.notified() => {}
+                        _ = tokio::time::sleep(tokio::time::Duration::from_millis(200)) => {}
+                        // Also check for incoming messages (binary or JSON)
+                        result = async {
+                            let buf = reader.fill_buf().await?;
+                            if buf.is_empty() {
+                                return Ok::<Option<ClientMsg>, anyhow::Error>(None); // disconnected
+                            }
+                            if buf[0] == 0x00 {
+                                reader.consume(1);
+                                let len = reader.read_u32_le().await? as usize;
+                                bin_buf.clear();
+                                bin_buf.resize(len, 0);
+                                reader.read_exact(&mut bin_buf).await?;
+                                Ok(rmp_serde::from_slice(&bin_buf).ok())
+                            } else {
+                                line.clear();
+                                let n = reader.read_line(&mut line).await?;
+                                if n == 0 { return Ok(None); }
+                                Ok(serde_json::from_str(&line).ok())
+                            }
+                        } => {
+                            match result {
+                                Ok(None) => break, // disconnected
+                                Ok(Some(msg)) => {
+                                    match msg {
+                                        ClientMsg::Resize { rows: r, cols: c, .. } => {
+                                            sub_rows = r;
+                                            sub_cols = c;
+                                            if let Some(entry) = tabs.get(&tab_id) {
+                                                let config = _config.lock();
+                                                if matches!(config.resize_strategy, crate::config::ResizeStrategy::Sync) {
+                                                    let mut tab = entry.lock();
+                                                    tab.resize(r, c);
+                                                }
+                                            }
+                                        }
+                                        ClientMsg::Subscribe { rows: r, cols: c, .. } => {
+                                            sub_rows = r;
+                                            sub_cols = c;
+                                        }
+                                        ClientMsg::Input { tab_id: ref tid, ref data } => {
+                                            if let Some(tab) = tabs.get(tid) {
+                                                let mut tab = tab.lock();
+                                                tab.ensure_running();
+                                                tab.write(data);
+                                            }
+                                            skip_coalesce = true;
+                                        }
+                                        ClientMsg::Paste { tab_id: ref tid, ref data } => {
+                                            if let Some(tab) = tabs.get(tid) {
+                                                let mut tab = tab.lock();
+                                                tab.ensure_running();
+                                                tab.paste(data);
+                                            }
+                                            skip_coalesce = true;
+                                        }
+                                        _ => {}
+                                    }
+                                    continue;
+                                }
+                                Err(_) => break,
+                            }
+                        }
+                    }
+
+                    // Adaptive coalesce: skip for interactive keystrokes (echo path),
+                    // only coalesce during rapid output bursts (e.g. cat large_file)
+                    if !skip_coalesce {
+                        let has_more = tokio::time::timeout(
+                            tokio::time::Duration::from_micros(500),
+                            notify.notified(),
+                        ).await.is_ok();
+                        if has_more {
+                            // Rapid output — coalesce 1ms more to batch
+                            tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
+                        }
+                    }
+                    skip_coalesce = false;
+
+                    let Some(entry) = tabs.get(&tab_id) else { break };
+                    let (bin, hash) = {
+                        let tab = entry.lock();
+                        let content = tab.get_screen(sub_rows, sub_cols);
+                        let response = ServerMsg::Screen { tab_id: tab_id.clone(), content };
+                        let bin = rmp_serde::to_vec(&response).unwrap_or_default();
+                        let hash = {
+                            use std::hash::{Hash, Hasher};
+                            let mut h = std::collections::hash_map::DefaultHasher::new();
+                            bin.hash(&mut h);
+                            h.finish()
+                        };
+                        (bin, hash)
+                    };
+                    if hash == last_screen_hash {
+                        // Screen unchanged — skip sending
+                        continue;
+                    }
+                    last_screen_hash = hash;
+                    let len = (bin.len() as u32).to_le_bytes();
+                    // Reuse pre-allocated buffer to avoid per-push allocation
+                    push_frame_buf.clear();
+                    push_frame_buf.push(0x00);
+                    push_frame_buf.extend_from_slice(&len);
+                    push_frame_buf.extend_from_slice(&bin);
+                    if writer.write_all(&push_frame_buf).await.is_err() { break; }
+                    if writer.flush().await.is_err() { break; }
+                }
+                tracing::info!("Client #{} push loop ended for tab {}", client_id, tab_id);
+                break; // Exit handle_client after push loop ends
+            }
         };
 
-        let json = serde_json::to_vec(&response)?;
-        writer.write_all(&json).await?;
-        writer.write_all(b"\n").await?;
+        // Use MessagePack for Screen responses (hot path), JSON for everything else.
+        if matches!(response, ServerMsg::Screen { .. }) {
+            let bin = rmp_serde::to_vec(&response).unwrap_or_default();
+            let len = (bin.len() as u32).to_le_bytes();
+            writer.write_all(&[0x00]).await?; // magic byte: binary frame
+            writer.write_all(&len).await?;
+            writer.write_all(&bin).await?;
+        } else {
+            let json = serde_json::to_vec(&response)?;
+            writer.write_all(&json).await?;
+            writer.write_all(b"\n").await?;
+        }
         writer.flush().await?;
     }
 
