@@ -13,8 +13,8 @@ pub fn show_onboarding() -> io::Result<()> {
     println!("Multi-Agent Terminal Office - Your persistent terminal multiplexer\n");
     
     println!("Choose a workspace template:\n");
-    println!("  1. Power User (45 tasks, 250+ tabs) ⭐ RECOMMENDED");
-    println!("     → Complete setup with all AI tools and business functions");
+    println!("  1. Mato Creator Office (45 tasks, 250+ tabs) ⭐ RECOMMENDED");
+    println!("     → The actual office used by Mato creators/builders");
     println!();
     println!("  2. Solo Developer (3 tasks, 8 tabs)");
     println!("     → Perfect for individual developers");

@@ -44,19 +44,18 @@ This will trigger the GitHub Actions workflow to:
 
 After the release is created:
 
-1. Download the release tarballs
-2. Calculate SHA256 checksums:
+1. Use your tap repository (recommended: `YOUR_USERNAME/homebrew-tap`)
+2. Download release checksums:
    ```bash
-   sha256sum mato-*.tar.gz
+   curl -fsSL https://github.com/YOUR_USERNAME/mato/releases/download/vX.Y.Z/checksums.txt
    ```
-3. Update `Formula/mato.rb` with new version and checksums
-4. Create a homebrew-tap repository if not exists:
+3. Update `Formula/mato.rb` in the tap repo with:
+   - release URLs
+   - matching SHA256 values
+4. Commit and push in the tap repo:
    ```bash
-   # Create repo: YOUR_USERNAME/homebrew-tap
-   mkdir -p Formula
-   cp Formula/mato.rb Formula/
    git add Formula/mato.rb
-   git commit -m "mato 0.1.0"
+   git commit -m "mato X.Y.Z"
    git push
    ```
 
@@ -135,5 +134,5 @@ Example workflow addition:
 ## Notes
 
 - Replace `YOUR_USERNAME` with your actual GitHub username in all files
-- Update repository URLs in README.md, install.sh, and Formula/mato.rb
+- Update repository URLs in README.md, install.sh, and tap `Formula/mato.rb`
 - Consider using GitHub Releases API for automated Homebrew formula updates

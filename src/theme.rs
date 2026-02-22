@@ -3,6 +3,7 @@ use ratatui::style::Color;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThemeColors {
+    pub follow_terminal: bool,
     pub bg:      [u8; 3],
     pub surface: [u8; 3],
     pub border:  [u8; 3],
@@ -14,14 +15,18 @@ pub struct ThemeColors {
 }
 
 impl ThemeColors {
-    pub fn bg(&self)      -> Color { Color::Rgb(self.bg[0],      self.bg[1],      self.bg[2])      }
-    pub fn surface(&self) -> Color { Color::Rgb(self.surface[0], self.surface[1], self.surface[2]) }
-    pub fn border(&self)  -> Color { Color::Rgb(self.border[0],  self.border[1],  self.border[2])  }
-    pub fn accent(&self)  -> Color { Color::Rgb(self.accent[0],  self.accent[1],  self.accent[2])  }
-    pub fn accent2(&self) -> Color { Color::Rgb(self.accent2[0], self.accent2[1], self.accent2[2]) }
-    pub fn fg(&self)      -> Color { Color::Rgb(self.fg[0],      self.fg[1],      self.fg[2])      }
-    pub fn fg_dim(&self)  -> Color { Color::Rgb(self.fg_dim[0],  self.fg_dim[1],  self.fg_dim[2])  }
-    pub fn sel_bg(&self)  -> Color { Color::Rgb(self.sel_bg[0],  self.sel_bg[1],  self.sel_bg[2])  }
+    pub fn bg(&self)      -> Color { if self.follow_terminal { Color::Reset } else { Color::Rgb(self.bg[0],      self.bg[1],      self.bg[2])      } }
+    pub fn surface(&self) -> Color { if self.follow_terminal { Color::Reset } else { Color::Rgb(self.surface[0], self.surface[1], self.surface[2]) } }
+    pub fn border(&self)  -> Color { if self.follow_terminal { Color::Reset } else { Color::Rgb(self.border[0],  self.border[1],  self.border[2])  } }
+    pub fn accent(&self)  -> Color { if self.follow_terminal { Color::Reset } else { Color::Rgb(self.accent[0],  self.accent[1],  self.accent[2])  } }
+    pub fn accent2(&self) -> Color { if self.follow_terminal { Color::Reset } else { Color::Rgb(self.accent2[0], self.accent2[1], self.accent2[2]) } }
+    pub fn fg(&self)      -> Color { if self.follow_terminal { Color::Reset } else { Color::Rgb(self.fg[0],      self.fg[1],      self.fg[2])      } }
+    pub fn fg_dim(&self)  -> Color { if self.follow_terminal { Color::Reset } else { Color::Rgb(self.fg_dim[0],  self.fg_dim[1],  self.fg_dim[2])  } }
+    pub fn sel_bg(&self)  -> Color { if self.follow_terminal { Color::Reset } else { Color::Rgb(self.sel_bg[0],  self.sel_bg[1],  self.sel_bg[2])  } }
+    pub fn rgb_bg(&self) -> [u8; 3] { self.bg }
+    pub fn rgb_accent(&self) -> [u8; 3] { self.accent }
+    pub fn rgb_accent2(&self) -> [u8; 3] { self.accent2 }
+    pub fn rgb_fg(&self) -> [u8; 3] { self.fg }
 }
 
 /// Top-level theme.toml structure.
@@ -47,11 +52,23 @@ pub struct PartialColors {
     pub sel_bg:  Option<[u8; 3]>,
 }
 
-pub const BUILTIN_THEMES: &[&str] = &["navy", "gruvbox", "catppuccin"];
+pub const BUILTIN_THEMES: &[&str] = &["system", "navy", "gruvbox", "catppuccin"];
 
 pub fn builtin(name: &str) -> ThemeColors {
     match name {
+        "system" => ThemeColors {
+            follow_terminal: true,
+            bg:      [0, 0, 0],
+            surface: [0, 0, 0],
+            border:  [0, 0, 0],
+            accent:  [0, 0, 0],
+            accent2: [0, 0, 0],
+            fg:      [0, 0, 0],
+            fg_dim:  [0, 0, 0],
+            sel_bg:  [0, 0, 0],
+        },
         "gruvbox" => ThemeColors {
+            follow_terminal: false,
             bg:      [40,  40,  40],
             surface: [50,  48,  47],
             border:  [102, 92,  84],
@@ -62,6 +79,7 @@ pub fn builtin(name: &str) -> ThemeColors {
             sel_bg:  [80,  73,  69],
         },
         "catppuccin" => ThemeColors {
+            follow_terminal: false,
             bg:      [30,  30,  46],
             surface: [49,  50,  68],
             border:  [88,  91,  112],
@@ -72,6 +90,7 @@ pub fn builtin(name: &str) -> ThemeColors {
             sel_bg:  [69,  71,  90],
         },
         _ => ThemeColors { // navy (default)
+            follow_terminal: false,
             bg:      [18,  18,  28],
             surface: [28,  28,  42],
             border:  [60,  60,  90],
@@ -91,7 +110,7 @@ pub fn load() -> ThemeColors {
         .and_then(|s| toml::from_str(&s).ok())
         .unwrap_or_default();
 
-    let base_name = file.name.as_deref().unwrap_or("navy");
+    let base_name = file.name.as_deref().unwrap_or("system");
     let mut base = builtin(base_name);
     let o = &file.colors;
     if let Some(v) = o.bg      { base.bg      = v; }
@@ -117,4 +136,21 @@ pub fn save_name(name: &str) -> std::io::Result<()> {
     file.name = Some(name.to_string());
     let content = toml::to_string_pretty(&file).unwrap();
     std::fs::write(&path, content)
+}
+
+pub fn selected_name() -> String {
+    let path = crate::utils::get_config_dir().join("theme.toml");
+    let file: ThemeFile = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| toml::from_str(&s).ok())
+        .unwrap_or_default();
+    file.name.unwrap_or_else(|| "system".to_string())
+}
+
+pub fn selected_index() -> usize {
+    let name = selected_name();
+    BUILTIN_THEMES
+        .iter()
+        .position(|n| *n == name)
+        .unwrap_or(0)
 }

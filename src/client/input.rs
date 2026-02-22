@@ -126,17 +126,28 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
             KeyCode::Esc => {
                 app.jump_mode = JumpMode::None;
             }
-            // Arrow keys or vim keys to switch focus
-            KeyCode::Up | KeyCode::Char('w') => {
-                app.focus = Focus::Topbar;
-                app.jump_mode = JumpMode::None;
-            }
-            KeyCode::Left | KeyCode::Char('a') => {
+            // Focus switching matrix in Jump Mode:
+            // Topbar:  ← Sidebar, ↓ Content
+            // Sidebar: ↑ Topbar, → Content
+            // Content: ← Sidebar, ↑ Topbar
+            KeyCode::Left if matches!(app.focus, Focus::Topbar | Focus::Content) => {
                 app.focus = Focus::Sidebar;
                 app.jump_mode = JumpMode::None;
             }
+            KeyCode::Down if app.focus == Focus::Topbar => {
+                app.focus = Focus::Content;
+                app.jump_mode = JumpMode::None;
+            }
+            KeyCode::Right if app.focus == Focus::Sidebar => {
+                app.focus = Focus::Content;
+                app.jump_mode = JumpMode::None;
+            }
+            KeyCode::Up if matches!(app.focus, Focus::Sidebar | Focus::Content) => {
+                app.focus = Focus::Topbar;
+                app.jump_mode = JumpMode::None;
+            }
             // Letter keys for jumping
-            KeyCode::Char(c) if c.is_ascii_lowercase() => {
+            KeyCode::Char(c) if c.is_ascii_alphabetic() => {
                 app.handle_jump_selection(c);
             }
             _ => {}
@@ -180,14 +191,9 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
     }
 
     if key.code == KeyCode::Esc {
-        match app.focus {
-            Focus::Topbar  => { app.focus = Focus::Sidebar; }
-            Focus::Sidebar => {}
-            Focus::Content => {
-                // Enter Jump Mode - can use arrows OR letters
-                app.jump_mode = JumpMode::Active;
-            }
-        }
+        // Enter Jump Mode from any focus.
+        // Press Esc again in Jump Mode to cancel and return to the same focus.
+        app.jump_mode = JumpMode::Active;
         return false;
     }
 

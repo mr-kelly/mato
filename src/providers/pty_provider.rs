@@ -1,4 +1,4 @@
-use std::{io::{Read, Write}, sync::{Arc, Mutex}, thread, time::Instant};
+use std::{env, io::{Read, Write}, sync::{Arc, Mutex}, thread, time::Instant};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use crate::terminal_provider::{TerminalProvider, ScreenContent};
 use crate::terminal_emulator::TerminalEmulator;
@@ -41,6 +41,45 @@ impl PtyProvider {
             }
         }
     }
+
+    fn resolve_shell() -> String {
+        // Prefer explicit environment from parent process.
+        if let Some(shell) = env::var_os("SHELL") {
+            let shell = shell.to_string_lossy().trim().to_string();
+            if !shell.is_empty() {
+                return shell;
+            }
+        }
+
+        #[cfg(unix)]
+        {
+            use std::ffi::CStr;
+            let shell_ptr = unsafe {
+                let uid = libc::getuid();
+                let pw = libc::getpwuid(uid);
+                if pw.is_null() {
+                    std::ptr::null()
+                } else {
+                    (*pw).pw_shell
+                }
+            };
+            if !shell_ptr.is_null() {
+                let shell = unsafe { CStr::from_ptr(shell_ptr) }
+                    .to_string_lossy()
+                    .trim()
+                    .to_string();
+                if !shell.is_empty() {
+                    return shell;
+                }
+            }
+        }
+
+        "/bin/sh".to_string()
+    }
+
+    pub fn child_pid(&self) -> Option<u32> {
+        self.pty.as_ref().and_then(|p| p._child.process_id())
+    }
 }
 
 impl Default for PtyProvider {
@@ -57,7 +96,9 @@ impl TerminalProvider for PtyProvider {
         
         let pty_system = native_pty_system();
         let pair = pty_system.openpty(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 }).expect("openpty");
-        let mut cmd = CommandBuilder::new("bash");
+        let shell = Self::resolve_shell();
+        tracing::info!("Spawning PTY shell: {}", shell);
+        let mut cmd = CommandBuilder::new(shell);
         cmd.env("TERM", "xterm-256color");
         let child = pair.slave.spawn_command(cmd).expect("spawn");
         

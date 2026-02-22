@@ -563,8 +563,10 @@ Types:
 
 #### During Development
 1. Create dated documents in `docs/changelog/` for major decisions
-2. Update `docs/todos/TODO.md` as phases progress
-3. Keep `CHANGELOG.md` updated with unreleased changes
+2. For every AI Agent chat session, create or continue exactly one session changelog in `docs/changelog/`
+3. Keep updating that same session changelog throughout the session (do not split one session across multiple changelog files unless explicitly requested)
+4. Update `docs/todos/TODO.md` as phases progress
+5. Keep `CHANGELOG.md` updated with unreleased changes
 
 #### At Release
 1. Move unreleased changes in `CHANGELOG.md` to new version section
@@ -582,6 +584,7 @@ Types:
 
 ✅ **Do**:
 - Date all historical documents (`YYYY-MM-DD_*.md`)
+- Maintain one changelog file per AI Agent session and keep appending to it during that session
 - Keep release notes in `docs/release-notes/`
 - Update documentation as you code
 - Use clear, descriptive filenames
@@ -635,10 +638,10 @@ Types:
 
 **Process**:
 1. Implemented suspend logic
-2. User tested: "fg 后还是没东西啊？"
+2. User tested: "After `fg`, the terminal is still blank."
 3. Realized terminal state wasn't restored
 4. Added SIGCONT signal handler
-5. User tested again: "似乎好了耶"
+5. User tested again: "Looks like it's fixed now."
 
 **Lesson**: **Test immediately after implementation**. Don't assume it works.
 
@@ -669,9 +672,9 @@ Types:
 ### 5. Iterate on User Feedback
 
 **Real conversation**:
-- User: "Jump Mode label offset 偏上了一点"
+- User: "The Jump Mode label is a bit too high."
 - Fixed: Use `sidebar_list_area` instead of calculating
-- User: "似乎好了耶"
+- User: "Looks good now."
 
 **Lesson**: **Quick iteration wins**. Fix → Test → Confirm → Move on.
 

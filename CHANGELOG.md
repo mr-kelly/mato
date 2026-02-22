@@ -10,6 +10,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Placeholder for upcoming changes.
 
+## [0.5.0] - 2026-02-22
+
+**Jump Mode + System Theme Polish Release**
+
+### Added
+- Onboarding office-name flow:
+  - default office name prefilled from username/hostname
+  - one-key start with template selection (`Enter`)
+  - optional rename mode via `r` before starting
+- Extended Jump labels from lowercase-only to `a-z/A-Z` (up to 52 targets).
+- New docs:
+  - `docs/changelog/2026-02-22_shell-experience-jump-mode-and-system-theme-polish.md`
+  - updated operations guide in `README.md`
+  - refreshed `docs/KEYBOARD_SHORTCUTS.md`
+
+### Changed
+- Renamed template identity:
+  - `Power User` -> `Mato Creator Office`
+  - onboarding/metadata copy now explicitly describes creator/builder setup
+- Jump Mode label allocation strategy:
+  - Content: balanced interleaving of tab/desk targets
+  - Topbar: tabs first
+  - Sidebar: desks first
+- Jump target rendering and key mapping now use a unified target model (no label/key mismatch).
+- System theme visual polish:
+  - clearer active panel/tab/desk emphasis
+  - focus/status badges aligned with theme behavior
+
+### Fixed
+- Fast typing flicker in active shell tab mitigated by cache/fallback behavior improvements.
+- Jump popup transparency bleed removed (solid popup rendering path).
+- Sidebar jump labels aligned with desk rows (offset fix).
+- `w/a` no longer hijack letter jumps in Jump Mode.
+- Jump focus arrows now follow explicit per-focus matrix:
+  - Topbar: `←` Sidebar, `↓` Content
+  - Sidebar: `→` Content, `↑` Topbar
+  - Content: `←` Sidebar, `↑` Topbar
+- Status indicator updated from `⚡` style to explicit connection semantics (`✓` / `·` / `•`).
+
+📖 **[Full Release Notes →](docs/release-notes/RELEASE_NOTES_v0.5.0.md)**  
+📖 **[Technical Summary →](docs/release-notes/RELEASE_SUMMARY_v0.5.0.md)**
+
 ## [0.4.0] - 2026-02-21
 
 **Shell Experience & Performance Release**
@@ -88,7 +130,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Links
 
-[Unreleased]: https://github.com/YOUR_USERNAME/mato/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/YOUR_USERNAME/mato/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/YOUR_USERNAME/mato/releases/tag/v0.5.0
 [0.4.0]: https://github.com/YOUR_USERNAME/mato/releases/tag/v0.4.0
 [0.3.0]: https://github.com/YOUR_USERNAME/mato/releases/tag/v0.3.0
 [0.2.0]: https://github.com/YOUR_USERNAME/mato/releases/tag/v0.2.0

@@ -2,15 +2,73 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  prepare:
+    name: Prepare Version and Tag
+    runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.meta.outputs.branch }}
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute branch version/tag
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BRANCH="${GITHUB_REF_NAME}"
+          if [ "$BRANCH" != "develop" ] && [ "$BRANCH" != "main" ]; then
+            echo "Unsupported branch: $BRANCH"
+            exit 1
+          fi
+
+          BASE_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)
+          if [ -z "$BASE_VERSION" ]; then
+            echo "Failed to parse version from Cargo.toml"
+            exit 1
+          fi
+
+          if [ "$BRANCH" = "develop" ]; then
+            VERSION="${BASE_VERSION}-alpha.${GITHUB_RUN_NUMBER}"
+            PRERELEASE=true
+          else
+            VERSION="$BASE_VERSION"
+            PRERELEASE=false
+          fi
+
+          TAG="v${VERSION}"
+
+          # For main branch this is required by policy; for develop this also prevents collisions.
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag already exists on origin: ${TAG}"
+            if [ "$BRANCH" = "main" ]; then
+              echo "Main branch release requires a new Cargo.toml version."
+            fi
+            exit 1
+          fi
+
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build ${{ matrix.target }}
+    needs: prepare
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -35,6 +93,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Apply alpha version on develop
+        if: needs.prepare.outputs.branch == 'develop'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.prepare.outputs.version }}"
+          awk -v v="$VERSION" '
+            BEGIN { done=0 }
+            !done && $0 ~ /^version = "/ { print "version = \"" v "\""; done=1; next }
+            { print }
+          ' Cargo.toml > Cargo.toml.tmp
+          mv Cargo.toml.tmp Cargo.toml
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -44,9 +115,18 @@ jobs:
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
+          sudo apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross
 
-      - name: Build
+      - name: Build (aarch64 linux)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Build (non-aarch64 targets)
+        if: matrix.target != 'aarch64-unknown-linux-gnu'
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Strip binary
@@ -61,21 +141,33 @@ jobs:
       - name: Create tarball
         run: |
           cd target/${{ matrix.target }}/release
-          tar czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
-          mv ${{ matrix.asset_name }}.tar.gz ../../..
+          tar czf ${{ matrix.asset_name }}-${{ needs.prepare.outputs.tag }}.tar.gz ${{ matrix.artifact_name }}
+          mv ${{ matrix.asset_name }}-${{ needs.prepare.outputs.tag }}.tar.gz ../../..
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
-          path: ${{ matrix.asset_name }}.tar.gz
+          path: ${{ matrix.asset_name }}-${{ needs.prepare.outputs.tag }}.tar.gz
 
   release:
-    name: Create Release
-    needs: build
+    name: Tag and Create Release
+    needs: [prepare, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create and push release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.prepare.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -94,10 +186,16 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ needs.prepare.outputs.prerelease }}
           files: |
             artifacts/*/*.tar.gz
             artifacts/checksums.txt
           body: |
+            Branch: `${{ needs.prepare.outputs.branch }}`
+            Version: `${{ needs.prepare.outputs.version }}`
+
             ## Installation
 
             ### Quick Install (Linux/macOS)
@@ -123,12 +221,133 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  homebrew:
-    name: Update Homebrew Formula
-    needs: release
+  update_homebrew_tap:
+    name: Update Homebrew Tap Formula
+    needs: [prepare, release]
     runs-on: ubuntu-latest
+    if: needs.prepare.outputs.branch == 'main' || needs.prepare.outputs.branch == 'develop'
     steps:
-      - name: Update Homebrew tap
+      - name: Validate required secret
+        shell: bash
         run: |
-          echo "Homebrew formula will be updated manually or via separate workflow"
-          # This would typically trigger a PR to homebrew-tap repository
+          set -euo pipefail
+          if [ -z "${{ secrets.HOMEBREW_TAP_TOKEN }}" ]; then
+            echo "Missing required secret: HOMEBREW_TAP_TOKEN"
+            echo "Create a PAT with repo scope and add it to repository secrets."
+            exit 1
+          fi
+
+      - name: Generate Formula from release assets
+        id: gen_formula
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          OWNER="${{ github.repository_owner }}"
+          BRANCH="${{ needs.prepare.outputs.branch }}"
+          TAG="${{ needs.prepare.outputs.tag }}"
+          VERSION="${{ needs.prepare.outputs.version }}"
+          CHECKSUMS_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/checksums.txt"
+
+          if [ "$BRANCH" = "develop" ]; then
+            FORMULA_FILE="mato-alpha.rb"
+            FORMULA_CLASS="MatoAlpha"
+            FORMULA_DESC="Multi-Agent Terminal Office (alpha)"
+            CONFLICT_FORMULA="mato"
+          else
+            FORMULA_FILE="mato.rb"
+            FORMULA_CLASS="Mato"
+            FORMULA_DESC="Multi-Agent Terminal Office"
+            CONFLICT_FORMULA="mato-alpha"
+          fi
+
+          echo "formula_file=${FORMULA_FILE}" >> "$GITHUB_OUTPUT"
+          echo "formula_class=${FORMULA_CLASS}" >> "$GITHUB_OUTPUT"
+
+          curl -fsSL "$CHECKSUMS_URL" -o checksums.txt
+
+          LINUX_ARM_FILE="mato-linux-aarch64-${TAG}.tar.gz"
+          LINUX_X86_FILE="mato-linux-x86_64-${TAG}.tar.gz"
+          MACOS_ARM_FILE="mato-macos-aarch64-${TAG}.tar.gz"
+          MACOS_X86_FILE="mato-macos-x86_64-${TAG}.tar.gz"
+
+          LINUX_ARM_SHA=$(awk -v f="$LINUX_ARM_FILE" '$2==f {print $1}' checksums.txt)
+          LINUX_X86_SHA=$(awk -v f="$LINUX_X86_FILE" '$2==f {print $1}' checksums.txt)
+          MACOS_ARM_SHA=$(awk -v f="$MACOS_ARM_FILE" '$2==f {print $1}' checksums.txt)
+          MACOS_X86_SHA=$(awk -v f="$MACOS_X86_FILE" '$2==f {print $1}' checksums.txt)
+
+          for val in "$LINUX_ARM_SHA" "$LINUX_X86_SHA" "$MACOS_ARM_SHA" "$MACOS_X86_SHA"; do
+            if [ -z "$val" ]; then
+              echo "Failed to resolve all checksums from checksums.txt"
+              cat checksums.txt
+              exit 1
+            fi
+          done
+
+          mkdir -p tap-work/Formula
+          cat > "tap-work/Formula/${FORMULA_FILE}" <<EOF
+          class ${FORMULA_CLASS} < Formula
+            desc "${FORMULA_DESC}"
+            homepage "https://github.com/${OWNER}/mato"
+            version "${VERSION}"
+            license "MIT"
+            conflicts_with "${CONFLICT_FORMULA}", because: "both install the same binary name: mato"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/${OWNER}/mato/releases/download/${TAG}/${MACOS_ARM_FILE}"
+                sha256 "${MACOS_ARM_SHA}"
+              else
+                url "https://github.com/${OWNER}/mato/releases/download/${TAG}/${MACOS_X86_FILE}"
+                sha256 "${MACOS_X86_SHA}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "https://github.com/${OWNER}/mato/releases/download/${TAG}/${LINUX_ARM_FILE}"
+                sha256 "${LINUX_ARM_SHA}"
+              else
+                url "https://github.com/${OWNER}/mato/releases/download/${TAG}/${LINUX_X86_FILE}"
+                sha256 "${LINUX_X86_SHA}"
+              end
+            end
+
+            def install
+              bin.install "mato"
+            end
+
+            test do
+              assert_match "mato", shell_output("#{bin}/mato --version")
+            end
+          end
+          EOF
+
+      - name: Push formula update to tap repo
+        shell: bash
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          OWNER="${{ github.repository_owner }}"
+          TAP_REPO="homebrew-tap"
+          FORMULA_FILE="${{ steps.gen_formula.outputs.formula_file }}"
+          FORMULA_PATH="Formula/${FORMULA_FILE}"
+
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/${OWNER}/${TAP_REPO}.git" tap-repo
+          mkdir -p tap-repo/Formula
+          cp "tap-work/Formula/${FORMULA_FILE}" "tap-repo/${FORMULA_PATH}"
+
+          cd tap-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- "${FORMULA_PATH}"; then
+            echo "No formula changes detected; skipping commit."
+            exit 0
+          fi
+
+          git add "${FORMULA_PATH}"
+          git commit -m "${FORMULA_FILE} ${{ needs.prepare.outputs.version }}"
+          git push origin HEAD:main
