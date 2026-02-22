@@ -317,6 +317,16 @@ jobs:
               bin.install "mato"
             end
 
+            def caveats
+              <<~EOS
+                If you installed mato by another method (for example: install.sh to ~/.local/bin),
+                your shell may still resolve that binary first.
+
+                Check command priority with:
+                  which -a mato
+              EOS
+            end
+
             test do
               assert_match "mato", shell_output("#{bin}/mato --version")
             end

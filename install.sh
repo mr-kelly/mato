@@ -40,8 +40,19 @@ case "$ARCH" in
 esac
 
 BINARY_NAME="mato-${OS_TYPE}-${ARCH_TYPE}"
+TARGET_BIN="${INSTALL_DIR}/mato"
 
 echo "Installing MATO for ${OS_TYPE}-${ARCH_TYPE}..."
+
+# Preflight: detect existing mato in PATH (e.g. Homebrew) and warn about PATH precedence.
+EXISTING_MATO="$(command -v mato 2>/dev/null || true)"
+if [ -n "$EXISTING_MATO" ] && [ "$EXISTING_MATO" != "$TARGET_BIN" ]; then
+    echo "⚠️  Existing 'mato' found at: $EXISTING_MATO"
+    echo "    This installer will place mato at: $TARGET_BIN"
+    echo "    If PATH prefers another location, that version will continue to run."
+    echo "    Tip: run 'which -a mato' after install to verify command priority."
+    echo ""
+fi
 
 # Get latest release metadata
 RELEASE_JSON=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest")
@@ -89,11 +100,11 @@ tar xzf mato.tar.gz
 
 # Install
 mkdir -p "$INSTALL_DIR"
-mv mato "$INSTALL_DIR/mato"
-chmod +x "$INSTALL_DIR/mato"
+mv mato "$TARGET_BIN"
+chmod +x "$TARGET_BIN"
 
 echo ""
-echo "✅ MATO installed successfully to $INSTALL_DIR/mato"
+echo "✅ MATO installed successfully to $TARGET_BIN"
 echo ""
 
 # Check if in PATH
@@ -105,7 +116,16 @@ else
     echo "    echo 'export PATH=\"\$PATH:$INSTALL_DIR\"' >> ~/.bashrc"
     echo "    source ~/.bashrc"
     echo ""
-    echo "Or run directly: $INSTALL_DIR/mato"
+    echo "Or run directly: $TARGET_BIN"
+fi
+
+ACTIVE_MATO="$(command -v mato 2>/dev/null || true)"
+if [ -n "$ACTIVE_MATO" ] && [ "$ACTIVE_MATO" != "$TARGET_BIN" ]; then
+    echo ""
+    echo "⚠️  PATH priority notice:"
+    echo "    'mato' currently resolves to: $ACTIVE_MATO"
+    echo "    Newly installed binary is at: $TARGET_BIN"
+    echo "    Run 'which -a mato' and adjust PATH order if needed."
 fi
 
 echo ""
