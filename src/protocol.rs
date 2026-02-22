@@ -1,4 +1,4 @@
-use crate::terminal_provider::ScreenContent;
+use crate::terminal_provider::{CursorShape, ScreenContent, ScreenLine};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,6 +68,15 @@ pub enum ServerMsg {
     },
     /// Screen content hasn't changed since last GetScreen on this connection.
     ScreenUnchanged,
+    /// Incremental screen update: only changed lines + cursor/metadata.
+    ScreenDiff {
+        changed_lines: Vec<(u16, ScreenLine)>,
+        cursor: (u16, u16),
+        cursor_shape: CursorShape,
+        title: Option<String>,
+        #[serde(default)]
+        bell: bool,
+    },
     Error {
         message: String,
     },

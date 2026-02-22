@@ -16,7 +16,9 @@ pub trait TerminalProvider: Send {
         false
     }
     fn get_screen(&self, rows: u16, cols: u16) -> ScreenContent;
-    fn screen_generation(&self) -> u64 { 0 }
+    fn screen_generation(&self) -> u64 {
+        0
+    }
     fn scroll(&mut self, _delta: i32) {}
 }
 
@@ -39,12 +41,12 @@ pub enum CursorShape {
     Hidden,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ScreenLine {
     pub cells: Vec<ScreenCell>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ScreenCell {
     pub ch: char,
     #[serde(default = "default_display_width")]

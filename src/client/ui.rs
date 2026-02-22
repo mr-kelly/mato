@@ -1,4 +1,4 @@
-use crate::client::app::{App, Focus, JumpMode, RenameTarget, JUMP_LABELS};
+use crate::client::app::{App, Focus, JumpMode, RenameTarget};
 use crate::terminal_provider::CursorShape;
 use crate::theme::{ThemeColors, BUILTIN_THEMES};
 use ratatui::{
@@ -71,8 +71,8 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         app.new_tab_area = Rect::default();
         app.content_area = root[0];
 
-        let tr = root[0].height.saturating_sub(2);
-        let tc = root[0].width.saturating_sub(2);
+        let tr = root[0].height;
+        let tc = root[0].width;
         app.term_rows = tr;
         app.term_cols = tc;
         draw_terminal(f, app, root[0], &t);
@@ -141,7 +141,7 @@ fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
         // In Jump Mode, always show explicit focus targets as separate keys.
         match app.focus {
             Focus::Content => &[
-                ("a-z/A-Z", "Jump"),
+                ("a-z/A-Z/0-9", "Jump"),
                 ("c", "Copy Mode"),
                 ("r", "Restart Terminal"),
                 ("←", "Focus Sidebar"),
@@ -150,7 +150,7 @@ fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
                 ("Esc", "Cancel"),
             ],
             Focus::Topbar => &[
-                ("a-z/A-Z", "Jump"),
+                ("a-z/A-Z/0-9", "Jump"),
                 ("r", "Rename"),
                 ("←", "Focus Sidebar"),
                 ("↓", "Focus Content"),
@@ -158,7 +158,7 @@ fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
                 ("Esc", "Cancel"),
             ],
             Focus::Sidebar => &[
-                ("a-z/A-Z", "Jump"),
+                ("a-z/A-Z/0-9", "Jump"),
                 ("r", "Rename"),
                 ("→", "Focus Content"),
                 ("↑", "Focus Tabbar"),
@@ -512,10 +512,7 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
 
     let term_bg = t.bg();
     let (ix, iy, iw, ih) = if app.copy_mode {
-        f.render_widget(
-            Block::default().style(Style::default().bg(term_bg)),
-            area,
-        );
+        f.render_widget(Block::default().style(Style::default().bg(term_bg)), area);
         (area.x, area.y, area.width, area.height)
     } else {
         f.render_widget(
@@ -707,7 +704,7 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
 }
 
 fn draw_jump_mode(f: &mut Frame, app: &App, t: &ThemeColors) {
-    let labels: Vec<char> = JUMP_LABELS.chars().collect();
+    let labels = app.jump_labels();
     let jump_fg = if t.follow_terminal {
         Style::default().add_modifier(Modifier::BOLD | Modifier::REVERSED)
     } else {
@@ -724,18 +721,22 @@ fn draw_jump_mode(f: &mut Frame, app: &App, t: &ThemeColors) {
         let label = labels[idx];
         match kind {
             't' => {
-                let y = app.sidebar_list_area.y + 1 + *desk_idx as u16;
                 let x = app.sidebar_list_area.x + 1;
-                if y < app.sidebar_list_area.y + app.sidebar_list_area.height.saturating_sub(1) {
-                    f.render_widget(
-                        Paragraph::new(Span::styled(format!("[{}]", label), jump_fg)),
-                        Rect {
-                            x,
-                            y,
-                            width: 3,
-                            height: 1,
-                        },
-                    );
+                let sidebar_offset = app.list_state.offset();
+                if let Some(local_row) = desk_idx.checked_sub(sidebar_offset) {
+                    let y = app.sidebar_list_area.y + 1 + local_row as u16;
+                    if y < app.sidebar_list_area.y + app.sidebar_list_area.height.saturating_sub(1)
+                    {
+                        f.render_widget(
+                            Paragraph::new(Span::styled(format!("[{}]", label), jump_fg)),
+                            Rect {
+                                x,
+                                y,
+                                width: 3,
+                                height: 1,
+                            },
+                        );
+                    }
                 }
             }
             'b' => {
@@ -768,6 +769,10 @@ fn draw_jump_mode(f: &mut Frame, app: &App, t: &ThemeColors) {
     f.render_widget(Clear, help_area);
 
     // Help text varies by focus
+    let help_line_2 = match app.focus {
+        Focus::Content => " Press letters or digits to jump (no c/r/q) ",
+        Focus::Topbar | Focus::Sidebar => " Press letters or digits to jump (no r/q) ",
+    };
     let help_line_3 = match app.focus {
         Focus::Content => " c CopyMode | r Restart | ← Sidebar | ↑ Tabbar | q quit | ESC cancel ",
         Focus::Topbar => " r Rename | ← Sidebar | ↓ Content | q quit | ESC cancel ",
@@ -777,10 +782,7 @@ fn draw_jump_mode(f: &mut Frame, app: &App, t: &ThemeColors) {
     f.render_widget(
         Paragraph::new(vec![
             Line::from(Span::styled(" JUMP MODE ", jump_fg)),
-            Line::from(Span::styled(
-                " Press a-z or A-Z to jump ",
-                Style::default().fg(t.fg()),
-            )),
+            Line::from(Span::styled(help_line_2, Style::default().fg(t.fg()))),
             Line::from(Span::styled(help_line_3, Style::default().fg(t.fg_dim()))),
         ])
         .block(

@@ -288,7 +288,14 @@ pub async fn handle_client(
                 version: CURRENT_VERSION.into(),
             },
 
-            ClientMsg::Spawn { tab_id, rows, cols, cwd, shell, env } => {
+            ClientMsg::Spawn {
+                tab_id,
+                rows,
+                cols,
+                cwd,
+                shell,
+                env,
+            } => {
                 if tabs.contains_key(&tab_id) {
                     tracing::info!("Tab {} already exists", tab_id);
                     // Don't resize on reconnect - it would clear the screen
@@ -299,7 +306,13 @@ pub async fn handle_client(
                 } else {
                     tracing::info!("Spawning new tab {} ({}x{})", tab_id, rows, cols);
                     let mut provider = PtyProvider::new();
-                    provider.spawn_with_options(rows, cols, cwd.as_deref(), shell.as_deref(), env.as_deref());
+                    provider.spawn_with_options(
+                        rows,
+                        cols,
+                        cwd.as_deref(),
+                        shell.as_deref(),
+                        env.as_deref(),
+                    );
                     tabs.insert(tab_id.clone(), Arc::new(Mutex::new(provider)));
                     ServerMsg::Welcome {
                         version: "spawned".into(),
@@ -346,15 +359,14 @@ pub async fn handle_client(
                     if let Some(tab) = tabs.get(&tab_id) {
                         let mut tab = tab.lock();
                         tab.resize(rows.max(1), cols.max(1));
-                        tracing::debug!(
-                            "Resized tab {} to {}x{} (sync mode)",
-                            tab_id, rows, cols
-                        );
+                        tracing::debug!("Resized tab {} to {}x{} (sync mode)", tab_id, rows, cols);
                     }
                 } else {
                     tracing::debug!(
                         "Ignoring resize for tab {} ({}x{}) - fixed mode",
-                        tab_id, rows, cols
+                        tab_id,
+                        rows,
+                        cols
                     );
                 }
                 continue;
@@ -468,27 +480,28 @@ pub async fn handle_client(
                     continue;
                 };
 
-                tracing::info!("Client #{} subscribed to tab {} (push mode)", client_id, tab_id);
+                tracing::info!(
+                    "Client #{} subscribed to tab {} (push mode)",
+                    client_id,
+                    tab_id
+                );
                 let mut sub_rows = rows;
                 let mut sub_cols = cols;
                 line.clear();
+                let mut last_sent_screen: Option<crate::terminal_provider::ScreenContent> = None;
 
                 // Send initial screen immediately so client doesn't wait
                 if let Some(entry) = tabs.get(&tab_id) {
-                    let (bin, hash) = {
+                    let content = {
                         let tab = entry.lock();
-                        let content = tab.get_screen(sub_rows, sub_cols);
-                        let response = ServerMsg::Screen { tab_id: tab_id.clone(), content };
-                        let bin = rmp_serde::to_vec(&response).unwrap_or_default();
-                        let hash = {
-                            use std::hash::{Hash, Hasher};
-                            let mut h = std::collections::hash_map::DefaultHasher::new();
-                            bin.hash(&mut h);
-                            h.finish()
-                        };
-                        (bin, hash)
+                        tab.get_screen(sub_rows, sub_cols)
                     };
-                    last_screen_hash = hash;
+                    let response = ServerMsg::Screen {
+                        tab_id: tab_id.clone(),
+                        content: content.clone(),
+                    };
+                    let bin = rmp_serde::to_vec(&response).unwrap_or_default();
+                    last_sent_screen = Some(content);
                     let len = (bin.len() as u32).to_le_bytes();
                     let mut frame = Vec::with_capacity(5 + bin.len());
                     frame.push(0x00);
@@ -533,6 +546,7 @@ pub async fn handle_client(
                                         ClientMsg::Resize { rows: r, cols: c, .. } => {
                                             sub_rows = r;
                                             sub_cols = c;
+                                            last_sent_screen = None; // Force full screen after resize
                                             if let Some(entry) = tabs.get(&tab_id) {
                                                 let config = _config.lock();
                                                 if matches!(config.resize_strategy, crate::config::ResizeStrategy::Sync) {
@@ -544,6 +558,7 @@ pub async fn handle_client(
                                         ClientMsg::Subscribe { rows: r, cols: c, .. } => {
                                             sub_rows = r;
                                             sub_cols = c;
+                                            last_sent_screen = None; // Force full screen
                                         }
                                         ClientMsg::Input { tab_id: ref tid, ref data } => {
                                             if let Some(tab) = tabs.get(tid) {
@@ -576,7 +591,9 @@ pub async fn handle_client(
                         let has_more = tokio::time::timeout(
                             tokio::time::Duration::from_micros(500),
                             notify.notified(),
-                        ).await.is_ok();
+                        )
+                        .await
+                        .is_ok();
                         if has_more {
                             // Rapid output — coalesce 1ms more to batch
                             tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
@@ -584,33 +601,78 @@ pub async fn handle_client(
                     }
                     skip_coalesce = false;
 
-                    let Some(entry) = tabs.get(&tab_id) else { break };
-                    let (bin, hash) = {
-                        let tab = entry.lock();
-                        let content = tab.get_screen(sub_rows, sub_cols);
-                        let response = ServerMsg::Screen { tab_id: tab_id.clone(), content };
-                        let bin = rmp_serde::to_vec(&response).unwrap_or_default();
-                        let hash = {
-                            use std::hash::{Hash, Hasher};
-                            let mut h = std::collections::hash_map::DefaultHasher::new();
-                            bin.hash(&mut h);
-                            h.finish()
-                        };
-                        (bin, hash)
+                    let Some(entry) = tabs.get(&tab_id) else {
+                        break;
                     };
-                    if hash == last_screen_hash {
-                        // Screen unchanged — skip sending
-                        continue;
-                    }
-                    last_screen_hash = hash;
+                    let content = {
+                        let tab = entry.lock();
+                        tab.get_screen(sub_rows, sub_cols)
+                    };
+
+                    // Try incremental diff against last sent screen
+                    let bin = if let Some(ref prev) = last_sent_screen {
+                        // Compare line by line
+                        let mut changed: Vec<(u16, crate::terminal_provider::ScreenLine)> =
+                            Vec::new();
+                        let max_lines = content.lines.len().max(prev.lines.len());
+                        for i in 0..max_lines {
+                            let new_line = content.lines.get(i);
+                            let old_line = prev.lines.get(i);
+                            if new_line != old_line {
+                                if let Some(line) = new_line {
+                                    changed.push((i as u16, line.clone()));
+                                }
+                            }
+                        }
+                        let meta_changed = content.cursor != prev.cursor
+                            || content.cursor_shape != prev.cursor_shape
+                            || content.title != prev.title
+                            || content.bell;
+
+                        if changed.is_empty() && !meta_changed {
+                            // Truly unchanged
+                            continue;
+                        }
+
+                        // Use diff if fewer than half the lines changed (or metadata-only)
+                        if changed.len() <= max_lines / 2 {
+                            let diff = ServerMsg::ScreenDiff {
+                                changed_lines: changed,
+                                cursor: content.cursor,
+                                cursor_shape: content.cursor_shape.clone(),
+                                title: content.title.clone(),
+                                bell: content.bell,
+                            };
+                            rmp_serde::to_vec(&diff).unwrap_or_default()
+                        } else {
+                            // Too many changes — send full screen
+                            let response = ServerMsg::Screen {
+                                tab_id: tab_id.clone(),
+                                content: content.clone(),
+                            };
+                            rmp_serde::to_vec(&response).unwrap_or_default()
+                        }
+                    } else {
+                        let response = ServerMsg::Screen {
+                            tab_id: tab_id.clone(),
+                            content: content.clone(),
+                        };
+                        rmp_serde::to_vec(&response).unwrap_or_default()
+                    };
+
+                    last_sent_screen = Some(content);
                     let len = (bin.len() as u32).to_le_bytes();
                     // Reuse pre-allocated buffer to avoid per-push allocation
                     push_frame_buf.clear();
                     push_frame_buf.push(0x00);
                     push_frame_buf.extend_from_slice(&len);
                     push_frame_buf.extend_from_slice(&bin);
-                    if writer.write_all(&push_frame_buf).await.is_err() { break; }
-                    if writer.flush().await.is_err() { break; }
+                    if writer.write_all(&push_frame_buf).await.is_err() {
+                        break;
+                    }
+                    if writer.flush().await.is_err() {
+                        break;
+                    }
                 }
                 tracing::info!("Client #{} push loop ended for tab {}", client_id, tab_id);
                 break; // Exit handle_client after push loop ends

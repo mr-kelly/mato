@@ -28,7 +28,7 @@ pub enum JumpMode {
     Active, // ESC pressed in Content - can jump OR use arrows
 }
 
-pub const JUMP_LABELS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+pub const JUMP_LABELS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
 #[derive(PartialEq, Clone)]
 pub enum RenameTarget {
@@ -255,6 +255,35 @@ pub struct App {
 }
 
 impl App {
+    fn jump_key_reserved_for_focus(&self, c: char) -> bool {
+        let key = c.to_ascii_lowercase();
+        match self.focus {
+            Focus::Content => matches!(key, 'c' | 'r' | 'q'),
+            Focus::Sidebar | Focus::Topbar => matches!(key, 'r' | 'q'),
+        }
+    }
+
+    pub fn jump_labels(&self) -> Vec<char> {
+        JUMP_LABELS
+            .chars()
+            .filter(|c| !self.jump_key_reserved_for_focus(*c))
+            .collect()
+    }
+
+    fn visible_desk_indices(&self) -> Vec<usize> {
+        let desks_len = self.offices[self.current_office].desks.len();
+        if desks_len == 0 {
+            return vec![];
+        }
+        let visible_rows = self.sidebar_list_area.height.saturating_sub(2) as usize;
+        if visible_rows == 0 {
+            return (0..desks_len).collect();
+        }
+        let start = self.list_state.offset().min(desks_len.saturating_sub(1));
+        let end = (start + visible_rows).min(desks_len);
+        (start..end).collect()
+    }
+
     pub fn new() -> Self {
         let mut list_state = ListState::default();
         let (offices, current_office): (Vec<Office>, usize) = if let Ok(s) = load_state() {
@@ -566,7 +595,9 @@ impl App {
     pub fn restart_active_pty(&mut self) {
         let i = self.selected();
         let at = self.offices[self.current_office].desks[i].active_tab;
-        let tab_id = self.offices[self.current_office].desks[i].tabs[at].id.clone();
+        let tab_id = self.offices[self.current_office].desks[i].tabs[at]
+            .id
+            .clone();
 
         let socket_path = crate::utils::get_socket_path();
         if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(&socket_path) {
@@ -750,10 +781,11 @@ impl App {
     /// Handle jump mode character selection
     pub fn handle_jump_selection(&mut self, c: char) {
         let targets = self.jump_targets();
+        let labels = self.jump_labels();
         let origin_focus = self.focus;
 
         // Map character to target
-        if let Some(idx) = JUMP_LABELS.chars().position(|ch| ch == c) {
+        if let Some(idx) = labels.iter().position(|&ch| ch == c) {
             if idx < targets.len() {
                 let (kind, task_idx, tab_idx) = targets[idx];
                 match kind {
@@ -790,9 +822,9 @@ impl App {
     }
 
     pub fn jump_targets(&self) -> Vec<(char, usize, usize)> {
-        let max_labels = JUMP_LABELS.chars().count();
+        let max_labels = self.jump_labels().len();
         let mut targets: Vec<(char, usize, usize)> = Vec::new();
-        let desk_indices: Vec<usize> = (0..self.offices[self.current_office].desks.len()).collect();
+        let desk_indices = self.visible_desk_indices();
         let tab_indices: Vec<usize> = self.tab_area_tab_indices.clone();
         let task_idx = self.selected();
 

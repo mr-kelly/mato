@@ -6,12 +6,18 @@ fn test_protocol_serialization() {
     let msg = ClientMsg::Spawn {
         tab_id: "test123".to_string(),
         rows: 24,
-        cols: 80, cwd: None, shell: None, env: None };
+        cols: 80,
+        cwd: None,
+        shell: None,
+        env: None,
+    };
     let json = serde_json::to_string(&msg).unwrap();
     let deserialized: ClientMsg = serde_json::from_str(&json).unwrap();
 
     match deserialized {
-        ClientMsg::Spawn { tab_id, rows, cols, .. } => {
+        ClientMsg::Spawn {
+            tab_id, rows, cols, ..
+        } => {
             assert_eq!(tab_id, "test123");
             assert_eq!(rows, 24);
             assert_eq!(cols, 80);

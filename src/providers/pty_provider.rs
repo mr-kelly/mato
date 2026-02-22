@@ -225,18 +225,30 @@ impl PtyProvider {
 
         self.pty = None;
 
-        let primary_shell = self
-            .spawn_shell
-            .clone()
-            .unwrap_or_else(Self::resolve_shell);
+        let primary_shell = self.spawn_shell.clone().unwrap_or_else(Self::resolve_shell);
         let fallback_shell = "/bin/sh".to_string();
         let cwd = self.spawn_cwd.as_deref();
         let env = self.spawn_env.as_deref();
-        let mut spawned =
-            Self::spawn_with_shell(rows, cols, &primary_shell, cwd, env, self.last_output.clone(), self.output_notify.clone());
+        let mut spawned = Self::spawn_with_shell(
+            rows,
+            cols,
+            &primary_shell,
+            cwd,
+            env,
+            self.last_output.clone(),
+            self.output_notify.clone(),
+        );
         if spawned.is_none() && primary_shell != fallback_shell {
             tracing::info!("Retrying PTY spawn with fallback shell: {}", fallback_shell);
-            spawned = Self::spawn_with_shell(rows, cols, &fallback_shell, cwd, env, self.last_output.clone(), self.output_notify.clone());
+            spawned = Self::spawn_with_shell(
+                rows,
+                cols,
+                &fallback_shell,
+                cwd,
+                env,
+                self.last_output.clone(),
+                self.output_notify.clone(),
+            );
         }
 
         if let Some(state) = spawned {

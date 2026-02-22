@@ -174,6 +174,25 @@ fn jump_mode_w_is_letter_jump_not_focus_shortcut() {
     assert_ne!(app.focus, Focus::Topbar);
 }
 
+#[test]
+fn jump_mode_digit_key_is_accepted_for_jump() {
+    let mut app = make_app(vec![make_task("T")]);
+    app.focus = Focus::Content;
+    app.jump_mode = JumpMode::Active;
+    handle_key(&mut app, key(KeyCode::Char('1')));
+    assert_eq!(app.jump_mode, JumpMode::None);
+}
+
+#[test]
+fn jump_mode_content_c_enters_copy_mode_not_jump() {
+    let mut app = make_app(vec![make_task("T")]);
+    app.focus = Focus::Content;
+    app.jump_mode = JumpMode::Active;
+    handle_key(&mut app, key(KeyCode::Char('c')));
+    assert!(app.copy_mode);
+    assert_eq!(app.jump_mode, JumpMode::None);
+}
+
 // ── rename buffer editing ─────────────────────────────────────────────────────
 
 #[test]

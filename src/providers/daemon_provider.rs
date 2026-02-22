@@ -4,13 +4,15 @@ use std::io::Write;
 use std::os::unix::io::AsRawFd;
 use std::os::unix::net::UnixStream as StdUnixStream;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
 struct ScreenCacheEntry {
     content: ScreenContent,
+    rows: u16,
+    cols: u16,
 }
 
 pub struct DaemonProvider {
@@ -30,12 +32,17 @@ pub struct DaemonProvider {
 impl DaemonProvider {
     /// Read a response from a stream. Supports binary frames (0x00 prefix) and JSON lines.
     /// Returns Ok(Some(msg)) on data, Ok(None) on timeout, Err on disconnect/error.
-    fn read_response(stream: &mut StdUnixStream, buf: &mut Vec<u8>) -> Result<Option<ServerMsg>, ()> {
+    fn read_response(
+        stream: &mut StdUnixStream,
+        buf: &mut Vec<u8>,
+    ) -> Result<Option<ServerMsg>, ()> {
         let mut first = [0u8; 1];
         match std::io::Read::read_exact(stream, &mut first) {
             Ok(()) => {}
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock
-                || e.kind() == std::io::ErrorKind::TimedOut => {
+            Err(ref e)
+                if e.kind() == std::io::ErrorKind::WouldBlock
+                    || e.kind() == std::io::ErrorKind::TimedOut =>
+            {
                 return Ok(None); // Timeout
             }
             Err(_) => return Err(()), // Real disconnect
@@ -190,6 +197,44 @@ impl DaemonProvider {
         }
     }
 
+    fn cache_screen(&self, content: ScreenContent, rows: u16, cols: u16) {
+        if let Ok(mut cache) = self.screen_cache.lock() {
+            *cache = Some(ScreenCacheEntry {
+                content,
+                rows,
+                cols,
+            });
+        }
+    }
+
+    fn cached_screen(&self, rows: u16, cols: u16) -> Option<ScreenContent> {
+        if let Ok(cache) = self.screen_cache.lock() {
+            if let Some(entry) = cache.as_ref() {
+                if entry.rows == rows && entry.cols == cols {
+                    return Some(entry.content.clone());
+                }
+            }
+        }
+        None
+    }
+
+    fn try_send_via_worker_channel(&self, msg: &ClientMsg) -> bool {
+        let Ok(wtx) = self.worker_tx.lock() else {
+            return false;
+        };
+        let Some(tx) = &*wtx else {
+            return false;
+        };
+        let Ok(bin) = rmp_serde::to_vec(msg) else {
+            return false;
+        };
+        let mut frame = Vec::with_capacity(5 + bin.len());
+        frame.push(0x00);
+        frame.extend_from_slice(&(bin.len() as u32).to_le_bytes());
+        frame.extend_from_slice(&bin);
+        tx.send(frame).is_ok()
+    }
+
     fn start_screen_worker_if_needed(&self) {
         if self
             .worker_running
@@ -314,7 +359,7 @@ impl DaemonProvider {
                 }
 
                 // Read pushed screen update — use poll() to avoid blocking when no data
-                let readable = stream.as_ref().map_or(false, |s| Self::socket_readable(s));
+                let readable = stream.as_ref().is_some_and(Self::socket_readable);
                 let response = if readable {
                     if let Some(ref mut s) = stream {
                         match Self::read_response(s, &mut read_buf) {
@@ -350,7 +395,35 @@ impl DaemonProvider {
                     Some(ServerMsg::Screen { content, .. }) => {
                         screen_gen.fetch_add(1, Ordering::Relaxed);
                         if let Ok(mut c) = cache.lock() {
-                            *c = Some(ScreenCacheEntry { content });
+                            *c = Some(ScreenCacheEntry {
+                                content,
+                                rows: subscribed_size.0,
+                                cols: subscribed_size.1,
+                            });
+                        }
+                    }
+                    Some(ServerMsg::ScreenDiff {
+                        changed_lines,
+                        cursor,
+                        cursor_shape,
+                        title,
+                        bell,
+                    }) => {
+                        screen_gen.fetch_add(1, Ordering::Relaxed);
+                        if let Ok(mut c) = cache.lock() {
+                            if let Some(ref mut entry) = *c {
+                                // Apply diff to cached screen
+                                for (line_idx, new_line) in changed_lines {
+                                    let idx = line_idx as usize;
+                                    if idx < entry.content.lines.len() {
+                                        entry.content.lines[idx] = new_line;
+                                    }
+                                }
+                                entry.content.cursor = cursor;
+                                entry.content.cursor_shape = cursor_shape;
+                                entry.content.title = title;
+                                entry.content.bell = bell;
+                            }
                         }
                     }
                     Some(ServerMsg::Error { message }) => {
@@ -453,19 +526,9 @@ impl TerminalProvider for DaemonProvider {
             tab_id: self.tab_id.clone(),
             data: bytes.to_vec(),
         };
-        // Try worker channel first (same connection as subscribe = faster echo)
-        if let Ok(wtx) = self.worker_tx.lock() {
-            if let Some(ref tx) = *wtx {
-                if let Ok(bin) = rmp_serde::to_vec(&msg) {
-                    let mut frame = Vec::with_capacity(5 + bin.len());
-                    frame.push(0x00);
-                    frame.extend_from_slice(&(bin.len() as u32).to_le_bytes());
-                    frame.extend_from_slice(&bin);
-                    if tx.send(frame).is_ok() {
-                        return;
-                    }
-                }
-            }
+        // Try worker channel first (same connection as subscribe = faster echo).
+        if self.try_send_via_worker_channel(&msg) {
+            return;
         }
         self.send_msg_no_response(msg);
     }
@@ -475,18 +538,8 @@ impl TerminalProvider for DaemonProvider {
             tab_id: self.tab_id.clone(),
             data: text.to_string(),
         };
-        if let Ok(wtx) = self.worker_tx.lock() {
-            if let Some(ref tx) = *wtx {
-                if let Ok(bin) = rmp_serde::to_vec(&msg) {
-                    let mut frame = Vec::with_capacity(5 + bin.len());
-                    frame.push(0x00);
-                    frame.extend_from_slice(&(bin.len() as u32).to_le_bytes());
-                    frame.extend_from_slice(&bin);
-                    if tx.send(frame).is_ok() {
-                        return;
-                    }
-                }
-            }
+        if self.try_send_via_worker_channel(&msg) {
+            return;
         }
         self.send_msg_no_response(msg);
     }
@@ -520,10 +573,8 @@ impl TerminalProvider for DaemonProvider {
         }
         self.start_screen_worker_if_needed();
 
-        if let Ok(cache) = self.screen_cache.lock() {
-            if let Some(entry) = cache.as_ref() {
-                return entry.content.clone();
-            }
+        if let Some(content) = self.cached_screen(rows, cols) {
+            return content;
         }
 
         // First-call fallback: do synchronous fetch to avoid a blank frame.
@@ -535,9 +586,7 @@ impl TerminalProvider for DaemonProvider {
         }) {
             Some(ServerMsg::Screen { content, .. }) => {
                 self.screen_generation.fetch_add(1, Ordering::Relaxed);
-                if let Ok(mut cache) = self.screen_cache.lock() {
-                    *cache = Some(ScreenCacheEntry { content: content.clone() });
-                }
+                self.cache_screen(content.clone(), rows, cols);
                 content
             }
             Some(ServerMsg::Error { message }) => {
@@ -552,24 +601,18 @@ impl TerminalProvider for DaemonProvider {
                     });
                     if let Some(content) = self.get_screen_sync(rows, cols) {
                         self.screen_generation.fetch_add(1, Ordering::Relaxed);
-                        if let Ok(mut cache) = self.screen_cache.lock() {
-                            *cache = Some(ScreenCacheEntry { content: content.clone() });
-                        }
+                        self.cache_screen(content.clone(), rows, cols);
                         return content;
                     }
                 }
-                if let Ok(cache) = self.screen_cache.lock() {
-                    if let Some(entry) = cache.as_ref() {
-                        return entry.content.clone();
-                    }
+                if let Some(content) = self.cached_screen(rows, cols) {
+                    return content;
                 }
                 ScreenContent::default()
             }
             _ => {
-                if let Ok(cache) = self.screen_cache.lock() {
-                    if let Some(entry) = cache.as_ref() {
-                        return entry.content.clone();
-                    }
+                if let Some(content) = self.cached_screen(rows, cols) {
+                    return content;
                 }
                 ScreenContent::default()
             }
@@ -585,13 +628,16 @@ impl TerminalProvider for DaemonProvider {
             },
         );
         // Ensure scroll feedback is visible immediately in copy-mode interactions.
-        let rows = self.current_size.0.max(1);
-        let cols = self.current_size.1.max(1);
+        let (rows, cols) = self
+            .screen_requested_size
+            .lock()
+            .map(|s| *s)
+            .unwrap_or(self.current_size);
+        let rows = rows.max(1);
+        let cols = cols.max(1);
         if let Some(content) = self.get_screen_sync(rows, cols) {
             self.screen_generation.fetch_add(1, Ordering::Relaxed);
-            if let Ok(mut cache) = self.screen_cache.lock() {
-                *cache = Some(ScreenCacheEntry { content });
-            }
+            self.cache_screen(content, rows, cols);
         }
     }
 

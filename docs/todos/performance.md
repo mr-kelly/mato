@@ -7,7 +7,7 @@
 | Socket overhead per keystroke | ~1-2ms (new connection) | ~0ms (channel to subscribe stream) | **∞** |
 | Screen update mode | Client polls every 40ms | Daemon push (push on PTY output) | **Event-driven** |
 | Main loop poll timeout | Fixed 80ms | Adaptive 2/8/16/100ms | **40x (during input)** |
-| Screen data size per frame | ~400KB (JSON) | ~50KB (MessagePack) | **8x** |
+| Screen data size per frame | ~400KB (JSON) | ~1-2KB (ScreenDiff for interactive) | **200-400x** |
 | Input message format | ~50B (JSON) | ~15B (MessagePack binary) | **3x** |
 | Idle frame transfer | ~400KB (full JSON) | ~30B (ScreenUnchanged) | **13000x** |
 | Syscalls per frame | try_clone(dup) + read | Direct read into reused buffer | **-1 syscall** |
@@ -16,7 +16,7 @@
 | Coalesce delay | Fixed 2ms every frame | Adaptive 0-1.5ms | **0ms for interactive** |
 | Input path | Separate connection | Same subscribe connection | **Single handler** |
 | PTY read buffer | 4KB | 16KB | **4x fewer syscalls** |
-| Estimated input-to-echo latency | ~40-120ms | ~1.5-3ms | **30-60x** |
+| Estimated input-to-echo latency | ~40-120ms | ~1-2ms | **40-100x** |
 
 ## Completed Optimizations
 
@@ -147,15 +147,12 @@
 - 2ms coalescing delay merges rapid output bursts
 - **Effect**: Removes polling interval; push reaches client in ~2ms after PTY output
 
-### P1: Incremental Screen Updates (Dirty Region Tracking)
-- **Current state**: Full 80x24 screen sent every frame (~50KB msgpack)
-- **Goal**: Send only changed lines/regions
-- **Effect**: Single-character input sends only 1 line (~600B), not full screen
-- **Implementation idea**:
-  - Daemon keeps previously sent screen snapshot
-  - Compare old vs new screen, serialize only changed lines
-  - New message type: `ScreenDiff { changed_lines: Vec<(u16, ScreenLine)>, cursor, ... }`
-- **Reference**: tmux `tty_draw_line()` redraws only dirty regions
+### ~~P1: Incremental Screen Updates (Dirty Region Tracking)~~ ✅ DONE
+- **Implemented**: `ServerMsg::ScreenDiff` with per-line comparison
+- **Result**: Single keystroke echo sends ~1-2KB instead of ~50KB (25-50x reduction)
+- **Approach**: Daemon keeps `last_sent_screen`, compares line-by-line via `PartialEq`
+- **Fallback**: >50% lines changed → full `Screen` (resize, bulk output)
+- **Protocol**: `ScreenDiff { changed_lines: Vec<(u16, ScreenLine)>, cursor, cursor_shape, title, bell }`
 
 ### P2: Compact Cell Encoding (Compact Cell Format)
 - **Current state**: `ScreenCell` has 12 fields with many bool/Option values
@@ -178,11 +175,12 @@
 |------|------|---------------|------|
 | **IPC protocol** | Binary imsg (OpenBSD) | MessagePack + JSON hybrid | Small |
 | **Notification mode** | Event-driven (libevent) | **Push mode (Notify + Subscribe)** | **Small** |
-| **Screen updates** | Incremental dirty regions | Full frame + hash dedup | Medium |
+| **Screen updates** | Incremental dirty regions | **Incremental ScreenDiff (per-line)** | **Small** |
 | **Socket I/O** | Non-blocking + epoll | poll(2) + adaptive timeout | Small |
 | **Terminal output** | Direct tty fd writes | ratatui rendering framework | Different design |
 | **Key parsing** | Trie O(1) | crossterm library | Library-level difference |
-| **Multiplexing model** | Single-threaded event loop | Multi-threaded tokio | Different design |
+| **Multiplexing model** | Single-threaded event loop (libevent) | Multi-threaded tokio | Different design |
+| **Draw protocol** | Send tty escape sequences (draw commands) | Send screen content (data) | Fundamental |
 
 ## Debugging Tools
 
@@ -203,4 +201,4 @@ cargo test --test bench_test -- --nocapture  # (create temporary benchmark test 
 ---
 
 **Last Updated**: 2026-02-22  
-**Status**: 22 optimizations completed, 3 future directions identified
+**Status**: 23 optimizations completed (including P1 incremental updates), 2 future directions remaining

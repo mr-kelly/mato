@@ -33,7 +33,7 @@ impl TerminalProvider for CountingMouseProvider {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-use mato::client::app::{Desk, RenameTarget, TabEntry};
+use mato::client::app::{Desk, Focus, RenameTarget, TabEntry};
 use std::collections::HashSet;
 
 fn make_tab(name: &str) -> TabEntry {
@@ -172,6 +172,43 @@ fn cancel_rename_clears_state() {
     app.rename = Some((RenameTarget::Desk(0), "typing...".into()));
     app.cancel_rename();
     assert!(app.rename.is_none());
+}
+
+#[test]
+fn jump_labels_content_excludes_c_r_q_and_includes_digits() {
+    let mut app = make_app_with(vec![make_task("T")]);
+    app.focus = Focus::Content;
+    let labels = app.jump_labels();
+    assert!(labels.contains(&'1'));
+    assert!(!labels.contains(&'c'));
+    assert!(!labels.contains(&'C'));
+    assert!(!labels.contains(&'r'));
+    assert!(!labels.contains(&'R'));
+    assert!(!labels.contains(&'q'));
+    assert!(!labels.contains(&'Q'));
+}
+
+#[test]
+fn jump_targets_sidebar_use_visible_window_after_scroll() {
+    let desks: Vec<Desk> = (0..40).map(|i| make_task(&format!("Desk {}", i))).collect();
+    let mut app = make_app_with(desks);
+    app.focus = Focus::Sidebar;
+    app.sidebar_list_area = ratatui::layout::Rect {
+        x: 0,
+        y: 0,
+        width: 30,
+        height: 8, // 6 visible rows after borders
+    };
+    *app.list_state.offset_mut() = 25;
+    app.list_state.select(Some(25));
+
+    let targets = app.jump_targets();
+    assert!(!targets.is_empty());
+    assert_eq!(targets[0], ('t', 25, 0));
+    assert!(targets
+        .iter()
+        .all(|(kind, idx, _)| *kind == 't' && *idx >= 25));
+    assert!(!targets.iter().any(|(_, idx, _)| *idx < 25));
 }
 
 // ── Idle detection: threshold filtering ──────────────────────────────────────

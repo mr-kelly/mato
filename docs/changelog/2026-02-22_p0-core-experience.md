@@ -257,6 +257,43 @@ Implement P0 items from roadmap.md that are critical for daily user experience.
   - `CHANGELOG.md`
   - `docs/changelog/2026-02-22_p0-core-experience.md`
 
+### 29. Jump Mode Keyspace Update (Content reserved keys + numeric labels)
+- **Request**:
+  - In `Content` Jump Mode, `c`, `r`, `q` are occupied actions and must not be assigned as jump labels.
+  - Add number keys as jump labels.
+- **Solution**:
+  - Expanded base jump label set to include digits: `a-z`, `A-Z`, `0-9`.
+  - Added focus-aware reserved-key filtering for jump labels:
+    - `Content`: reserve `c/r/q`
+    - `Sidebar` / `Topbar`: reserve `r/q`
+  - Jump key dispatch now accepts alphanumeric keys (`is_ascii_alphanumeric`).
+  - Jump overlay and status hints updated to reflect letter+digit jump usage.
+  - Jump quit key accepts `q` and `Q`.
+- **Files changed**:
+  - `src/client/app.rs`
+  - `src/client/input.rs`
+  - `src/client/ui.rs`
+  - `tests/app_tests.rs`
+  - `tests/input_tests.rs`
+- **Verification**:
+  - `source ~/.cargo/env && cargo test --test input_tests --test app_tests` passed.
+
+### 30. Jump Targets Constrained to Visible Viewport (Sidebar/Topbar)
+- **Problem**: Jump labels could be assigned to off-screen entries (especially in Sidebar after scroll), causing visible labels/targets mismatch and wrong jump expectations.
+- **Solution**:
+  - Sidebar jump targets now use visible desk window only:
+    - start from `list_state.offset()`
+    - limit by sidebar inner visible rows (`sidebar_list_area.height - 2`)
+  - Jump label drawing for sidebar desks now maps by local visible row (`desk_idx - offset`) instead of absolute desk index.
+  - Topbar behavior remains tied to `tab_area_tab_indices` (visible tabs), matching viewport semantics.
+- **Files changed**:
+  - `src/client/app.rs`
+  - `src/client/ui.rs`
+  - `tests/app_tests.rs`
+- **Verification**:
+  - Added regression test for scrolled sidebar viewport mapping.
+  - `source ~/.cargo/env && cargo test --test app_tests --test input_tests` passed.
+
 ### 27. Poll-based Worker Socket Reads (Zero-block Channel Drain)
 - **Problem**: Worker thread blocked in `read_response()` for up to 5ms. During that time, Input messages in the channel couldn't be drained and sent to daemon.
 - **Solution**: Use `libc::poll()` with 0ms timeout to check socket readability before calling `read_response()`. When no data available, sleep only 200µs instead of blocking 5ms.
@@ -275,10 +312,100 @@ Implement P0 items from roadmap.md that are critical for daily user experience.
 - **Impact**: Eliminates ~50KB allocation per screen push. Reduces GC pressure at high frame rates.
 - **Files changed**: `src/daemon/daemon.rs`
 
-### Estimated Pipeline After All Optimizations
+### 30. Incremental Screen Updates (ScreenDiff)
+- **Problem**: Every push sends the full screen (~50KB MessagePack) even when only 1-2 lines changed (keystroke echo).
+- **Solution**: Daemon keeps `last_sent_screen`. On push, compares new screen line-by-line. If ≤50% lines changed, sends `ServerMsg::ScreenDiff` with only changed lines + cursor/metadata. Client applies diff to cached screen. Falls back to full `Screen` when >50% lines change (resize, `cat large_file`).
+- **Impact**: Single keystroke echo: ~50KB → ~1-2KB (**25-50x** smaller). Serialization time: ~1ms → ~0.05ms.
+- **Protocol**: New `ServerMsg::ScreenDiff { changed_lines, cursor, cursor_shape, title, bell }`. Added `PartialEq` to `ScreenCell`, `ScreenLine` for line comparison.
+- **Edge cases**: Resize/Subscribe invalidates `last_sent_screen` → forces full screen. Line count stable within same terminal dimensions.
+- **Files changed**: `src/terminal_provider.rs`, `src/protocol.rs`, `src/daemon/daemon.rs`, `src/providers/daemon_provider.rs`
 | Stage | Before | After |
 |-------|--------|-------|
 | Channel drain delay | 0-5ms | 0-200µs |
 | Daemon coalesce (interactive) | 500µs | 0µs |
 | Per-push allocation | ~50KB | 0 (reused) |
-| **Total round-trip estimate** | **~2-5ms** | **~1.5-3ms** |
+| Screen data per keystroke | ~50KB (full) | ~1-2KB (diff) |
+| **Total round-trip estimate** | **~2-5ms** | **~1-2ms** |
+
+### 30. Copy Mode Scroll Stability Root Cause Fixes
+- **Symptoms**:
+  - Copy Mode scroll showed unstable top area ("sometimes visible, sometimes missing")
+  - `G` to bottom could briefly render blank/shifted content
+  - Copy Mode could flicker due to passive redraws
+- **Root causes**:
+  - Copy Mode used content-area size minus border (`-2`) even though copy mode is borderless/fullscreen
+  - Daemon screen cache was not keyed by requested `rows/cols` (cross-size cache reuse)
+  - Scroll refresh path used `current_size` instead of last requested screen size
+  - Main loop still allowed passive generation-triggered redraw while in Copy Mode
+  - Alacritty scroll mapping used unstable relative base in edge conditions
+- **Fixes**:
+  - Copy Mode rows/cols now use full content area dimensions directly
+  - `ScreenCacheEntry` now stores `rows/cols`; cache hits require exact size match
+  - Scroll immediate refresh now uses `screen_requested_size` (fallback `current_size`)
+  - Copy Mode redraw now ignores passive `screen_generation` changes
+  - Alacritty scroll logic aligned to applied display offset delta and stable visible-top mapping
+- **Files changed**:
+  - `src/client/ui.rs`
+  - `src/main.rs`
+  - `src/providers/daemon_provider.rs`
+  - `src/emulators/alacritty_emulator.rs`
+  - `src/client/input.rs`
+
+### 31. DaemonProvider Code Optimization (Duplication Reduction)
+- **Goal**: Reduce repetitive logic and make future scroll/cache fixes safer.
+- **Changes**:
+  - Added cache helpers:
+    - `cache_screen(content, rows, cols)`
+    - `cached_screen(rows, cols) -> Option<ScreenContent>`
+  - Added worker-channel helper:
+    - `try_send_via_worker_channel(msg) -> bool`
+  - Replaced duplicated write/paste frame-building blocks with shared helper
+  - Replaced repeated cache read/write blocks in `get_screen`/`scroll` with shared helpers
+- **Impact**:
+  - Smaller surface area for cache consistency bugs
+  - Less duplicated message-framing code
+  - Easier follow-up tuning for screen and input paths
+- **Files changed**:
+  - `src/providers/daemon_provider.rs`
+
+### 32. Clippy-driven Cleanup (No Behavior Change)
+- **Goal**: Reduce low-risk lint debt and keep core paths easy to maintain.
+- **Changes**:
+  - Collapsed nested daemon-disconnect emergency-exit condition in input handler
+  - Replaced redundant guard patterns (`Char(c) if matches!(...)`) with direct char pattern matches
+  - Switched `ResizeStrategy` to `#[derive(Default)]` + `#[default]` variant
+  - Simplified optional socket readability check to `is_some_and(Self::socket_readable)`
+- **Files changed**:
+  - `src/client/input.rs`
+  - `src/config.rs`
+  - `src/providers/daemon_provider.rs`
+
+### 33. Remove `module_inception` Lint in Daemon Module
+- **Problem**: Clippy warned about `module_inception` (`src/daemon/mod.rs` containing `pub mod daemon;`).
+- **Solution**:
+  - Renamed `src/daemon/daemon.rs` -> `src/daemon/service.rs`
+  - Updated daemon module re-export from `pub use daemon::Daemon` to `pub use service::Daemon`
+  - Updated test import path from `mato::daemon::daemon::handle_client` to `mato::daemon::service::handle_client`
+- **Impact**:
+  - Removes remaining structural clippy warning
+  - Keeps public daemon API stable (`mato::daemon::Daemon` still re-exported)
+- **Files changed**:
+  - `src/daemon/mod.rs`
+  - `src/daemon/service.rs` (renamed from `src/daemon/daemon.rs`)
+  - `tests/integration_tests.rs`
+
+
+### 34. ScreenDiff Tests (12 tests)
+- **Added**: `tests/screen_diff_tests.rs` with 12 comprehensive tests
+- **Coverage**:
+  - Identical screens → no diff
+  - Single line change → ScreenDiff with 1 changed line
+  - Cursor-only change → ScreenDiff with empty changed_lines
+  - Title/cursor_shape/bell metadata changes → ScreenDiff
+  - >50% lines changed → falls back to full Screen
+  - Exactly 50% threshold → uses diff
+  - Apply diff updates cached screen correctly
+  - Apply full screen replaces entire cache
+  - MessagePack roundtrip preserves content
+  - Diff is smaller than full screen (size assertion)
+- **Bug found and fixed**: Metadata-only changes (cursor/title/bell) incorrectly fell through to full Screen. Fixed condition from `!changed.is_empty() && changed.len() <= max_lines / 2` to `changed.len() <= max_lines / 2`.

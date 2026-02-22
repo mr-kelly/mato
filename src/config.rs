@@ -1,18 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ResizeStrategy {
     /// Resize PTY + emulator when window size changes (correct for TUI apps)
+    #[default]
     Sync,
     /// Keep PTY at original size, clip/pad display (safe but TUI apps won't adapt)
     Fixed,
-}
-
-impl Default for ResizeStrategy {
-    fn default() -> Self {
-        Self::Sync
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

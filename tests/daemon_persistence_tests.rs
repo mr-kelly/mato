@@ -36,7 +36,11 @@ fn test_daemon_terminal_persistence() {
         let spawn_msg = ClientMsg::Spawn {
             tab_id: tab_id.clone(),
             rows: 24,
-            cols: 80, cwd: None, shell: None, env: None };
+            cols: 80,
+            cwd: None,
+            shell: None,
+            env: None,
+        };
 
         let json = serde_json::to_vec(&spawn_msg).unwrap();
         stream.write_all(&json).unwrap();
@@ -106,7 +110,11 @@ fn test_daemon_terminal_persistence() {
         let spawn_msg = ClientMsg::Spawn {
             tab_id: tab_id.clone(),
             rows: 24,
-            cols: 80, cwd: None, shell: None, env: None };
+            cols: 80,
+            cwd: None,
+            shell: None,
+            env: None,
+        };
 
         let json = serde_json::to_vec(&spawn_msg).unwrap();
         stream.write_all(&json).unwrap();
@@ -189,7 +197,11 @@ fn test_daemon_multiple_tabs() {
         let spawn_msg = ClientMsg::Spawn {
             tab_id: (*tab_id).clone(),
             rows: 24,
-            cols: 80, cwd: None, shell: None, env: None };
+            cols: 80,
+            cwd: None,
+            shell: None,
+            env: None,
+        };
 
         let json = serde_json::to_vec(&spawn_msg).unwrap();
         stream.write_all(&json).unwrap();
@@ -267,7 +279,11 @@ fn test_resize_preserves_content() {
         let spawn_msg = ClientMsg::Spawn {
             tab_id: tab_id.clone(),
             rows: 24,
-            cols: 80, cwd: None, shell: None, env: None };
+            cols: 80,
+            cwd: None,
+            shell: None,
+            env: None,
+        };
 
         let json = serde_json::to_vec(&spawn_msg).unwrap();
         stream.write_all(&json).unwrap();

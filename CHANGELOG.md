@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **poll(2)-based socket reads**: Worker thread uses `libc::poll()` to check socket readability before calling `read_response()`. When no data available, sleeps only 200µs instead of blocking up to 5ms. 25x faster channel drain cycle.
 - **Skip coalesce after input**: Daemon push loop skips 500µs coalesce check when the trigger was interactive input (Input/Paste). Bulk output still coalesces normally.
 - **Pre-allocated push frame buffer**: Daemon push loop reuses a single buffer for frame construction instead of allocating ~50KB per push.
+- **Incremental screen updates (ScreenDiff)**: Daemon tracks last-sent screen and compares line-by-line. When ≤50% lines changed, sends only changed lines via new `ScreenDiff` message (~1-2KB) instead of full screen (~50KB). Falls back to full screen for large changes (resize, bulk output). 25-50x smaller payloads for interactive typing.
 
 ### Fixed
 - **ESC passthrough**: ESC now passes through to shell applications (vim, fzf, htop) in Content focus. Use double-ESC (within 300ms) to enter Jump Mode from Content. Non-Content focus unchanged.

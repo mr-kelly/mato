@@ -10,7 +10,7 @@ use mato::client::app::App;
 use parking_lot::Mutex;
 
 use mato::config::Config;
-use mato::daemon::daemon::handle_client;
+use mato::daemon::service::handle_client;
 use mato::protocol::{ClientMsg, ServerMsg};
 use mato::providers::PtyProvider;
 
@@ -80,7 +80,9 @@ fn send_recv(socket_path: &str, msg: &ClientMsg) -> ServerMsg {
         let mut byte = [0u8; 1];
         loop {
             stream.read_exact(&mut byte).expect("read byte");
-            if byte[0] == b'\n' { break; }
+            if byte[0] == b'\n' {
+                break;
+            }
             buf.push(byte[0]);
         }
         serde_json::from_slice(&buf).expect("parse response")
@@ -111,7 +113,11 @@ fn daemon_spawn_creates_tab() {
         &ClientMsg::Spawn {
             tab_id: "tab-1".into(),
             rows: 24,
-            cols: 80, cwd: None, shell: None, env: None },
+            cols: 80,
+            cwd: None,
+            shell: None,
+            env: None,
+        },
     );
     std::thread::sleep(Duration::from_millis(100));
     assert!(tabs.contains_key("tab-1"));
@@ -126,7 +132,11 @@ fn daemon_get_screen_returns_screen() {
         &ClientMsg::Spawn {
             tab_id: "tab-s".into(),
             rows: 24,
-            cols: 80, cwd: None, shell: None, env: None },
+            cols: 80,
+            cwd: None,
+            shell: None,
+            env: None,
+        },
     );
     std::thread::sleep(Duration::from_millis(100));
     let resp = send_recv(
@@ -168,7 +178,11 @@ fn daemon_get_idle_status_includes_spawned_tab() {
         &ClientMsg::Spawn {
             tab_id: "tab-idle".into(),
             rows: 24,
-            cols: 80, cwd: None, shell: None, env: None },
+            cols: 80,
+            cwd: None,
+            shell: None,
+            env: None,
+        },
     );
     std::thread::sleep(Duration::from_millis(100));
     let resp = send_recv(socket, &ClientMsg::GetIdleStatus);
@@ -195,7 +209,11 @@ fn daemon_spawn_twice_is_idempotent() {
             &ClientMsg::Spawn {
                 tab_id: "tab-dup".into(),
                 rows: 24,
-                cols: 80, cwd: None, shell: None, env: None },
+                cols: 80,
+                cwd: None,
+                shell: None,
+                env: None,
+            },
         );
     }
     std::thread::sleep(Duration::from_millis(100));
