@@ -525,7 +525,12 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
                     if cell.underline {
                         style = style.add_modifier(Modifier::UNDERLINED);
                     }
-                    Span::styled(cell.ch.to_string(), style)
+                    let glyph = if cell.ch == '\0' {
+                        String::new()
+                    } else {
+                        cell.ch.to_string()
+                    };
+                    Span::styled(glyph, style)
                 })
                 .collect();
             // Pad to full width with black background

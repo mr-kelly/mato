@@ -20,7 +20,7 @@ struct PtyState {
     writer: Box<dyn Write + Send>,
     emulator: Arc<Mutex<Box<dyn TerminalEmulator>>>,
     master: Box<dyn portable_pty::MasterPty + Send>,
-    _child: Box<dyn portable_pty::Child + Send + Sync>,
+    child: Box<dyn portable_pty::Child + Send + Sync>,
 }
 
 impl PtyProvider {
@@ -84,7 +84,122 @@ impl PtyProvider {
     }
 
     pub fn child_pid(&self) -> Option<u32> {
-        self.pty.as_ref().and_then(|p| p._child.process_id())
+        self.pty.as_ref().and_then(|p| p.child.process_id())
+    }
+
+    fn spawn_with_shell(
+        rows: u16,
+        cols: u16,
+        shell: &str,
+        last_output: Arc<Mutex<Instant>>,
+    ) -> Option<PtyState> {
+        let pty_system = native_pty_system();
+        let pair = match pty_system.openpty(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        }) {
+            Ok(pair) => pair,
+            Err(e) => {
+                tracing::error!("Failed to open PTY ({}x{}): {}", rows, cols, e);
+                return None;
+            }
+        };
+
+        tracing::info!("Spawning PTY shell: {}", shell);
+        let mut cmd = CommandBuilder::new(shell);
+        cmd.env("TERM", "xterm-256color");
+        let child = match pair.slave.spawn_command(cmd) {
+            Ok(child) => child,
+            Err(e) => {
+                tracing::warn!("Failed to spawn shell '{}': {}", shell, e);
+                return None;
+            }
+        };
+
+        let emulator = Self::create_emulator(rows, cols);
+        let emulator = Arc::new(Mutex::new(emulator));
+        let emulator_clone = Arc::clone(&emulator);
+        let last_output_clone = Arc::clone(&last_output);
+
+        let mut reader = match pair.master.try_clone_reader() {
+            Ok(reader) => reader,
+            Err(e) => {
+                tracing::error!("Failed to clone PTY reader: {}", e);
+                return None;
+            }
+        };
+        thread::spawn(move || {
+            let mut buf = [0u8; 4096];
+            loop {
+                match reader.read(&mut buf) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => {
+                        emulator_clone.lock().unwrap().process(&buf[..n]);
+                        *last_output_clone.lock().unwrap() = Instant::now();
+                    }
+                }
+            }
+        });
+
+        let writer = match pair.master.take_writer() {
+            Ok(writer) => writer,
+            Err(e) => {
+                tracing::error!("Failed to take PTY writer: {}", e);
+                return None;
+            }
+        };
+
+        Some(PtyState {
+            writer,
+            emulator,
+            master: pair.master,
+            child,
+        })
+    }
+
+    fn child_exited(pty: &mut PtyState) -> bool {
+        match pty.child.try_wait() {
+            Ok(Some(status)) => {
+                tracing::info!("PTY child exited with status: {:?}", status);
+                true
+            }
+            Ok(None) => false,
+            Err(e) => {
+                tracing::warn!("Failed to check PTY child status: {}", e);
+                true
+            }
+        }
+    }
+
+    pub fn ensure_running(&mut self) {
+        let rows = self.current_size.0.max(1);
+        let cols = self.current_size.1.max(1);
+
+        let needs_respawn = match self.pty.as_mut() {
+            Some(pty) => Self::child_exited(pty),
+            None => true,
+        };
+
+        if !needs_respawn {
+            return;
+        }
+
+        self.pty = None;
+
+        let primary_shell = Self::resolve_shell();
+        let fallback_shell = "/bin/sh".to_string();
+        let mut spawned = Self::spawn_with_shell(rows, cols, &primary_shell, self.last_output.clone());
+        if spawned.is_none() && primary_shell != fallback_shell {
+            tracing::info!("Retrying PTY spawn with fallback shell: {}", fallback_shell);
+            spawned = Self::spawn_with_shell(rows, cols, &fallback_shell, self.last_output.clone());
+        }
+
+        if let Some(state) = spawned {
+            *self.last_output.lock().unwrap() = Instant::now();
+            self.pty = Some(state);
+        }
     }
 }
 
@@ -96,53 +211,8 @@ impl Default for PtyProvider {
 
 impl TerminalProvider for PtyProvider {
     fn spawn(&mut self, rows: u16, cols: u16) {
-        if self.pty.is_some() {
-            return;
-        }
-
-        self.current_size = (rows, cols); // Track size
-
-        let pty_system = native_pty_system();
-        let pair = pty_system
-            .openpty(PtySize {
-                rows,
-                cols,
-                pixel_width: 0,
-                pixel_height: 0,
-            })
-            .expect("openpty");
-        let shell = Self::resolve_shell();
-        tracing::info!("Spawning PTY shell: {}", shell);
-        let mut cmd = CommandBuilder::new(shell);
-        cmd.env("TERM", "xterm-256color");
-        let child = pair.slave.spawn_command(cmd).expect("spawn");
-
-        // Use selected emulator
-        let emulator = Self::create_emulator(rows, cols);
-        let emulator = Arc::new(Mutex::new(emulator));
-        let emulator_clone = Arc::clone(&emulator);
-        let last_output = Arc::clone(&self.last_output);
-
-        let mut reader = pair.master.try_clone_reader().expect("reader");
-        thread::spawn(move || {
-            let mut buf = [0u8; 4096];
-            loop {
-                match reader.read(&mut buf) {
-                    Ok(0) | Err(_) => break,
-                    Ok(n) => {
-                        emulator_clone.lock().unwrap().process(&buf[..n]);
-                        *last_output.lock().unwrap() = Instant::now();
-                    }
-                }
-            }
-        });
-
-        self.pty = Some(PtyState {
-            writer: pair.master.take_writer().expect("writer"),
-            emulator,
-            master: pair.master,
-            _child: child,
-        });
+        self.current_size = (rows.max(1), cols.max(1)); // Track size
+        self.ensure_running();
     }
 
     fn resize(&mut self, rows: u16, cols: u16) {
@@ -172,6 +242,7 @@ impl TerminalProvider for PtyProvider {
     }
 
     fn write(&mut self, bytes: &[u8]) {
+        self.ensure_running();
         if let Some(p) = &mut self.pty {
             let _ = p.writer.write_all(bytes);
             let _ = p.writer.flush();
@@ -179,6 +250,7 @@ impl TerminalProvider for PtyProvider {
     }
 
     fn paste(&mut self, text: &str) {
+        self.ensure_running();
         let Some(p) = &mut self.pty else { return };
         let bracketed = p.emulator.lock().unwrap().bracketed_paste_enabled();
         if bracketed {
@@ -214,6 +286,7 @@ impl TerminalProvider for PtyProvider {
     }
 
     fn scroll(&mut self, delta: i32) {
+        self.ensure_running();
         if let Some(pty) = &self.pty {
             pty.emulator.lock().unwrap().scroll(delta);
         }

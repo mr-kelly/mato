@@ -1,6 +1,6 @@
 [package]
 name = "mato"
-version = "0.5.1"
+version = "0.6.0"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
 description = "Multi-Agent Terminal Office - A daemon-based persistent terminal multiplexer"

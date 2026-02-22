@@ -10,6 +10,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Placeholder for upcoming changes.
 
+## [0.6.0] - 2026-02-22
+
+**Terminal Resilience + Website Refresh Release**
+
+### Added
+- Full website refresh aligned with README product positioning:
+  - stronger home information architecture (hero, showcase, comparisons, features, shortcut philosophy, install)
+  - build-time website asset sync for `logo.svg` and screenshot
+  - navigation branding updates and project metadata cleanup
+- Added regression tests for:
+  - title sync using current terminal size
+  - desk navigation spawning target active tab
+
+### Changed
+- `sync_tab_titles()` now fetches screen using current terminal size instead of `1x1`.
+- Desk switching paths now proactively spawn the target active tab for faster first frame:
+  - sidebar navigation (`↑/↓`)
+  - jump-mode desk target selection
+- Website scripts standardized around `pnpm` workflow in `/website`.
+
+### Fixed
+- PTY/process lifecycle reliability:
+  - tabs auto-respawn when shell process exits instead of getting stuck
+  - daemon request paths now ensure PTY is running before input/screen/mode operations
+  - first-frame recovery improved by synchronous spawn + immediate screen retry when tab is missing
+- Reduced terminal render/cursor drift risk for wide characters by handling spacer cells as zero-width placeholders.
+
 ## [0.5.1] - 2026-02-22
 
 **Patch Release**
@@ -143,7 +170,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Links
 
-[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/mr-kelly/mato/releases/tag/v0.6.0
 [0.5.1]: https://github.com/mr-kelly/mato/releases/tag/v0.5.1
 [0.5.0]: https://github.com/mr-kelly/mato/releases/tag/v0.5.0
 [0.4.0]: https://github.com/mr-kelly/mato/releases/tag/v0.4.0

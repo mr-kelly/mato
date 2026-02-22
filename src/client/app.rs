@@ -500,8 +500,13 @@ impl App {
             .len()
             .saturating_sub(1) as i32;
         let next = (self.selected() as i32 + delta).clamp(0, max) as usize;
+        let changed = self.selected() != next;
         self.list_state.select(Some(next));
         self.tab_scroll = 0;
+        if changed {
+            self.mark_tab_switch();
+            self.spawn_active_pty();
+        }
     }
 
     pub fn spawn_active_pty(&mut self) {
@@ -615,7 +620,9 @@ impl App {
             .tabs
             .get_mut(tab_idx)
         {
-            let screen = tab.provider.get_screen(1, 1);
+            let rows = self.term_rows.max(1);
+            let cols = self.term_cols.max(1);
+            let screen = tab.provider.get_screen(rows, cols);
             if let Some(title) = screen.title {
                 if !title.is_empty() {
                     self.terminal_titles.insert(tab.id.clone(), title);
@@ -674,6 +681,8 @@ impl App {
                         // Jump to desk and focus sidebar.
                         self.list_state.select(Some(task_idx));
                         self.focus = Focus::Sidebar;
+                        self.mark_tab_switch();
+                        self.spawn_active_pty();
                     }
                     'b' => {
                         // Jump to tab and focus topbar.

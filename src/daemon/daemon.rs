@@ -223,21 +223,26 @@ pub async fn handle_client(
 
             ClientMsg::Input { tab_id, data } => {
                 if let Some(tab) = tabs.get(&tab_id) {
-                    (*tab.lock()).write(&data);
+                    let mut tab = tab.lock();
+                    tab.ensure_running();
+                    tab.write(&data);
                 }
                 continue;
             }
 
             ClientMsg::Paste { tab_id, data } => {
                 if let Some(tab) = tabs.get(&tab_id) {
-                    (*tab.lock()).paste(&data);
+                    let mut tab = tab.lock();
+                    tab.ensure_running();
+                    tab.paste(&data);
                 }
                 continue;
             }
 
             ClientMsg::GetInputModes { tab_id } => {
                 if let Some(tab) = tabs.get(&tab_id) {
-                    let tab = tab.lock();
+                    let mut tab = tab.lock();
+                    tab.ensure_running();
                     ServerMsg::InputModes {
                         mouse: tab.mouse_mode_enabled(),
                         bracketed_paste: tab.bracketed_paste_enabled(),
@@ -264,7 +269,9 @@ pub async fn handle_client(
 
             ClientMsg::GetScreen { tab_id, rows, cols } => {
                 if let Some(tab) = tabs.get(&tab_id) {
-                    let content = (*tab.lock()).get_screen(rows, cols);
+                    let mut tab = tab.lock();
+                    tab.spawn(rows.max(1), cols.max(1));
+                    let content = tab.get_screen(rows, cols);
                     ServerMsg::Screen { tab_id, content }
                 } else {
                     tracing::debug!("Tab not found: {}", tab_id);
@@ -316,7 +323,9 @@ pub async fn handle_client(
             }
             ClientMsg::Scroll { tab_id, delta } => {
                 if let Some(entry) = tabs.get(&tab_id) {
-                    entry.lock().scroll(delta);
+                    let mut tab = entry.lock();
+                    tab.ensure_running();
+                    tab.scroll(delta);
                 }
                 continue;
             }

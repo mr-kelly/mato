@@ -1,5 +1,7 @@
 /// Tests for daemon utility modules: PidFile, DaemonLock, and VteEmulator.
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 // ── PidFile ───────────────────────────────────────────────────────────────────
 
@@ -197,6 +199,25 @@ impl TerminalProvider for NullProvider {
     }
 }
 
+struct TrackingProvider {
+    requests: Arc<Mutex<Vec<(u16, u16)>>>,
+}
+
+impl TerminalProvider for TrackingProvider {
+    fn spawn(&mut self, rows: u16, cols: u16) {
+        self.requests.lock().unwrap().push((rows, cols));
+    }
+    fn resize(&mut self, _: u16, _: u16) {}
+    fn write(&mut self, _: &[u8]) {}
+    fn get_screen(&self, rows: u16, cols: u16) -> ScreenContent {
+        self.requests.lock().unwrap().push((rows, cols));
+        ScreenContent {
+            title: Some("tracked-title".to_string()),
+            ..ScreenContent::default()
+        }
+    }
+}
+
 fn null_tab(name: &str) -> TabEntry {
     TabEntry {
         id: mato::utils::new_id(),
@@ -300,6 +321,33 @@ fn begin_rename_tab_sets_rename_state() {
 }
 
 #[test]
+fn sync_tab_titles_uses_current_terminal_size() {
+    let requests = Arc::new(Mutex::new(Vec::new()));
+    let tab = TabEntry {
+        id: mato::utils::new_id(),
+        name: "Tracked".into(),
+        provider: Box::new(TrackingProvider {
+            requests: requests.clone(),
+        }),
+    };
+    let desk = Desk {
+        id: mato::utils::new_id(),
+        name: "Desk".into(),
+        tabs: vec![tab],
+        active_tab: 0,
+    };
+    let mut app = make_app(vec![desk]);
+    app.term_rows = 37;
+    app.term_cols = 119;
+    app.last_title_sync = Instant::now() - Duration::from_secs(1);
+
+    app.sync_tab_titles();
+
+    let calls = requests.lock().unwrap();
+    assert_eq!(calls.as_slice(), &[(37, 119)]);
+}
+
+#[test]
 fn resize_all_ptys_updates_dimensions() {
     let mut app = make_app(vec![null_task("T", 1)]);
     app.resize_all_ptys(30, 100);
@@ -315,6 +363,34 @@ fn resize_all_ptys_noop_when_same_size() {
     let mut app = make_app(vec![null_task("T", 1)]);
     app.resize_all_ptys(24, 80);
     assert_eq!(app.term_rows, 24);
+}
+
+#[test]
+fn nav_between_desks_spawns_target_active_tab() {
+    let requests = Arc::new(Mutex::new(Vec::new()));
+    let tracked_tab = TabEntry {
+        id: mato::utils::new_id(),
+        name: "Tracked".into(),
+        provider: Box::new(TrackingProvider {
+            requests: requests.clone(),
+        }),
+    };
+    let desk0 = null_task("Desk 1", 1);
+    let desk1 = Desk {
+        id: mato::utils::new_id(),
+        name: "Desk 2".into(),
+        tabs: vec![tracked_tab],
+        active_tab: 0,
+    };
+    let mut app = make_app(vec![desk0, desk1]);
+    app.term_rows = 30;
+    app.term_cols = 100;
+    app.list_state.select(Some(0));
+
+    app.nav(1);
+
+    let calls = requests.lock().unwrap();
+    assert_eq!(calls.as_slice(), &[(30, 100)]);
 }
 
 #[test]

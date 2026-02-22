@@ -4,11 +4,15 @@ This directory contains release notes and summaries for Mato versions.
 
 ## 📦 Releases
 
-### v0.5.0 (2026-02-22) - Latest
+### v0.6.0 (2026-02-22) - Latest
+- **[RELEASE_NOTES_v0.6.0.md](RELEASE_NOTES_v0.6.0.md)** - Terminal Resilience + Website Refresh Release
+- **[RELEASE_SUMMARY_v0.6.0.md](RELEASE_SUMMARY_v0.6.0.md)** - Technical summary
+
+**Highlights**: PTY auto-respawn after shell exit, proactive desk-switch spawn, faster missing-tab recovery, cursor stability improvements, and a complete website redesign.
+
+### v0.5.0 (2026-02-22)
 - **[RELEASE_NOTES_v0.5.0.md](RELEASE_NOTES_v0.5.0.md)** - Jump Mode + System Theme Polish Release
 - **[RELEASE_SUMMARY_v0.5.0.md](RELEASE_SUMMARY_v0.5.0.md)** - Technical summary
-
-**Highlights**: 52-key Jump labels (`a-z/A-Z`), balanced jump allocation, onboarding office-name flow, creator-template rename, and theme/UI consistency fixes.
 
 ### v0.4.0 (2026-02-21)
 - **[RELEASE_NOTES_v0.4.0.md](RELEASE_NOTES_v0.4.0.md)** - Shell Experience & Performance Release
@@ -44,5 +48,5 @@ Milestone-level historical overview.
 
 ---
 
-**Latest Release**: v0.5.0 (2026-02-22)  
+**Latest Release**: v0.6.0 (2026-02-22)  
 **Status**: Stable

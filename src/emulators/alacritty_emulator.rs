@@ -2,6 +2,7 @@ use alacritty_terminal::event::{Event, EventListener};
 use alacritty_terminal::grid::Dimensions;
 use alacritty_terminal::grid::Scroll;
 use alacritty_terminal::index::{Column, Line};
+use alacritty_terminal::term::cell::Flags;
 use alacritty_terminal::term::Config;
 use alacritty_terminal::vte::ansi::{CursorShape as AlacrittyCursorShape, Processor};
 use alacritty_terminal::Term;
@@ -180,8 +181,12 @@ impl TerminalEmulator for AlacrittyEmulator {
             let mut cells = Vec::with_capacity(cols as usize);
             for col in 0..render_cols as usize {
                 let cell = &grid[Line(line)][Column(col)];
+                let spacer = cell
+                    .flags
+                    .intersects(Flags::WIDE_CHAR_SPACER | Flags::LEADING_WIDE_CHAR_SPACER);
                 cells.push(ScreenCell {
-                    ch: cell.c,
+                    // Spacer cells are placeholders for wide chars; render them as zero-width.
+                    ch: if spacer { '\0' } else { cell.c },
                     fg: self.ansi_color_to_ratatui(cell.fg),
                     bg: self.ansi_color_to_ratatui(cell.bg),
                     bold: cell

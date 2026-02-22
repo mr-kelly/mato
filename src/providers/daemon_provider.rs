@@ -69,6 +69,17 @@ impl DaemonProvider {
         Self::send_msg_static(&self.socket_path, &msg)
     }
 
+    fn get_screen_sync(&self, rows: u16, cols: u16) -> Option<ScreenContent> {
+        match self.send_msg(ClientMsg::GetScreen {
+            tab_id: self.tab_id.clone(),
+            rows,
+            cols,
+        }) {
+            Some(ServerMsg::Screen { content, .. }) => Some(content),
+            _ => None,
+        }
+    }
+
     // Send message without waiting for response (fire and forget)
     fn send_msg_no_response_static(socket_path: &str, msg: &ClientMsg) {
         if let Ok(mut stream) = StdUnixStream::connect(socket_path) {
@@ -318,7 +329,8 @@ impl TerminalProvider for DaemonProvider {
             }
         }
 
-        // First-call fallback: do one synchronous fetch to avoid a blank frame.
+        // First-call fallback: do synchronous fetch to avoid a blank frame.
+        // If daemon says tab is missing, synchronously spawn and retry once.
         match self.send_msg(ClientMsg::GetScreen {
             tab_id: self.tab_id.clone(),
             rows,
@@ -337,11 +349,22 @@ impl TerminalProvider for DaemonProvider {
             }
             Some(ServerMsg::Error { message }) => {
                 if message == "tab not found" {
-                    self.send_msg_no_response(ClientMsg::Spawn {
+                    let _ = self.send_msg(ClientMsg::Spawn {
                         tab_id: self.tab_id.clone(),
                         rows: self.current_size.0.max(1),
                         cols: self.current_size.1.max(1),
                     });
+                    if let Some(content) = self.get_screen_sync(rows, cols) {
+                        if let Ok(mut cache) = self.screen_cache.lock() {
+                            *cache = Some(ScreenCacheEntry {
+                                rows,
+                                cols,
+                                fetched_at: Instant::now(),
+                                content: content.clone(),
+                            });
+                        }
+                        return content;
+                    }
                 }
                 if let Ok(cache) = self.screen_cache.lock() {
                     if let Some(entry) = cache.as_ref() {
