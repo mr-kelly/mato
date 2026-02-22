@@ -264,6 +264,17 @@ pub async fn handle_client(
                 ServerMsg::IdleStatus { tabs: idle }
             }
 
+            ClientMsg::GetProcessStatus => {
+                let procs: Vec<(String, u32)> = tabs
+                    .iter()
+                    .filter_map(|entry| {
+                        let pid = entry.value().lock().child_pid()?;
+                        Some((entry.key().clone(), pid))
+                    })
+                    .collect();
+                ServerMsg::ProcessStatus { tabs: procs }
+            }
+
             ClientMsg::GetUpdateStatus => {
                 let latest = latest_version.lock().clone();
                 ServerMsg::UpdateStatus { latest }

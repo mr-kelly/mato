@@ -223,3 +223,133 @@ Observed result:
 ### Why main-only
 - Keeps `brew install mato` stable.
 - Avoids promoting `develop` alpha prereleases into default formula.
+
+---
+
+## 11) Dual Formula Strategy for Homebrew
+
+### Policy update
+- `main` releases update `Formula/mato.rb` (stable channel).
+- `develop` releases update `Formula/mato-alpha.rb` (alpha channel).
+
+### Workflow implementation
+- Updated `.github/workflows/release.yml`:
+  - `update_homebrew_tap` now runs on both `main` and `develop`.
+  - Formula file/class are selected by branch:
+    - `main` -> `mato.rb` / `Mato`
+    - `develop` -> `mato-alpha.rb` / `MatoAlpha`
+  - Added explicit `conflicts_with` declaration in generated formula content to avoid ambiguous binary collision.
+
+### Tap repository updates
+- Added `Formula/mato-alpha.rb` in `mr-kelly/homebrew-tap`.
+- Added conflict declarations:
+  - `mato` conflicts with `mato-alpha`
+  - `mato-alpha` conflicts with `mato`
+
+### Installation behavior
+- `brew install mr-kelly/tap/mato-alpha` works, but cannot be linked simultaneously with `mato` because both install `bin/mato`.
+- This is expected and now explicitly declared in formulas.
+
+### CI test result
+- `develop` release workflow reached `Update Homebrew Tap Formula` but failed at secret validation:
+  - missing/empty `HOMEBREW_TAP_TOKEN` in `mr-kelly/mato` repository secrets at runtime.
+
+---
+
+## 12) PTY Shell Selection: Use System Default Instead of Hardcoded `bash`
+
+### Change
+- Updated `src/providers/pty_provider.rs` to resolve shell dynamically:
+  - first `SHELL` env var
+  - then login shell from user account (`getpwuid(...).pw_shell` on Unix)
+  - fallback to `/bin/sh`
+
+### Reason
+- On macOS, users expect default shell (`/bin/zsh`) when launching terminal sessions.
+- Hardcoded `bash` caused unexpected shell mismatch after Homebrew installation.
+
+### Behavior
+- New PTY sessions now open with the user's configured default shell automatically.
+
+---
+
+## 13) Spinner Visibility Rule: Respect Active Desk + Active Tab
+
+### Bug
+- Sidebar desk spinner was hidden whenever activity came from the desk's active tab.
+- This was incorrect for non-selected desks: switching away should still show spinner for background activity.
+
+### Fix
+- Updated `src/client/ui.rs` sidebar spinner condition:
+  - spinner is hidden only when the active output is from the currently visible tab
+  - condition for hide: `selected desk + active tab`
+  - all other active tabs (including active tab in non-selected desks) show spinner
+
+### Result
+- Current visible tab no longer shows spinner while you're watching it.
+- After switching desk, background activity in the previous desk correctly shows spinner.
+
+---
+
+## 14) `mato --status`: Add Active Tabs + Daemon Resource Snapshot
+
+### Change
+- Enhanced `src/daemon/status.rs`:
+  - query daemon `GetIdleStatus` and compute active tabs using idle threshold (`< 2s`)
+  - print `Active Tabs` count alongside total tabs
+  - print up to 5 active tab labels as `Office/Desk/Tab`
+  - print daemon process CPU and memory snapshot (via `ps`)
+
+### Reason
+- `--status` previously showed only `Total Tabs`, but not how many tabs are currently active.
+- Added lightweight runtime observability for quick health checks.
+
+### Scope Note
+- Current resource numbers are daemon-level usage (CPU/MEM), not per-tab process usage.
+
+---
+
+## 15) Spinner Policy Finalization + User Documentation
+
+### Requirement refinement
+- Active desk should never show spinner in sidebar.
+- Active tab should never show spinner in topbar.
+
+### Code update
+- Updated `src/client/ui.rs` sidebar logic:
+  - selected desk => always no spinner
+  - non-selected desk => spinner if any tab is active
+- Topbar rule remains:
+  - active tab => no spinner
+  - non-active tab => spinner when active
+
+### Documentation
+- Added `docs/SPINNER_LOGIC.md` with complete spinner behavior:
+  - data source and active threshold
+  - sidebar and topbar visibility rules
+  - practical examples for desk/tab switching behavior
+- Linked spinner doc in `README.md` documentation list.
+
+---
+
+## 16) `--status` Metrics Shift: from `Active Tabs` to `Running TTY Processes`
+
+### Feedback
+- `Active Tabs` was not useful for operational visibility.
+- Requested metric: how many terminal processes are actually running and their resource usage.
+
+### Change
+- Added daemon protocol for process status:
+  - `ClientMsg::GetProcessStatus`
+  - `ServerMsg::ProcessStatus { tabs: Vec<(tab_id, pid)> }`
+- Daemon now returns PTY child PID per tab (`PtyProvider::child_pid`).
+- `mato --status` now reports:
+  - `Running TTYs: <running>/<total tabs>`
+  - `TTY Processes` section with:
+    - count
+    - total CPU
+    - total memory
+    - top entries (tab label + pid + cpu + mem)
+
+### Result
+- Status output now reflects real running terminal workload, not just recent output activity.

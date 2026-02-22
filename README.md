@@ -129,6 +129,7 @@ Mato follows the **"Rule of One"**: Only one key (`Esc`) is reserved by the syst
 - [**Keyboard Shortcuts**](docs/KEYBOARD_SHORTCUTS.md)
 - [**AI Agent Guide**](docs/AI_AGENT_FRIENDLY.md)
 - [**Persistence Specs**](docs/TERMINAL_PERSISTENCE.md)
+- [**Spinner Logic**](docs/SPINNER_LOGIC.md)
 
 </td>
 <td>

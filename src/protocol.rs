@@ -11,6 +11,7 @@ pub enum ClientMsg {
     Resize { tab_id: String, rows: u16, cols: u16 },
     GetScreen { tab_id: String, rows: u16, cols: u16 },
     GetIdleStatus,
+    GetProcessStatus,
     GetUpdateStatus,
     ClosePty { tab_id: String },
     Scroll { tab_id: String, delta: i32 },
@@ -23,6 +24,8 @@ pub enum ServerMsg {
     Error { message: String },
     /// tab_id -> idle seconds
     IdleStatus { tabs: Vec<(String, u64)> },
+    /// tab_id -> child pid for each running PTY-backed tab
+    ProcessStatus { tabs: Vec<(String, u32)> },
     /// None = up to date or check failed; Some(ver) = update available
     UpdateStatus { latest: Option<String> },
     InputModes { mouse: bool, bracketed_paste: bool },

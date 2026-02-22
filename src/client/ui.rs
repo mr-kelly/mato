@@ -201,15 +201,18 @@ fn draw_sidebar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     );
     app.new_desk_area = rows[0];  // Reuse this for office selector click area
 
+    let selected_desk_idx = app.selected();
     let items: Vec<ListItem> = app.offices[app.current_office].desks.iter().enumerate().map(|(i, task)| {
         let sel = app.list_state.selected() == Some(i);
         
-        // Only show spinner if: has active tabs AND at least one is NOT the current tab
-        let has_active_other_tabs = task.tabs.iter().enumerate().any(|(tab_idx, tab)| {
-            app.active_tabs.contains(&tab.id) && tab_idx != task.active_tab
-        });
+        // Active desk should never show spinner in sidebar.
+        let has_spinner = if i == selected_desk_idx {
+            false
+        } else {
+            task.tabs.iter().any(|tab| app.active_tabs.contains(&tab.id))
+        };
         
-        let name = if has_active_other_tabs {
+        let name = if has_spinner {
             format!("{} {}", task.name, app.get_spinner())
         } else {
             task.name.clone()
