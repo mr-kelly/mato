@@ -83,11 +83,21 @@ fn q_in_topbar_quits() {
 // ── focus transitions ─────────────────────────────────────────────────────────
 
 #[test]
-fn esc_from_topbar_goes_to_sidebar() {
+fn esc_from_topbar_enters_jump_mode() {
     let mut app = make_app(vec![make_task("T")]);
     app.focus = Focus::Topbar;
     handle_key(&mut app, key(KeyCode::Esc));
+    assert_eq!(app.focus, Focus::Topbar);
+    assert_eq!(app.jump_mode, JumpMode::Active);
+}
+
+#[test]
+fn esc_from_sidebar_enters_jump_mode() {
+    let mut app = make_app(vec![make_task("T")]);
+    app.focus = Focus::Sidebar;
+    handle_key(&mut app, key(KeyCode::Esc));
     assert_eq!(app.focus, Focus::Sidebar);
+    assert_eq!(app.jump_mode, JumpMode::Active);
 }
 
 #[test]
@@ -116,6 +126,16 @@ fn jump_mode_left_goes_to_sidebar() {
     handle_key(&mut app, key(KeyCode::Left));
     assert_eq!(app.focus, Focus::Sidebar);
     assert_eq!(app.jump_mode, JumpMode::None);
+}
+
+#[test]
+fn jump_mode_w_is_letter_jump_not_focus_shortcut() {
+    let mut app = make_app(vec![make_task("T")]);
+    app.focus = Focus::Content;
+    app.jump_mode = JumpMode::Active;
+    handle_key(&mut app, key(KeyCode::Char('w')));
+    // 'w' should not forcibly move focus to topbar.
+    assert_ne!(app.focus, Focus::Topbar);
 }
 
 // ── rename buffer editing ─────────────────────────────────────────────────────

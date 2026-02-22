@@ -5,8 +5,10 @@ This directory contains historical development documentation for Mato.
 ## 📚 Documents
 
 ### Recent Changes (2026-02-22)
+- **[2026-02-22_shell-experience-jump-mode-and-system-theme-polish.md](2026-02-22_shell-experience-jump-mode-and-system-theme-polish.md)** - Shell flicker fixes, system theme polish, Jump Mode consistency and 52-key labels
 - **[2026-02-22_desk-terminology.md](2026-02-22_desk-terminology.md)** - Task → Desk terminology refactor
 - **[2026-02-22_activity-indicators.md](2026-02-22_activity-indicators.md)** - Activity indicators, PTY cleanup, UI improvements
+- **[2026-02-22_release-workflow-branch-policy-and-readme-use-cases.md](2026-02-22_release-workflow-branch-policy-and-readme-use-cases.md)** - Release workflow redesign, branch policy, CI fix, README use cases
 - **[2026-02-21_todo-audit-clippy-and-tab-title-separation.md](2026-02-21_todo-audit-clippy-and-tab-title-separation.md)** - TODO audit, warning cleanup, tab title/name separation
 
 ### Development Plans

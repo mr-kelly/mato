@@ -65,68 +65,41 @@ When running multiple AI agents or long-running tasks:
 
 ## 🎯 Perfect For
 
-### 🤖 AI Agent Workflows
+### 1) SSH + Cloud Host + Coding Agents
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Claude Agent ⠋    Codex CLI    GitHub Copilot ⠴       │
-├─────────────────────────────────────────────────────────┤
-│ ▶ AI Agents ⠋    │  $ claude "Build REST API"          │
-│   Development    │  ⠋ Analyzing requirements...         │
-│   Testing        │  ⠋ Generating code...                │
-└─────────────────────────────────────────────────────────┘
-```
+**Problem:**
+- You run multiple coding agents on a remote server.
+- Your SSH client disconnects, laptop sleeps, or network drops.
+- In many setups, the interactive agent state is lost.
 
-**Use Cases:**
-- Monitor multiple AI agents simultaneously
-- Know when agents finish or hang
-- Never miss completed tasks
-- Zero interference with AI tool shortcuts
+**Why Mato:**
+- Mato runs with a background daemon, so sessions stay alive after disconnects.
+- Your workspace layout and tab state remain available when you reconnect.
+- You can return to the same "office" and continue without rebuilding context.
 
-### 📊 Data Processing & ETL
+### 2) Low-Spec Laptop, Heavy AI Workloads
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  ETL Pipeline ⠋    Database Sync    Report Gen ⠴       │
-├─────────────────────────────────────────────────────────┤
-│ ▶ Data Jobs ⠋    │  $ python etl_pipeline.py           │
-│   Monitoring     │  Processing batch 3/10...            │
-│   Backups        │  ⠋ 45% complete                      │
-└─────────────────────────────────────────────────────────┘
-```
+**Problem:**
+- Browser-based or GUI-heavy agent tools can overload your local machine.
+- Running many windows/tabs for multiple agents increases CPU/RAM pressure.
 
-**Use Cases:**
-- Track long-running ETL jobs
-- Monitor database migrations
-- See progress across multiple pipelines
-- Catch stuck processes immediately
+**Why Mato:**
+- CLI-first workflow is much lighter than multiple GUI apps.
+- You can move heavy agent execution to a remote host and manage it from a thin client.
+- Better resource efficiency while keeping parallel workflows organized.
 
-### 🔧 Development & Testing
+### 3) One Screen, Many Agents, Real-Time Visibility
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  npm run dev ⠋    cargo watch    pytest ⠴              │
-├─────────────────────────────────────────────────────────┤
-│ ▶ Dev Servers ⠋  │  $ npm run dev                      │
-│   Tests          │  ⠋ Webpack compiling...              │
-│   Logs           │  Server running on :3000             │
-└─────────────────────────────────────────────────────────┘
-```
+**Problem:**
+- You need to track many agent terminals at once.
+- Constant tab switching makes it hard to know what is active, idle, or stuck.
 
-**Use Cases:**
-- Monitor build processes and hot-reload
-- Track test runs across multiple suites
-- See which services are active
-- Debug parallel development tasks
+**Why Mato:**
+- Single-screen overview for desks + tabs.
+- Activity spinners show which terminals are currently producing output.
+- You get immediate visual status without leaving the current terminal.
 
 ---
-
-## ✨ Features
-```
-
-</td>
-</tr>
-</table>
 
 ## ✨ Features
 

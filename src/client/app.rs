@@ -18,6 +18,8 @@ pub enum JumpMode {
     Active  // ESC pressed in Content - can jump OR use arrows
 }
 
+pub const JUMP_LABELS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 #[derive(PartialEq, Clone)]
 pub enum RenameTarget { Desk(usize), Tab(usize, usize), Office(usize) }
 
@@ -179,11 +181,14 @@ pub struct App {
     pub content_area: Rect,
     pub new_desk_area: Rect,
     pub tab_areas: Vec<Rect>,
+    pub tab_area_tab_indices: Vec<usize>,
     pub new_tab_area: Rect,
     pub tab_scroll: usize,
     pub last_click: Option<(u16, u16, std::time::Instant)>,
     /// tab_ids that are ACTIVE (have output in last 2 seconds)
     pub active_tabs: HashSet<String>,
+    pub daemon_connected: bool,
+    pub daemon_last_ok: Instant,
     pub terminal_titles: HashMap<String, String>,
     /// Spinner animation state
     pub spinner_frame: usize,
@@ -231,8 +236,11 @@ impl App {
             sidebar_list_area: Rect::default(), sidebar_area: Rect::default(),
             topbar_area: Rect::default(), content_area: Rect::default(),
             new_desk_area: Rect::default(), tab_areas: vec![], new_tab_area: Rect::default(),
+            tab_area_tab_indices: vec![],
             tab_scroll: 0, last_click: None,
             active_tabs: HashSet::new(),
+            daemon_connected: false,
+            daemon_last_ok: Instant::now(),
             terminal_titles: HashMap::new(),
             spinner_frame: 0,
             last_spinner_update: Instant::now(),
@@ -272,8 +280,11 @@ impl App {
             sidebar_list_area: Rect::default(), sidebar_area: Rect::default(),
             topbar_area: Rect::default(), content_area: Rect::default(),
             new_desk_area: Rect::default(), tab_areas: vec![], new_tab_area: Rect::default(),
+            tab_area_tab_indices: vec![],
             tab_scroll: 0, last_click: None,
             active_tabs: HashSet::new(),
+            daemon_connected: false,
+            daemon_last_ok: Instant::now(),
             terminal_titles: HashMap::new(),
             spinner_frame: 0,
             last_spinner_update: Instant::now(),
@@ -493,35 +504,22 @@ impl App {
 
     /// Handle jump mode character selection
     pub fn handle_jump_selection(&mut self, c: char) {
-        // Generate jump targets: desks (a-z) and tabs (a-z)
-        let mut targets = Vec::new();
-        
-        // Add desks
-        for (i, _) in self.offices[self.current_office].desks.iter().enumerate() {
-            targets.push(('t', i, 0)); // ('t' for task, task_idx, 0)
-        }
-        
-        // Add tabs from current desk
-        let desk_idx = self.selected();
-        for (tab_idx, _) in self.offices[self.current_office].desks[desk_idx].tabs.iter().enumerate() {
-            targets.push(('b', desk_idx, tab_idx)); // ('b' for tab, desk_idx, tab_idx)
-        }
+        let targets = self.jump_targets();
         
         // Map character to target
-        let labels = "abcdefghijklmnopqrstuvwxyz";
-        if let Some(idx) = labels.chars().position(|ch| ch == c) {
+        if let Some(idx) = JUMP_LABELS.chars().position(|ch| ch == c) {
             if idx < targets.len() {
                 let (kind, task_idx, tab_idx) = targets[idx];
                 match kind {
                     't' => {
-                        // Jump to task
+                        // Jump to desk and focus sidebar.
                         self.list_state.select(Some(task_idx));
                         self.focus = Focus::Sidebar;
                     }
                     'b' => {
-                        // Jump to tab
+                        // Jump to tab and focus topbar.
                         self.offices[self.current_office].desks[task_idx].active_tab = tab_idx;
-                        self.focus = Focus::Content;
+                        self.focus = Focus::Topbar;
                         self.mark_tab_switch();
                         self.spawn_active_pty();
                     }
@@ -535,11 +533,75 @@ impl App {
         self.jump_mode = JumpMode::None;
     }
 
+    pub fn jump_targets(&self) -> Vec<(char, usize, usize)> {
+        let max_labels = JUMP_LABELS.chars().count();
+        let mut targets: Vec<(char, usize, usize)> = Vec::new();
+        let desk_indices: Vec<usize> = (0..self.offices[self.current_office].desks.len()).collect();
+        let tab_indices: Vec<usize> = self.tab_area_tab_indices.clone();
+        let task_idx = self.selected();
+
+        let push_tab = |targets: &mut Vec<(char, usize, usize)>, t: usize| {
+            targets.push(('b', task_idx, t));
+        };
+        let push_desk = |targets: &mut Vec<(char, usize, usize)>, d: usize| {
+            targets.push(('t', d, 0));
+        };
+
+        match self.focus {
+            Focus::Topbar => {
+                for &t in &tab_indices {
+                    if targets.len() >= max_labels { break; }
+                    push_tab(&mut targets, t);
+                }
+                for &d in &desk_indices {
+                    if targets.len() >= max_labels { break; }
+                    push_desk(&mut targets, d);
+                }
+            }
+            Focus::Sidebar => {
+                for &d in &desk_indices {
+                    if targets.len() >= max_labels { break; }
+                    push_desk(&mut targets, d);
+                }
+                for &t in &tab_indices {
+                    if targets.len() >= max_labels { break; }
+                    push_tab(&mut targets, t);
+                }
+            }
+            Focus::Content => {
+                // Balanced allocation: interleave tab/desk as much as possible.
+                let (mut ti, mut di) = (0usize, 0usize);
+                let mut take_tab = true;
+                while targets.len() < max_labels && (ti < tab_indices.len() || di < desk_indices.len()) {
+                    if take_tab {
+                        if ti < tab_indices.len() {
+                            push_tab(&mut targets, tab_indices[ti]);
+                            ti += 1;
+                        } else if di < desk_indices.len() {
+                            push_desk(&mut targets, desk_indices[di]);
+                            di += 1;
+                        }
+                    } else if di < desk_indices.len() {
+                        push_desk(&mut targets, desk_indices[di]);
+                        di += 1;
+                    } else if ti < tab_indices.len() {
+                        push_tab(&mut targets, tab_indices[ti]);
+                        ti += 1;
+                    }
+                    take_tab = !take_tab;
+                }
+            }
+        }
+
+        targets
+    }
+
     /// Query daemon for active status of all tabs (call every frame)
     pub fn refresh_active_status(&mut self) {
         const ACTIVE_THRESHOLD_SECS: u64 = 2;
         if self.active_status_rx.is_none() {
             self.active_status_rx = Some(Self::spawn_active_status_worker(ACTIVE_THRESHOLD_SECS));
+            self.daemon_connected = false;
         }
         let mut latest: Option<HashSet<String>> = None;
         if let Some(rx) = &self.active_status_rx {
@@ -549,6 +611,11 @@ impl App {
         }
         if let Some(active) = latest {
             self.active_tabs = active;
+            self.daemon_connected = true;
+            self.daemon_last_ok = Instant::now();
+        } else if self.daemon_connected && self.daemon_last_ok.elapsed() > Duration::from_secs(2) {
+            // No recent successful daemon status reads.
+            self.daemon_connected = false;
         }
     }
 
