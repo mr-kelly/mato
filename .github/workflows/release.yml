@@ -19,6 +19,7 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
       tag: ${{ steps.meta.outputs.tag }}
       prerelease: ${{ steps.meta.outputs.prerelease }}
+      should_release: ${{ steps.meta.outputs.should_release }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,7 +57,13 @@ jobs:
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "Tag already exists on origin: ${TAG}"
             if [ "$BRANCH" = "main" ]; then
-              echo "Main branch release requires a new Cargo.toml version."
+              echo "Skipping main release for existing tag (non-fatal)."
+              echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+              echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+              echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+              echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              exit 0
             fi
             exit 1
           fi
@@ -65,10 +72,12 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build ${{ matrix.target }}
     needs: prepare
+    if: needs.prepare.outputs.should_release == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -153,6 +162,7 @@ jobs:
   release:
     name: Tag and Create Release
     needs: [prepare, build]
+    if: needs.prepare.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -225,7 +235,7 @@ jobs:
     name: Update Homebrew Tap Formula
     needs: [prepare, release]
     runs-on: ubuntu-latest
-    if: needs.prepare.outputs.branch == 'main' || needs.prepare.outputs.branch == 'develop'
+    if: needs.prepare.outputs.should_release == 'true' && (needs.prepare.outputs.branch == 'main' || needs.prepare.outputs.branch == 'develop')
     steps:
       - name: Validate required secret
         shell: bash
