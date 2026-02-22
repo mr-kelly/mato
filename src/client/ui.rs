@@ -549,18 +549,28 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
         app.pending_bell = true;
     }
 
+    let buf = f.buffer_mut();
+    let bg_style = Style::default().bg(term_bg);
+
     for row_idx in 0..ih {
         let src_row = if row_idx < row_base {
             None
         } else {
             Some((row_idx - row_base) as usize)
         };
-        let spans: Vec<Span> = if let Some(line) = src_row.and_then(|r| screen.lines.get(r)) {
-            let mut render_width = 0usize;
-            let mut cells: Vec<Span> = line
-                .cells
-                .iter()
-                .map(|cell| {
+        let by = iy + row_idx;
+        if let Some(line) = src_row.and_then(|r| screen.lines.get(r)) {
+            let mut bx = ix;
+            let bx_end = ix + iw;
+            for cell in &line.cells {
+                if bx >= bx_end {
+                    break;
+                }
+                if cell.display_width == 0 {
+                    continue;
+                }
+                if let Some(buf_cell) = buf.cell_mut((bx, by)) {
+                    // Build style with bitwise modifier accumulation
                     let mut style = Style::default();
                     if let Some(fg) = cell.fg {
                         style = style.fg(fg);
@@ -568,68 +578,65 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
                     if let Some(bg) = cell.bg {
                         style = style.bg(bg);
                     }
-                    if cell.bold {
-                        style = style.add_modifier(Modifier::BOLD);
-                    }
-                    if cell.italic {
-                        style = style.add_modifier(Modifier::ITALIC);
-                    }
+                    let mut mods = Modifier::empty();
+                    if cell.bold { mods |= Modifier::BOLD; }
+                    if cell.italic { mods |= Modifier::ITALIC; }
                     if cell.underline {
-                        style = style.add_modifier(Modifier::UNDERLINED);
+                        mods |= Modifier::UNDERLINED;
                         if let Some(uc) = cell.underline_color {
                             style = style.underline_color(uc);
                         }
                     }
-                    if cell.dim {
-                        style = style.add_modifier(Modifier::DIM);
+                    if cell.dim { mods |= Modifier::DIM; }
+                    if cell.reverse { mods |= Modifier::REVERSED; }
+                    if cell.strikethrough { mods |= Modifier::CROSSED_OUT; }
+                    if cell.hidden { mods |= Modifier::HIDDEN; }
+                    if !mods.is_empty() {
+                        style = style.add_modifier(mods);
                     }
-                    if cell.reverse {
-                        style = style.add_modifier(Modifier::REVERSED);
-                    }
-                    if cell.strikethrough {
-                        style = style.add_modifier(Modifier::CROSSED_OUT);
-                    }
-                    if cell.hidden {
-                        style = style.add_modifier(Modifier::HIDDEN);
-                    }
-                    let glyph = if cell.ch == '\0' {
-                        String::new()
+                    buf_cell.set_style(style);
+                    if cell.ch == '\0' {
+                        buf_cell.set_char(' ');
+                    } else if let Some(ref zw) = cell.zerowidth {
+                        let mut sym = cell.ch.to_string();
+                        for &c in zw {
+                            sym.push(c);
+                        }
+                        buf_cell.set_symbol(&sym);
                     } else {
-                        let mut s = cell.ch.to_string();
-                        if let Some(ref zw) = cell.zerowidth {
-                            for &c in zw {
-                                s.push(c);
+                        buf_cell.set_char(cell.ch);
+                    }
+                    // Wide chars: reset following continuation cells
+                    if cell.display_width > 1 {
+                        for dx in 1..cell.display_width as u16 {
+                            let cx = bx + dx;
+                            if cx < bx_end {
+                                if let Some(next_cell) = buf.cell_mut((cx, by)) {
+                                    next_cell.reset();
+                                }
                             }
                         }
-                        s
-                    };
-                    render_width += usize::from(cell.display_width);
-                    Span::styled(glyph, style)
-                })
-                .collect();
-            // Pad to full visible width, accounting for zero-width spacer cells.
-            if render_width < iw as usize {
-                cells.push(Span::styled(
-                    " ".repeat(iw as usize - render_width),
-                    Style::default().bg(term_bg),
-                ));
+                    }
+                }
+                bx += cell.display_width as u16;
             }
-            cells
+            // Pad remaining columns with terminal background
+            while bx < bx_end {
+                if let Some(buf_cell) = buf.cell_mut((bx, by)) {
+                    buf_cell.set_char(' ');
+                    buf_cell.set_style(bg_style);
+                }
+                bx += 1;
+            }
         } else {
-            vec![Span::styled(
-                " ".repeat(iw as usize),
-                Style::default().bg(term_bg),
-            )]
-        };
-        f.render_widget(
-            Paragraph::new(Line::from(spans)),
-            Rect {
-                x: ix,
-                y: iy + row_idx,
-                width: iw,
-                height: 1,
-            },
-        );
+            // Empty row — fill with background
+            for col in 0..iw {
+                if let Some(buf_cell) = buf.cell_mut((ix + col, by)) {
+                    buf_cell.set_char(' ');
+                    buf_cell.set_style(bg_style);
+                }
+            }
+        }
     }
 
     let (cr, cc) = screen.cursor;

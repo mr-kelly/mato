@@ -409,3 +409,18 @@ Implement P0 items from roadmap.md that are critical for daily user experience.
   - MessagePack roundtrip preserves content
   - Diff is smaller than full screen (size assertion)
 - **Bug found and fixed**: Metadata-only changes (cursor/title/bell) incorrectly fell through to full Screen. Fixed condition from `!changed.is_empty() && changed.len() <= max_lines / 2` to `changed.len() <= max_lines / 2`.
+
+
+### 35. Direct Buffer Write — Zero-Allocation Content Rendering
+- **Problem**: Content area rendering built `String` + `Span::styled()` per cell (1920 heap allocs for 80×24), then `Paragraph` per row — massive allocation overhead every frame.
+- **Solution**: Replaced Paragraph/Span widget layer with direct `f.buffer_mut().cell_mut()` writes:
+  - Each `ScreenCell` → directly set `buf_cell.set_char()` + `buf_cell.set_style()` — **zero heap allocation for normal chars**
+  - Only allocates for cells with combining characters (`zerowidth` field) via `set_symbol()`
+  - Wide-char continuation cells marked with `set_skip(true)`
+  - Padding fills remaining columns directly
+- **Impact**:
+  - Eliminates ~1920 String allocations + ~1920 Span objects + 24 Paragraph widgets per frame
+  - Render time reduction: estimated ~0.5-1ms savings per frame
+  - Moves Mato closer to tmux-level rendering efficiency
+- **Architecture insight**: tmux sends escape sequences (zero client render overhead), Mato keeps ratatui for chrome (sidebar/topbar/statusbar) but now uses direct buffer writes for the content area — hybrid approach gets best of both worlds.
+- **Files changed**: `src/client/ui.rs` (content rendering loop rewritten)
