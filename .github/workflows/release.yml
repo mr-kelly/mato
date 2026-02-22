@@ -225,8 +225,7 @@ jobs:
     name: Update Homebrew Tap Formula
     needs: [prepare, release]
     runs-on: ubuntu-latest
-    # Keep `brew install mato` stable: only update formula from main releases.
-    if: needs.prepare.outputs.branch == 'main'
+    if: needs.prepare.outputs.branch == 'main' || needs.prepare.outputs.branch == 'develop'
     steps:
       - name: Validate required secret
         shell: bash
@@ -239,14 +238,31 @@ jobs:
           fi
 
       - name: Generate Formula from release assets
+        id: gen_formula
         shell: bash
         run: |
           set -euo pipefail
 
           OWNER="${{ github.repository_owner }}"
+          BRANCH="${{ needs.prepare.outputs.branch }}"
           TAG="${{ needs.prepare.outputs.tag }}"
           VERSION="${{ needs.prepare.outputs.version }}"
           CHECKSUMS_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/checksums.txt"
+
+          if [ "$BRANCH" = "develop" ]; then
+            FORMULA_FILE="mato-alpha.rb"
+            FORMULA_CLASS="MatoAlpha"
+            FORMULA_DESC="Multi-Agent Terminal Office (alpha)"
+            CONFLICT_FORMULA="mato"
+          else
+            FORMULA_FILE="mato.rb"
+            FORMULA_CLASS="Mato"
+            FORMULA_DESC="Multi-Agent Terminal Office"
+            CONFLICT_FORMULA="mato-alpha"
+          fi
+
+          echo "formula_file=${FORMULA_FILE}" >> "$GITHUB_OUTPUT"
+          echo "formula_class=${FORMULA_CLASS}" >> "$GITHUB_OUTPUT"
 
           curl -fsSL "$CHECKSUMS_URL" -o checksums.txt
 
@@ -269,12 +285,13 @@ jobs:
           done
 
           mkdir -p tap-work/Formula
-          cat > tap-work/Formula/mato.rb <<EOF
-          class Mato < Formula
-            desc "Multi-Agent Terminal Office"
+          cat > "tap-work/Formula/${FORMULA_FILE}" <<EOF
+          class ${FORMULA_CLASS} < Formula
+            desc "${FORMULA_DESC}"
             homepage "https://github.com/${OWNER}/mato"
             version "${VERSION}"
             license "MIT"
+            conflicts_with "${CONFLICT_FORMULA}", because: "both install the same binary name: mato"
 
             on_macos do
               if Hardware::CPU.arm?
@@ -315,20 +332,22 @@ jobs:
 
           OWNER="${{ github.repository_owner }}"
           TAP_REPO="homebrew-tap"
+          FORMULA_FILE="${{ steps.gen_formula.outputs.formula_file }}"
+          FORMULA_PATH="Formula/${FORMULA_FILE}"
 
           git clone "https://x-access-token:${TAP_TOKEN}@github.com/${OWNER}/${TAP_REPO}.git" tap-repo
           mkdir -p tap-repo/Formula
-          cp tap-work/Formula/mato.rb tap-repo/Formula/mato.rb
+          cp "tap-work/Formula/${FORMULA_FILE}" "tap-repo/${FORMULA_PATH}"
 
           cd tap-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          if git diff --quiet -- Formula/mato.rb; then
+          if git diff --quiet -- "${FORMULA_PATH}"; then
             echo "No formula changes detected; skipping commit."
             exit 0
           fi
 
-          git add Formula/mato.rb
-          git commit -m "mato ${{ needs.prepare.outputs.version }}"
+          git add "${FORMULA_PATH}"
+          git commit -m "${FORMULA_FILE} ${{ needs.prepare.outputs.version }}"
           git push origin HEAD:main
