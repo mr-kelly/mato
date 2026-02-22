@@ -2,18 +2,45 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
+    widgets::{Block, BorderType, Borders, Clear, List, ListItem, Paragraph},
     Frame,
 };
 use crate::client::app::{App, Focus, RenameTarget, JumpMode};
 use crate::theme::{ThemeColors, BUILTIN_THEMES};
 
 fn border_style(t: &ThemeColors, active: bool) -> Style {
-    if active { Style::default().fg(t.accent()) } else { Style::default().fg(t.border()) }
+    if t.follow_terminal {
+        if active {
+            Style::default().add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+        }
+    } else if active {
+        Style::default().fg(t.accent())
+    } else {
+        Style::default().fg(t.border())
+    }
 }
 fn title_style(t: &ThemeColors, active: bool) -> Style {
-    if active { Style::default().fg(t.accent()).add_modifier(Modifier::BOLD) }
-    else { Style::default().fg(t.fg_dim()) }
+    if t.follow_terminal {
+        if active {
+            Style::default().add_modifier(Modifier::BOLD | Modifier::REVERSED)
+        } else {
+            Style::default().add_modifier(Modifier::DIM)
+        }
+    } else if active {
+        Style::default().fg(t.accent()).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(t.fg_dim())
+    }
+}
+
+fn border_type(t: &ThemeColors, active: bool) -> BorderType {
+    if t.follow_terminal && active {
+        BorderType::Thick
+    } else {
+        BorderType::Plain
+    }
 }
 
 pub fn draw(f: &mut Frame, app: &mut App) {
@@ -68,6 +95,11 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 }
 
 fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
+    let focus_name = match app.focus {
+        Focus::Sidebar => "Sidebar",
+        Focus::Topbar => "Topbar",
+        Focus::Content => "Content",
+    };
     let keys: &[(&str, &str)] = if app.rename.is_some() {
         &[("Enter", "Confirm"), ("Esc", "Cancel")]
     } else if let JumpMode::Active = app.jump_mode {
@@ -83,7 +115,14 @@ fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
             Focus::Content => &[("Esc", "Jump"), ("keys→shell", "")],
         }
     };
-    let mut spans: Vec<Span> = vec![Span::raw(" ")];
+    let mut spans: Vec<Span> = vec![
+        Span::raw(" "),
+        Span::styled(
+            format!(" Focus:{focus_name} "),
+            Style::default().add_modifier(Modifier::BOLD | Modifier::REVERSED),
+        ),
+        Span::raw("  "),
+    ];
     for (key, desc) in keys {
         spans.push(Span::styled(format!(" {key} "), Style::default().fg(t.bg()).bg(t.accent()).add_modifier(Modifier::BOLD)));
         if !desc.is_empty() {
@@ -127,7 +166,13 @@ fn draw_sidebar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
             Span::styled(office_text, office_style),
         ]))
         .alignment(ratatui::layout::Alignment::Center)
-        .block(Block::default().borders(Borders::ALL).border_style(border_style(t, active)).style(Style::default().bg(t.surface()))),
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(border_type(t, active))
+                .border_style(border_style(t, active))
+                .style(Style::default().bg(t.surface())),
+        ),
         rows[0],
     );
     app.new_desk_area = rows[0];  // Reuse this for office selector click area
@@ -156,6 +201,7 @@ fn draw_sidebar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     f.render_stateful_widget(
         List::new(items)
             .block(Block::default().borders(Borders::ALL)
+                .border_type(border_type(t, active))
                 .title(Span::styled(" Desks ", title_style(t, active)))
                 .border_style(border_style(t, active))
                 .style(Style::default().bg(t.surface()))),
@@ -167,7 +213,11 @@ fn draw_sidebar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
 fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     let active = app.focus == Focus::Topbar;
     f.render_widget(
-        Block::default().borders(Borders::ALL).border_style(border_style(t, active)).style(Style::default().bg(t.surface())),
+        Block::default()
+            .borders(Borders::ALL)
+            .border_type(border_type(t, active))
+            .border_style(border_style(t, active))
+            .style(Style::default().bg(t.surface())),
         area,
     );
 
@@ -258,6 +308,7 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     let term_bg = t.bg();
     f.render_widget(
         Block::default().borders(Borders::ALL)
+            .border_type(border_type(t, active))
             .title(Span::styled(
                 format!(
                     " {} ",
