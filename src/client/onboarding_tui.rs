@@ -1,15 +1,19 @@
 use crate::client::persistence::{SavedDesk, SavedOffice, SavedState, SavedTab};
 use crossterm::{
-    event::{self, Event, KeyCode},
+    cursor::MoveTo,
+    event::{self, Event, KeyCode, KeyEvent},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{
+        disable_raw_mode, enable_raw_mode, Clear as TermClear, ClearType as TermClearType,
+        EnterAlternateScreen, LeaveAlternateScreen,
+    },
 };
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
+    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap},
     Frame, Terminal,
 };
 use serde::Deserialize;
@@ -204,86 +208,174 @@ fn parse_template(content: &'static str) -> Template {
 
 fn get_templates() -> Vec<Template> {
     vec![
+        parse_template(START_FROM_SCRATCH),
+        parse_template(POWER_USER),
         parse_template(SOLO_DEVELOPER),
         parse_template(ONE_PERSON_COMPANY),
         parse_template(FULLSTACK_DEVELOPER),
         parse_template(DATA_SCIENTIST),
-        parse_template(POWER_USER),
         parse_template(MARKETING_OPS),
         parse_template(FINANCIAL_TRADER),
         parse_template(HR_ADMIN),
-        parse_template(START_FROM_SCRATCH),
     ]
 }
 
 pub fn show_onboarding_tui() -> io::Result<Option<SavedState>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(
+        stdout,
+        EnterAlternateScreen,
+        TermClear(TermClearType::All),
+        MoveTo(0, 0)
+    )?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
+    terminal.clear()?;
+    let result = run_onboarding_loop(&mut terminal, OnboardingController::new_first_run())?;
 
-    let templates = get_templates();
-    let mut list_state = ListState::default();
-    list_state.select(Some(0));
-    let mut language = Language::English;
-    let mut office_name = OfficeNameDraft::new(default_office_name());
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        TermClear(TermClearType::All),
+        MoveTo(0, 0),
+        LeaveAlternateScreen
+    )?;
+    Ok(result)
+}
+
+pub enum OnboardingAction {
+    None,
+    Cancel,
+    Complete(SavedState),
+}
+
+pub struct OnboardingController {
+    templates: Vec<Template>,
+    list_state: ListState,
+    language: Language,
+    office_name: OfficeNameDraft,
+    mode: OnboardingMode,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum OnboardingMode {
+    FirstRun,
+    InApp,
+}
+
+impl OnboardingController {
+    fn new(mode: OnboardingMode) -> Self {
+        let templates = get_templates();
+        let mut list_state = ListState::default();
+        list_state.select(Some(0));
+        Self {
+            templates,
+            list_state,
+            language: Language::English,
+            office_name: OfficeNameDraft::new(default_office_name()),
+            mode,
+        }
+    }
+
+    pub fn new_in_app() -> Self {
+        Self::new(OnboardingMode::InApp)
+    }
+
+    pub fn new_first_run() -> Self {
+        Self::new(OnboardingMode::FirstRun)
+    }
+
+    pub fn draw(&mut self, f: &mut Frame) {
+        draw_onboarding(
+            f,
+            &mut self.list_state,
+            &self.templates,
+            self.language,
+            &self.office_name,
+            self.mode,
+        );
+    }
+
+    pub fn handle_key(&mut self, key: KeyEvent) -> OnboardingAction {
+        if self.office_name.in_edit {
+            match key.code {
+                KeyCode::Enter => self.office_name.commit(),
+                KeyCode::Esc => self.office_name.cancel(),
+                KeyCode::Backspace => {
+                    self.office_name.editing.pop();
+                }
+                KeyCode::Char(c) => {
+                    if !c.is_control() {
+                        self.office_name.editing.push(c);
+                    }
+                }
+                _ => {}
+            }
+            return OnboardingAction::None;
+        }
+
+        match key.code {
+            KeyCode::Up => {
+                let selected = self.list_state.selected().unwrap_or(0);
+                if selected > 0 {
+                    self.list_state.select(Some(selected - 1));
+                }
+            }
+            KeyCode::Down => {
+                let selected = self.list_state.selected().unwrap_or(0);
+                if selected < self.templates.len() - 1 {
+                    self.list_state.select(Some(selected + 1));
+                }
+            }
+            KeyCode::Left => self.language = self.language.previous(),
+            KeyCode::Right => self.language = self.language.next(),
+            KeyCode::Enter => {
+                let selected = self.list_state.selected().unwrap_or(0);
+                let state = apply_template_return(
+                    &self.templates[selected],
+                    self.language,
+                    &self.office_name.committed,
+                );
+                return match state {
+                    Some(s) => OnboardingAction::Complete(s),
+                    None => OnboardingAction::Cancel,
+                };
+            }
+            KeyCode::Char('r') => self.office_name.start_edit(),
+            KeyCode::Esc if self.mode == OnboardingMode::InApp => {
+                return OnboardingAction::Cancel;
+            }
+            KeyCode::Char('q') if self.mode == OnboardingMode::FirstRun => {
+                return OnboardingAction::Cancel;
+            }
+            _ => {}
+        }
+
+        OnboardingAction::None
+    }
+}
+
+fn run_onboarding_loop(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    mut controller: OnboardingController,
+) -> io::Result<Option<SavedState>> {
     let mut result = None;
 
     loop {
-        terminal
-            .draw(|f| draw_onboarding(f, &mut list_state, &templates, language, &office_name))?;
+        terminal.draw(|f| controller.draw(f))?;
 
         if let Event::Key(key) = event::read()? {
-            if office_name.in_edit {
-                match key.code {
-                    KeyCode::Enter => office_name.commit(),
-                    KeyCode::Esc => office_name.cancel(),
-                    KeyCode::Backspace => {
-                        office_name.editing.pop();
-                    }
-                    KeyCode::Char(c) => {
-                        if !c.is_control() {
-                            office_name.editing.push(c);
-                        }
-                    }
-                    _ => {}
-                }
-            } else {
-                match key.code {
-                    KeyCode::Up => {
-                        let selected = list_state.selected().unwrap_or(0);
-                        if selected > 0 {
-                            list_state.select(Some(selected - 1));
-                        }
-                    }
-                    KeyCode::Down => {
-                        let selected = list_state.selected().unwrap_or(0);
-                        if selected < templates.len() - 1 {
-                            list_state.select(Some(selected + 1));
-                        }
-                    }
-                    KeyCode::Left => language = language.previous(),
-                    KeyCode::Right => language = language.next(),
-                    KeyCode::Enter => {
-                        let selected = list_state.selected().unwrap_or(0);
-                        result = apply_template_return(
-                            &templates[selected],
-                            language,
-                            &office_name.committed,
-                        );
-                        break;
-                    }
-                    KeyCode::Char('r') => office_name.start_edit(),
-                    KeyCode::Esc | KeyCode::Char('q') => break,
-                    _ => {}
+            match controller.handle_key(key) {
+                OnboardingAction::None => {}
+                OnboardingAction::Cancel => break,
+                OnboardingAction::Complete(state) => {
+                    result = Some(state);
+                    break;
                 }
             }
         }
     }
-
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     Ok(result)
 }
 
@@ -293,7 +385,11 @@ fn draw_onboarding(
     templates: &[Template],
     language: Language,
     office_name: &OfficeNameDraft,
+    mode: OnboardingMode,
 ) {
+    // Force full repaint to prevent visual residue from previous TUI screens.
+    f.render_widget(Clear, f.area());
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -413,8 +509,10 @@ fn draw_onboarding(
 
     let help_text = if office_name.in_edit {
         ui_text(language, UiText::HelpEditing)
+    } else if mode == OnboardingMode::InApp {
+        ui_text(language, UiText::HelpNormalInApp)
     } else {
-        ui_text(language, UiText::HelpNormal)
+        ui_text(language, UiText::HelpNormalFirstRun)
     };
     let help = Paragraph::new(help_text)
         .alignment(Alignment::Center)
@@ -476,7 +574,8 @@ enum UiText {
     ChooseTemplateTitle,
     DetailsTitle,
     HelpEditing,
-    HelpNormal,
+    HelpNormalInApp,
+    HelpNormalFirstRun,
 }
 
 fn ui_text(language: Language, key: UiText) -> &'static str {
@@ -529,20 +628,35 @@ fn ui_text(language: Language, key: UiText) -> &'static str {
         (Language::Japanese, UiText::HelpEditing) => "名前入力  |  Enter 保存  |  Esc キャンセル",
         (Language::Korean, UiText::HelpEditing) => "이름 입력  |  Enter 저장  |  Esc 취소",
 
-        (Language::English, UiText::HelpNormal) => {
-            "↑↓ Navigate  |  ←→ Language  |  Enter Start  |  r Rename Office  |  Esc/q Cancel"
+        (Language::English, UiText::HelpNormalInApp) => {
+            "↑↓ Navigate  |  ←→ Language  |  Enter Start  |  r Rename Office  |  Esc Back"
         }
-        (Language::SimplifiedChinese, UiText::HelpNormal) => {
-            "↑↓ 选择  |  ←→ 语言  |  Enter 开始  |  r 重命名  |  Esc/q 取消"
+        (Language::SimplifiedChinese, UiText::HelpNormalInApp) => {
+            "↑↓ 选择  |  ←→ 语言  |  Enter 开始  |  r 重命名  |  Esc 返回"
         }
-        (Language::TraditionalChinese, UiText::HelpNormal) => {
-            "↑↓ 選擇  |  ←→ 語言  |  Enter 開始  |  r 重新命名  |  Esc/q 取消"
+        (Language::TraditionalChinese, UiText::HelpNormalInApp) => {
+            "↑↓ 選擇  |  ←→ 語言  |  Enter 開始  |  r 重新命名  |  Esc 返回"
         }
-        (Language::Japanese, UiText::HelpNormal) => {
-            "↑↓ 選択  |  ←→ 言語  |  Enter 開始  |  r 名前変更  |  Esc/q キャンセル"
+        (Language::Japanese, UiText::HelpNormalInApp) => {
+            "↑↓ 選択  |  ←→ 言語  |  Enter 開始  |  r 名前変更  |  Esc 戻る"
         }
-        (Language::Korean, UiText::HelpNormal) => {
-            "↑↓ 선택  |  ←→ 언어  |  Enter 시작  |  r 이름 변경  |  Esc/q 취소"
+        (Language::Korean, UiText::HelpNormalInApp) => {
+            "↑↓ 선택  |  ←→ 언어  |  Enter 시작  |  r 이름 변경  |  Esc 돌아가기"
+        }
+        (Language::English, UiText::HelpNormalFirstRun) => {
+            "↑↓ Navigate  |  ←→ Language  |  Enter Start  |  r Rename Office  |  q Quit"
+        }
+        (Language::SimplifiedChinese, UiText::HelpNormalFirstRun) => {
+            "↑↓ 选择  |  ←→ 语言  |  Enter 开始  |  r 重命名  |  q 退出"
+        }
+        (Language::TraditionalChinese, UiText::HelpNormalFirstRun) => {
+            "↑↓ 選擇  |  ←→ 語言  |  Enter 開始  |  r 重新命名  |  q 離開"
+        }
+        (Language::Japanese, UiText::HelpNormalFirstRun) => {
+            "↑↓ 選択  |  ←→ 言語  |  Enter 開始  |  r 名前変更  |  q 終了"
+        }
+        (Language::Korean, UiText::HelpNormalFirstRun) => {
+            "↑↓ 선택  |  ←→ 언어  |  Enter 시작  |  r 이름 변경  |  q 종료"
         }
     }
 }

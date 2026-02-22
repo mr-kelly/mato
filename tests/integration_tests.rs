@@ -33,7 +33,8 @@ fn start_daemon_with_latest(
                 if let Ok((stream, _)) = listener.accept().await {
                     let tabs = tabs_clone.clone();
                     let config = Arc::new(Mutex::new(Config::default()));
-                    let latest_version = Arc::new(parking_lot::Mutex::new(latest_version_value.clone()));
+                    let latest_version =
+                        Arc::new(parking_lot::Mutex::new(latest_version_value.clone()));
                     tokio::spawn(async move {
                         let _ = handle_client(stream, tabs, config, 1, latest_version).await;
                     });

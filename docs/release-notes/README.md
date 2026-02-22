@@ -4,7 +4,13 @@ This directory contains release notes and summaries for Mato versions.
 
 ## 📦 Releases
 
-### v0.7.0 (2026-02-22) - Latest
+### v0.7.1 (2026-02-22) - Latest
+- **[RELEASE_NOTES_v0.7.1.md](RELEASE_NOTES_v0.7.1.md)** - Onboarding State/Exit Semantics + Terminal Cleanup Refinement
+- **[RELEASE_SUMMARY_v0.7.1.md](RELEASE_SUMMARY_v0.7.1.md)** - Technical summary
+
+**Highlights**: first-run/in-app onboarding mode split, unified runtime screen-state onboarding loop, stronger transition cleanup to eliminate screen residue, and low-risk code quality cleanups.
+
+### v0.7.0 (2026-02-22)
 - **[RELEASE_NOTES_v0.7.0.md](RELEASE_NOTES_v0.7.0.md)** - Terminal Rendering Overhaul + Cursor/Bell Pipeline Release
 - **[RELEASE_SUMMARY_v0.7.0.md](RELEASE_SUMMARY_v0.7.0.md)** - Technical summary
 
@@ -54,5 +60,5 @@ Milestone-level historical overview.
 
 ---
 
-**Latest Release**: v0.7.0 (2026-02-22)  
+**Latest Release**: v0.7.1 (2026-02-22)  
 **Status**: Stable

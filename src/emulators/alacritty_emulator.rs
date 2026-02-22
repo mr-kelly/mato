@@ -141,7 +141,7 @@ impl TerminalEmulator for AlacrittyEmulator {
             }
         }
 
-        let grid_cols = self.term.columns() as usize;
+        let grid_cols = self.term.columns();
         let render_rows = (rows as usize).min(self.term.screen_lines());
         let render_cols = (cols as usize).min(grid_cols);
 
@@ -193,21 +193,17 @@ impl TerminalEmulator for AlacrittyEmulator {
                 bg: self.ansi_color_to_ratatui(cell.bg),
                 bold: cell.flags.contains(Flags::BOLD),
                 italic: cell.flags.contains(Flags::ITALIC),
-                underline: cell
-                    .flags
-                    .intersects(Flags::UNDERLINE | Flags::DOUBLE_UNDERLINE | Flags::UNDERCURL | Flags::DOTTED_UNDERLINE | Flags::DASHED_UNDERLINE),
-                dim: cell
-                    .flags
-                    .contains(Flags::DIM),
-                reverse: cell
-                    .flags
-                    .contains(Flags::INVERSE),
-                strikethrough: cell
-                    .flags
-                    .contains(Flags::STRIKEOUT),
-                hidden: cell
-                    .flags
-                    .contains(Flags::HIDDEN),
+                underline: cell.flags.intersects(
+                    Flags::UNDERLINE
+                        | Flags::DOUBLE_UNDERLINE
+                        | Flags::UNDERCURL
+                        | Flags::DOTTED_UNDERLINE
+                        | Flags::DASHED_UNDERLINE,
+                ),
+                dim: cell.flags.contains(Flags::DIM),
+                reverse: cell.flags.contains(Flags::INVERSE),
+                strikethrough: cell.flags.contains(Flags::STRIKEOUT),
+                hidden: cell.flags.contains(Flags::HIDDEN),
                 underline_color,
                 zerowidth,
             });
@@ -236,10 +232,7 @@ impl TerminalEmulator for AlacrittyEmulator {
 
         ScreenContent {
             lines,
-            cursor: (
-                cursor.line.0.max(0) as u16,
-                cursor.column.0.max(0) as u16,
-            ),
+            cursor: (cursor.line.0.max(0) as u16, cursor.column.0.max(0) as u16),
             title,
             cursor_shape,
             bell: self.bell.swap(false, Ordering::Relaxed),

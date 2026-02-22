@@ -241,12 +241,10 @@ fn draw_sidebar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
                 .bg(t.surface())
                 .add_modifier(Modifier::BOLD)
         }
+    } else if t.follow_terminal {
+        Style::default().add_modifier(Modifier::DIM)
     } else {
-        if t.follow_terminal {
-            Style::default().add_modifier(Modifier::DIM)
-        } else {
-            Style::default().fg(t.fg_dim()).bg(t.surface())
-        }
+        Style::default().fg(t.fg_dim()).bg(t.surface())
     };
     f.render_widget(
         Paragraph::new(Line::from(vec![Span::styled(office_text, office_style)]))
@@ -408,16 +406,14 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
                     .bg(t.accent())
                     .add_modifier(Modifier::BOLD)
             }
-        } else {
-            if t.follow_terminal {
-                if is_active_tab {
-                    Style::default().add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default().add_modifier(Modifier::DIM)
-                }
+        } else if t.follow_terminal {
+            if is_active_tab {
+                Style::default().add_modifier(Modifier::BOLD)
             } else {
-                Style::default().fg(t.fg_dim()).bg(t.surface())
+                Style::default().add_modifier(Modifier::DIM)
             }
+        } else {
+            Style::default().fg(t.fg_dim()).bg(t.surface())
         };
         spans.push(Span::styled(label, style));
         spans.push(Span::raw(" "));
@@ -452,7 +448,7 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
 
     let daemon_status = if app.daemon_connected {
         " ✓ "
-    } else if app.spinner_frame % 2 == 0 {
+    } else if app.spinner_frame.is_multiple_of(2) {
         " · "
     } else {
         " • "
@@ -616,7 +612,9 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
         // Software cursor overlay: render a visible caret in the buffer.
         let line = screen.lines.get(cursor_row as usize);
         let mut glyph = " ".to_string();
-        let mut caret_style = Style::default().bg(term_bg).add_modifier(Modifier::REVERSED);
+        let mut caret_style = Style::default()
+            .bg(term_bg)
+            .add_modifier(Modifier::REVERSED);
         if let Some(line) = line {
             let mut idx = cc as usize;
             if idx >= line.cells.len() && !line.cells.is_empty() {

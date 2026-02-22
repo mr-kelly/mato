@@ -190,7 +190,8 @@ impl PtyProvider {
 
         let primary_shell = Self::resolve_shell();
         let fallback_shell = "/bin/sh".to_string();
-        let mut spawned = Self::spawn_with_shell(rows, cols, &primary_shell, self.last_output.clone());
+        let mut spawned =
+            Self::spawn_with_shell(rows, cols, &primary_shell, self.last_output.clone());
         if spawned.is_none() && primary_shell != fallback_shell {
             tracing::info!("Retrying PTY spawn with fallback shell: {}", fallback_shell);
             spawned = Self::spawn_with_shell(rows, cols, &fallback_shell, self.last_output.clone());

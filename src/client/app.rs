@@ -9,8 +9,8 @@ use crate::{
 use ratatui::{layout::Rect, widgets::ListState};
 use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, BufReader, Write};
-use std::path::Path;
 use std::os::unix::net::UnixStream;
+use std::path::Path;
 use std::sync::mpsc::{self, Receiver};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -455,7 +455,10 @@ impl App {
             self.list_state.select(None);
             return;
         }
-        let max = self.offices[self.current_office].desks.len().saturating_sub(1);
+        let max = self.offices[self.current_office]
+            .desks
+            .len()
+            .saturating_sub(1);
         let idx = desk_idx.min(max);
         let prev = self.selected();
         self.list_state.select(Some(idx));

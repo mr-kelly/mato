@@ -18,16 +18,20 @@ use std::os::unix::net::UnixStream;
 use std::time::Duration;
 
 use crossterm::{
+    cursor::MoveTo,
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, MouseButton, MouseEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{
+        disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
+        LeaveAlternateScreen,
+    },
 };
 use ratatui::{backend::CrosstermBackend, layout::Rect, Terminal};
 
 use client::app::{Desk, Focus, Office, TabEntry};
 use client::input::handle_key;
 use client::ui::draw;
-use client::{save_state, App};
+use client::{save_state, App, OnboardingAction, OnboardingController};
 use terminal::{consume_resumed, TerminalGuard};
 
 fn main() -> Result<()> {
@@ -124,6 +128,8 @@ fn main() -> Result<()> {
                 std::fs::create_dir_all(parent)?;
             }
             std::fs::write(&state_path, state_json)?;
+        } else {
+            return Ok(());
         }
     }
 
@@ -220,6 +226,40 @@ fn print_help() {
     );
 }
 
+enum ScreenState {
+    Main,
+    Onboarding(OnboardingController),
+}
+
+fn apply_onboarding_state(app: &mut App, state: client::persistence::SavedState) {
+    let new_office_idx = app.offices.len();
+    let new_office = state.offices.into_iter().next().unwrap();
+    let office = Office {
+        id: new_office.id,
+        name: new_office.name,
+        desks: new_office
+            .desks
+            .into_iter()
+            .map(|d| {
+                let tabs = d
+                    .tabs
+                    .into_iter()
+                    .map(|tb| TabEntry::with_id(tb.id, tb.name))
+                    .collect();
+                Desk {
+                    id: d.id,
+                    name: d.name,
+                    tabs,
+                    active_tab: d.active_tab,
+                }
+            })
+            .collect(),
+        active_desk: new_office.active_desk,
+    };
+    app.offices.push(office);
+    app.switch_office(new_office_idx);
+}
+
 fn run_client() -> Result<()> {
     let _terminal_guard = TerminalGuard::new();
 
@@ -237,6 +277,7 @@ fn run_client() -> Result<()> {
     let mut app = App::new();
     terminal.draw(|f| draw(f, &mut app))?;
     app.spawn_active_pty();
+    let mut screen = ScreenState::Main;
 
     loop {
         // Check if we resumed from suspend (SIGCONT)
@@ -251,117 +292,108 @@ fn run_client() -> Result<()> {
             )?;
             terminal.clear()?;
         }
-        app.refresh_active_status();
-        app.refresh_update_status();
-        app.update_spinner();
-        app.sync_tab_titles();
-        app.sync_focus_events();
+        match &mut screen {
+            ScreenState::Main => {
+                app.refresh_active_status();
+                app.refresh_update_status();
+                app.update_spinner();
+                app.sync_tab_titles();
+                app.sync_focus_events();
+                terminal.draw(|f| draw(f, &mut app))?;
 
-        terminal.draw(|f| draw(f, &mut app))?;
+                // Forward bell (BEL) from inner terminal to host terminal.
+                if app.pending_bell {
+                    app.pending_bell = false;
+                    let _ = execute!(terminal.backend_mut(), crossterm::style::Print("\x07"));
+                }
 
-        // Forward bell (BEL) from inner terminal to host terminal.
-        if app.pending_bell {
-            app.pending_bell = false;
-            let _ = execute!(terminal.backend_mut(), crossterm::style::Print("\x07"));
+                if let Some(elapsed) = app.finish_tab_switch_measurement() {
+                    tracing::info!("Tab switch first-frame latency: {}ms", elapsed.as_millis());
+                }
+
+                // Apply pending resize after user stops resizing
+                app.apply_pending_resize();
+            }
+            ScreenState::Onboarding(controller) => {
+                terminal.draw(|f| controller.draw(f))?;
+            }
         }
-
-        if let Some(elapsed) = app.finish_tab_switch_measurement() {
-            tracing::info!("Tab switch first-frame latency: {}ms", elapsed.as_millis());
-        }
-
-        // Apply pending resize after user stops resizing
-        app.apply_pending_resize();
 
         // Poll at ~12fps for smooth animation (80ms spinner frame + some overhead)
-        let timeout = if app.has_active_tabs() || matches!(app.focus, client::app::Focus::Content) {
-            Duration::from_millis(80) // Fast polling when active
-        } else {
-            Duration::from_millis(200) // Slower when idle
+        let timeout = match &screen {
+            ScreenState::Main => {
+                if app.has_active_tabs() || matches!(app.focus, client::app::Focus::Content) {
+                    Duration::from_millis(80) // Fast polling when active
+                } else {
+                    Duration::from_millis(200) // Slower when idle
+                }
+            }
+            ScreenState::Onboarding(_) => Duration::from_millis(200),
         };
 
         if event::poll(timeout)? {
             match event::read()? {
-                Event::Key(key) => {
-                    if handle_key(&mut app, key) {
-                        break;
-                    }
-                    if app.dirty {
-                        if let Err(e) = save_state(&app) {
-                            tracing::warn!("Failed to save state: {}", e);
+                Event::Key(key) => match &mut screen {
+                    ScreenState::Main => {
+                        if handle_key(&mut app, key) {
+                            break;
                         }
-                        app.dirty = false;
+                        if app.dirty {
+                            if let Err(e) = save_state(&app) {
+                                tracing::warn!("Failed to save state: {}", e);
+                            }
+                            app.dirty = false;
+                        }
+                        if app.should_show_onboarding {
+                            app.should_show_onboarding = false;
+                            screen = ScreenState::Onboarding(OnboardingController::new_in_app());
+                            terminal.clear()?;
+                        }
+                    }
+                    ScreenState::Onboarding(controller) => match controller.handle_key(key) {
+                        OnboardingAction::None => {}
+                        OnboardingAction::Cancel => {
+                            screen = ScreenState::Main;
+                            terminal.clear()?;
+                        }
+                        OnboardingAction::Complete(state) => {
+                            apply_onboarding_state(&mut app, state);
+                            if let Err(e) = save_state(&app) {
+                                tracing::warn!("Failed to save state after onboarding: {}", e);
+                            }
+                            screen = ScreenState::Main;
+                            terminal.clear()?;
+                        }
+                    },
+                },
+                Event::Mouse(me) => {
+                    if matches!(screen, ScreenState::Main) {
+                        handle_mouse(&mut app, me);
                     }
                 }
-                Event::Mouse(me) => handle_mouse(&mut app, me),
                 Event::Resize(_, _) => {
                     // Terminal resized - trigger PTY resize via pending mechanism
-                    app.resize_all_ptys(app.term_rows, app.term_cols);
+                    if matches!(screen, ScreenState::Main) {
+                        app.resize_all_ptys(app.term_rows, app.term_cols);
+                    }
                 }
                 Event::Paste(text) => {
-                    if matches!(app.focus, client::app::Focus::Content) {
+                    if matches!(screen, ScreenState::Main)
+                        && matches!(app.focus, client::app::Focus::Content)
+                    {
                         app.pty_paste(&text);
                     }
                 }
                 _ => {}
             }
         }
-
-        if app.should_show_onboarding {
-            app.should_show_onboarding = false;
-            disable_raw_mode()?;
-            execute!(
-                terminal.backend_mut(),
-                LeaveAlternateScreen,
-                DisableMouseCapture,
-                crossterm::event::DisableBracketedPaste
-            )?;
-
-            if let Some(state) = client::show_onboarding_tui()? {
-                let new_office_idx = app.offices.len();
-                let new_office = state.offices.into_iter().next().unwrap();
-                let office = Office {
-                    id: new_office.id,
-                    name: new_office.name,
-                    desks: new_office
-                        .desks
-                        .into_iter()
-                        .map(|d| {
-                            let tabs = d
-                                .tabs
-                                .into_iter()
-                                .map(|tb| TabEntry::with_id(tb.id, tb.name))
-                                .collect();
-                            Desk {
-                                id: d.id,
-                                name: d.name,
-                                tabs,
-                                active_tab: d.active_tab,
-                            }
-                        })
-                        .collect(),
-                    active_desk: new_office.active_desk,
-                };
-                app.offices.push(office);
-                app.switch_office(new_office_idx);
-                if let Err(e) = save_state(&app) {
-                    tracing::warn!("Failed to save state after onboarding: {}", e);
-                }
-            }
-
-            enable_raw_mode()?;
-            execute!(
-                terminal.backend_mut(),
-                EnterAlternateScreen,
-                EnableMouseCapture,
-                crossterm::event::EnableBracketedPaste
-            )?;
-            terminal.clear()?;
-        }
     }
 
     disable_raw_mode()?;
     execute!(
         terminal.backend_mut(),
+        Clear(ClearType::All),
+        MoveTo(0, 0),
         LeaveAlternateScreen,
         DisableMouseCapture,
         crossterm::event::DisableBracketedPaste

@@ -115,3 +115,95 @@ Removed all diagnostic logging added during cursor debugging:
 - Build: zero warnings
 - Tests: all passing (99 tests + 4 ignored)
 - Net line change: significant reduction from removed byte-scanning + debug code
+
+## Follow-up Fixes (Same Session)
+
+### 9. Onboarding Screen Residual Content (New Office)
+
+**Problem**: Clicking `New Office` could show old content at the bottom, overlapping onboarding UI.
+
+**Fix**: In onboarding render path, force a full-frame clear before drawing widgets:
+
+- Added `Clear` widget import in `src/client/onboarding_tui.rs`
+- Added `f.render_widget(Clear, f.area())` at top of `draw_onboarding()`
+
+This prevents stale cells from previous TUI frames from remaining visible.
+
+### 10. Root Fix: Single Terminal Owner During Runtime Onboarding
+
+**Problem**: Runtime `New Office` onboarding previously switched terminal modes twice (main UI and onboarding both managed alt-screen/raw-mode), causing fragile transitions and occasional render residue.
+
+**Fix**:
+
+- Added `show_onboarding_in_terminal(&mut Terminal<...>)` in `src/client/onboarding_tui.rs`
+- Main client loop now calls this function directly and stays in the same terminal session
+- Removed runtime onboarding path's `disable_raw_mode + LeaveAlternateScreen` and re-enter sequence from `src/main.rs`
+
+**Result**: During normal app runtime, terminal mode ownership is single-source (main client), and onboarding only renders UI logic.
+
+### 11. Main Loop ScreenState Refactor (No Nested Onboarding Loop)
+
+**Problem**: Runtime onboarding was still running its own blocking event loop, which made terminal ownership and redraw semantics harder to reason about.
+
+**Fix**:
+
+- Added `ScreenState` in `src/main.rs`:
+  - `Main`
+  - `Onboarding(OnboardingController)`
+- Added `OnboardingController` in `src/client/onboarding_tui.rs` with:
+  - `draw(&mut Frame)`
+  - `handle_key(KeyEvent) -> OnboardingAction`
+- Main loop now routes draw/input by current screen state in one unified event loop.
+
+**Result**: Main UI and onboarding now share one render/input loop, reducing mode-transition fragility and eliminating nested TUI control flow during runtime onboarding.
+
+### 12. Onboarding Cancel Policy Split (First Run vs New Office)
+
+**Problem**: First-run onboarding (`state.json` missing) could be canceled via `Esc/q`, which left users in a broken startup path.
+
+**Fix**:
+
+- Added cancel policy to `OnboardingController`:
+  - `new_required()` for first-run onboarding (no global cancel)
+  - `new_optional()` for in-app `New Office` onboarding (supports cancel)
+- First-run path now requires completion and returns `SavedState` directly.
+- Help text is now mode-aware:
+  - Required mode: no `Esc/q Cancel` hint
+  - Optional mode: retains `Esc/q Cancel` hint
+
+**Result**:
+- Fresh install onboarding cannot be exited with `Esc/q`; user must select a template and continue.
+- `New Office` onboarding still allows `Esc/q` back to the main UI.
+
+### 13. Policy Adjustment: First-Run Supports `q` Quit, In-App Uses `Esc` Back
+
+Based on interactive validation feedback, onboarding key policy was finalized as:
+
+- **First run** (no `state.json`): `q` quits setup flow and exits cleanly.
+- **In-app New Office**: `Esc` returns to main UI.
+
+Help text was updated to match actual mode behavior (`q Quit` vs `Esc Back`), and runtime onboarding mode wiring in `main.rs` now instantiates explicit in-app mode.
+
+### 14. Startup Onboarding Residue Cleanup
+
+Added immediate startup onboarding clear before first frame after entering alternate screen:
+
+- `EnterAlternateScreen`
+- terminal clear
+- render onboarding
+
+This removes shell ghosting on first-run onboarding startup.
+
+### 15. Release Prep (v0.7.1)
+
+Low-risk cleanup and release preparation updates:
+
+- Simplified nested style conditionals in `src/client/ui.rs`
+- Replaced manual parity check with `.is_multiple_of(2)`
+- Added `Default` implementation for `TerminalGuard`
+- Removed unnecessary cast in alacritty emulator
+- Prepared `CHANGELOG.md` and `docs/release-notes/*v0.7.1*`
+- Reordered onboarding templates to prioritize:
+  - `Start from Scratch` at top
+  - `Mato Creator Office` in second position
+- Expanded `Start from Scratch` template to 3 desks with 2 tabs each.

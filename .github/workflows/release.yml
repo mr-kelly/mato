@@ -151,12 +151,12 @@ jobs:
           fetch-depth: 0
 
       - name: Validate tag policy
+        if: needs.prepare.outputs.branch == 'main'
         shell: bash
         run: |
           set -euo pipefail
-          BRANCH="${{ needs.prepare.outputs.branch }}"
           TAG="${{ needs.prepare.outputs.tag }}"
-          if [ "$BRANCH" = "main" ] && git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "Tag already exists on origin: ${TAG}"
             echo "Main branch release requires a new Cargo.toml version."
             exit 1

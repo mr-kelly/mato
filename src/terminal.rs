@@ -3,10 +3,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
 
 use crossterm::{
-    cursor,
+    cursor::{self, MoveTo},
     event::DisableMouseCapture,
     execute,
-    terminal::{disable_raw_mode, LeaveAlternateScreen},
+    terminal::{disable_raw_mode, Clear, ClearType, LeaveAlternateScreen},
 };
 
 static RESUMED: AtomicBool = AtomicBool::new(false);
@@ -19,6 +19,8 @@ pub fn restore_terminal_modes() {
     disable_raw_mode().ok();
     execute!(
         stdout,
+        Clear(ClearType::All),
+        MoveTo(0, 0),
         LeaveAlternateScreen,
         DisableMouseCapture,
         crossterm::event::DisableBracketedPaste,
@@ -44,6 +46,12 @@ impl TerminalGuard {
         // Reset stale modes in case a previous run crashed.
         restore_terminal_modes();
         Self
+    }
+}
+
+impl Default for TerminalGuard {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

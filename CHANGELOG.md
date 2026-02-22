@@ -10,6 +10,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Placeholder for upcoming changes.
 
+## [0.7.1] - 2026-02-22
+
+**Onboarding State/Exit Semantics + Terminal Cleanup Refinement**
+
+### Added
+- Onboarding mode split for clear behavior boundaries:
+  - `FirstRun` onboarding (startup without `state.json`)
+  - in-app `New Office` onboarding
+- Main-loop screen state routing (`Main` / `Onboarding`) for runtime onboarding under a single terminal owner.
+
+### Changed
+- Runtime `New Office` onboarding now runs inside the main event loop/state machine instead of a nested terminal loop.
+- Onboarding help hints are mode-specific:
+  - first-run shows `q Quit`
+  - in-app shows `Esc Back`
+- Onboarding template order updated:
+  - `Start from Scratch` moved to first position
+  - `Mato Creator Office` moved to second position
+- `Start from Scratch` template expanded from minimal single-desk setup to:
+  - 3 desks
+  - 2 tabs per desk
+- UI code quality cleanup:
+  - simplified style-branch logic in `src/client/ui.rs`
+  - daemon status spinner parity check uses `.is_multiple_of(2)`
+  - removed unnecessary cast in alacritty emulator path
+  - added `Default` implementation for `TerminalGuard`
+
+### Fixed
+- Residual TUI/shell artifacts on onboarding transitions and exits by enforcing explicit clear/reposition cleanup (`Clear + MoveTo(0,0)` before leaving alt-screen).
+- First-run onboarding cancellation path no longer drops into inconsistent terminal state.
+- Startup onboarding now clears the alternate screen before first frame, avoiding visible shell residue from pre-launch content.
+
 ## [0.7.0] - 2026-02-22
 
 **Terminal Rendering Overhaul + Cursor/Bell Pipeline Release**
@@ -199,7 +231,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Links
 
-[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/mr-kelly/mato/releases/tag/v0.7.1
 [0.7.0]: https://github.com/mr-kelly/mato/releases/tag/v0.7.0
 [0.6.0]: https://github.com/mr-kelly/mato/releases/tag/v0.6.0
 [0.5.1]: https://github.com/mr-kelly/mato/releases/tag/v0.5.1
