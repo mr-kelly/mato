@@ -33,7 +33,7 @@ We're excited to announce Mato v0.2.0, achieving **100% TMUX daemon/client parit
 
 ### From Source
 ```bash
-git clone https://github.com/YOUR_USERNAME/mato
+git clone https://github.com/mr-kelly/mato
 cd mato
 cargo build --release
 sudo mv target/release/mato /usr/local/bin/
@@ -53,7 +53,7 @@ Your existing state will be preserved. Simply replace the binary:
 cp ~/.config/mato/state.json ~/.config/mato/state.json.backup
 
 # Install new version
-cargo install --git https://github.com/YOUR_USERNAME/mato --force
+cargo install --git https://github.com/mr-kelly/mato --force
 
 # Restart daemon
 pkill -f "mato.*daemon"
@@ -81,4 +81,4 @@ None! This is a stable release.
 
 ---
 
-**Full Changelog**: https://github.com/YOUR_USERNAME/mato/compare/v0.1.0...v0.2.0
+**Full Changelog**: https://github.com/mr-kelly/mato/compare/v0.1.0...v0.2.0

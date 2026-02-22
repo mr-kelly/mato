@@ -44,10 +44,10 @@ This will trigger the GitHub Actions workflow to:
 
 After the release is created:
 
-1. Use your tap repository (recommended: `YOUR_USERNAME/homebrew-tap`)
+1. Use your tap repository (recommended: `mr-kelly/homebrew-tap`)
 2. Download release checksums:
    ```bash
-   curl -fsSL https://github.com/YOUR_USERNAME/mato/releases/download/vX.Y.Z/checksums.txt
+   curl -fsSL https://github.com/mr-kelly/mato/releases/download/vX.Y.Z/checksums.txt
    ```
 3. Update `Formula/mato.rb` in the tap repo with:
    - release URLs
@@ -63,10 +63,10 @@ After the release is created:
 
 ```bash
 # Test install script
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/mato/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/mr-kelly/mato/main/install.sh | bash
 
 # Test Homebrew
-brew tap YOUR_USERNAME/tap
+brew tap mr-kelly/tap
 brew install mato
 
 # Test binary
@@ -99,7 +99,7 @@ mato --version
 ## Distribution Channels
 
 1. **GitHub Releases** - Pre-built binaries
-2. **Homebrew** - `brew install YOUR_USERNAME/tap/mato`
+2. **Homebrew** - `brew install mr-kelly/tap/mato`
 3. **Install Script** - `curl ... | bash`
 4. **Cargo** - `cargo install mato` (future)
 5. **APT/YUM** - Package repositories (future)
@@ -133,6 +133,6 @@ Example workflow addition:
 
 ## Notes
 
-- Replace `YOUR_USERNAME` with your actual GitHub username in all files
+- Replace `mr-kelly` with your actual GitHub username in all files
 - Update repository URLs in README.md, install.sh, and tap `Formula/mato.rb`
 - Consider using GitHub Releases API for automated Homebrew formula updates

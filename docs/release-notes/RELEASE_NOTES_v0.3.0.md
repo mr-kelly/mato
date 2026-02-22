@@ -226,7 +226,7 @@ New tests:
 
 ```bash
 # From source
-git clone https://github.com/YOUR_USERNAME/mato
+git clone https://github.com/mr-kelly/mato
 cd mato
 git checkout v0.3.0
 cargo build --release
@@ -248,6 +248,6 @@ See [TODO.md](../todos/TODO.md) for full roadmap.
 
 **One Key. Zero Interference. Maximum Productivity.**
 
-[⭐ Star on GitHub](https://github.com/YOUR_USERNAME/mato) • [📖 Documentation](../README.md) • [🐛 Report Bug](https://github.com/YOUR_USERNAME/mato/issues)
+[⭐ Star on GitHub](https://github.com/mr-kelly/mato) • [📖 Documentation](../README.md) • [🐛 Report Bug](https://github.com/mr-kelly/mato/issues)
 
 </div>

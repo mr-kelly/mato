@@ -7,16 +7,18 @@
 ### 🏖️ The Multi-Agent Terminal Office
 **Elevate your terminal workflow with real-time activity intelligence.**
 
+English: MAH-toh /ˈmɑːtoʊ/, 普通话: 吗头（mǎ tóu）, 粤语: 嗎桃（maa1 tou4）, 한국어: 마토（ma-to）, 日本語: マト（mato）
+
 [![Rust](https://img.shields.io/badge/rust-2021-orange?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v0.2.0-64A0FF?style=for-the-badge)](https://github.com/YOUR_USERNAME/mato/releases)
-[![Stars](https://img.shields.io/github/stars/YOUR_USERNAME/mato?style=for-the-badge&color=gold)](https://github.com/YOUR_USERNAME/mato/stargazers)
+[![Version](https://img.shields.io/badge/version-v0.2.0-64A0FF?style=for-the-badge)](https://github.com/mr-kelly/mato/releases)
+[![Stars](https://img.shields.io/github/stars/mr-kelly/mato?style=for-the-badge&color=gold)](https://github.com/mr-kelly/mato/stargazers)
 
 [**Why Mato?**](#-the-vision) • [**Showcase**](#-showcase) • [**Quick Start**](#-get-started-in-60s) • [**Documentation**](#-pro-resources)
 
 ---
 
-**Mato** is a high-performance terminal workspace designed for the era of AI agents. It transforms your CLI into a powerful "Office" where you can monitor parallel tasks, manage complex agent swarms, and maintain persistent sessions—all with zero keyboard conflicts and a beautiful, modern TUI.
+**Mato** is a high-performance terminal multiplexer and workspace designed for the era of AI agents. It transforms your CLI into a powerful "Office" where you can monitor parallel tasks, manage complex agent swarms, and maintain persistent sessions—all with zero keyboard conflicts and a beautiful, modern TUI.
 
 </div>
 
@@ -81,13 +83,20 @@ Start with the perfect setup. Choose from 6 curated templates:
 
 ### 1. Installation
 ```bash
-# Clone and build with high-performance optimizations
-git clone https://github.com/YOUR_USERNAME/mato
-cd mato
-cargo build --release
+# Quick Install (Linux/macOS)
+curl -fsSL https://raw.githubusercontent.com/mr-kelly/mato/main/install.sh | bash
+```
 
-# Install to your path
-sudo mv target/release/mato /usr/local/bin/
+```bash
+# Homebrew (macOS/Linux)
+brew tap mr-kelly/tap
+brew install mato
+```
+
+```bash
+# Manual Installation
+tar xzf mato-*.tar.gz
+sudo mv mato /usr/local/bin/
 ```
 
 ### 2. Launch your first Office
@@ -150,7 +159,7 @@ Mato follows the **"Rule of One"**: Only one key (`Esc`) is reserved by the syst
 ### Built for the future of development.
 Join the **Mato** community and stop hunting for active terminals.
 
-[**Star this project**](https://github.com/YOUR_USERNAME/mato) • [**Report a Bug**](https://github.com/YOUR_USERNAME/mato/issues) • [**Follow Roadmap**](docs/todos/TODO.md)
+[**Star this project**](https://github.com/mr-kelly/mato) • [**Report a Bug**](https://github.com/mr-kelly/mato/issues) • [**Follow Roadmap**](docs/todos/TODO.md)
 
 **Made with 🏖️ for developers who value clarity.**
 

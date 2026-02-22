@@ -97,7 +97,7 @@ See [TODO.md](../todos/TODO.md) for planned features:
 
 **Installation**:
 ```bash
-git clone https://github.com/YOUR_USERNAME/mato
+git clone https://github.com/mr-kelly/mato
 cd mato
 cargo build --release
 ```
