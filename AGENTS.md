@@ -635,10 +635,10 @@ Types:
 
 **Process**:
 1. Implemented suspend logic
-2. User tested: "fg 后还是没东西啊？"
+2. User tested: "After `fg`, the terminal is still blank."
 3. Realized terminal state wasn't restored
 4. Added SIGCONT signal handler
-5. User tested again: "似乎好了耶"
+5. User tested again: "Looks like it's fixed now."
 
 **Lesson**: **Test immediately after implementation**. Don't assume it works.
 
@@ -669,9 +669,9 @@ Types:
 ### 5. Iterate on User Feedback
 
 **Real conversation**:
-- User: "Jump Mode label offset 偏上了一点"
+- User: "The Jump Mode label is a bit too high."
 - Fixed: Use `sidebar_list_area` instead of calculating
-- User: "似乎好了耶"
+- User: "Looks good now."
 
 **Lesson**: **Quick iteration wins**. Fix → Test → Confirm → Move on.
 

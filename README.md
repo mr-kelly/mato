@@ -351,14 +351,22 @@ kill -HUP $(cat ~/.local/state/mato/daemon.pid)
 
 ### Configuration
 
-Config file: `~/.config/mato/config.toml`
+Terminal emulator config: `~/.config/mato/config.toml`
 
 ```toml
-[terminal]
-emulator = "vt100"  # or "vte"
+emulator = "vte"  # or "vt100"
+```
 
-[ui]
-theme = "navy"      # Deep navy theme
+Theme config: `~/.config/mato/theme.toml`
+
+```toml
+# Default (recommended): follow terminal/OS theme
+name = "system"
+
+# Optional: built-in themes
+# name = "navy"
+# name = "gruvbox"
+# name = "catppuccin"
 ```
 
 ## 🧪 Testing

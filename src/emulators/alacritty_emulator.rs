@@ -33,6 +33,12 @@ impl Dimensions for TermSize {
     fn total_lines(&self) -> usize { self.lines }
 }
 
+#[derive(Clone, Copy)]
+struct AnsiThemePalette {
+    normal: [Color; 8],
+    bright: [Color; 8],
+}
+
 pub struct AlacrittyEmulator {
     term: Term<TitleCapture>,
     processor: Processor,
@@ -41,6 +47,7 @@ pub struct AlacrittyEmulator {
     bracketed_paste: bool,
     mouse_mode: bool,
     mode_tail: Vec<u8>,
+    theme_palette: Option<AnsiThemePalette>,
 }
 
 impl AlacrittyEmulator {
@@ -50,6 +57,7 @@ impl AlacrittyEmulator {
         let size = TermSize { cols: cols as usize, lines: rows as usize };
         let config = Config { scrolling_history: 10000, ..Config::default() };
         let term = Term::new(config, &size, listener);
+        let theme = crate::theme::load();
         Self {
             term,
             processor: Processor::new(),
@@ -58,6 +66,7 @@ impl AlacrittyEmulator {
             bracketed_paste: false,
             mouse_mode: false,
             mode_tail: Vec::new(),
+            theme_palette: if theme.follow_terminal { None } else { Some(palette_from_theme(&theme)) },
         }
     }
 
@@ -145,8 +154,8 @@ impl TerminalEmulator for AlacrittyEmulator {
                 let cell = &grid[Line(line)][Column(col)];
                 cells.push(ScreenCell {
                     ch: cell.c,
-                    fg: ansi_color_to_ratatui(cell.fg),
-                    bg: ansi_color_to_ratatui(cell.bg),
+                    fg: self.ansi_color_to_ratatui(cell.fg),
+                    bg: self.ansi_color_to_ratatui(cell.bg),
                     bold: cell.flags.contains(alacritty_terminal::term::cell::Flags::BOLD),
                     italic: cell.flags.contains(alacritty_terminal::term::cell::Flags::ITALIC),
                     underline: cell.flags.contains(alacritty_terminal::term::cell::Flags::UNDERLINE),
@@ -173,18 +182,49 @@ impl TerminalEmulator for AlacrittyEmulator {
     }
 }
 
-fn ansi_color_to_ratatui(color: alacritty_terminal::vte::ansi::Color) -> Option<Color> {
-    use alacritty_terminal::vte::ansi::Color as AC;
-    use alacritty_terminal::vte::ansi::NamedColor;
-    match color {
-        AC::Named(NamedColor::Background) | AC::Named(NamedColor::Foreground) => None,
-        AC::Named(n) => Some(named_to_ratatui(n)),
-        AC::Spec(rgb) => Some(Color::Rgb(rgb.r, rgb.g, rgb.b)),
-        AC::Indexed(i) => Some(Color::Indexed(i)),
+impl AlacrittyEmulator {
+    fn ansi_color_to_ratatui(&self, color: alacritty_terminal::vte::ansi::Color) -> Option<Color> {
+        use alacritty_terminal::vte::ansi::Color as AC;
+        use alacritty_terminal::vte::ansi::NamedColor;
+        match color {
+            AC::Named(NamedColor::Background) | AC::Named(NamedColor::Foreground) => None,
+            AC::Named(n) => Some(self.named_to_ratatui(n)),
+            AC::Spec(rgb) => Some(Color::Rgb(rgb.r, rgb.g, rgb.b)),
+            AC::Indexed(i) => Some(Color::Indexed(i)),
+        }
+    }
+
+    fn named_to_ratatui(&self, n: alacritty_terminal::vte::ansi::NamedColor) -> Color {
+        use alacritty_terminal::vte::ansi::NamedColor::*;
+        if let Some(p) = self.theme_palette {
+            let idx = match n {
+                Black | DimBlack => Some((false, 0)),
+                Red | DimRed => Some((false, 1)),
+                Green | DimGreen => Some((false, 2)),
+                Yellow | DimYellow => Some((false, 3)),
+                Blue | DimBlue => Some((false, 4)),
+                Magenta | DimMagenta => Some((false, 5)),
+                Cyan | DimCyan => Some((false, 6)),
+                White | DimWhite => Some((false, 7)),
+                BrightBlack => Some((true, 0)),
+                BrightRed => Some((true, 1)),
+                BrightGreen => Some((true, 2)),
+                BrightYellow => Some((true, 3)),
+                BrightBlue => Some((true, 4)),
+                BrightMagenta => Some((true, 5)),
+                BrightCyan => Some((true, 6)),
+                BrightWhite => Some((true, 7)),
+                _ => None,
+            };
+            if let Some((bright, i)) = idx {
+                return if bright { p.bright[i] } else { p.normal[i] };
+            }
+        }
+        named_to_ratatui_system(n)
     }
 }
 
-fn named_to_ratatui(n: alacritty_terminal::vte::ansi::NamedColor) -> Color {
+fn named_to_ratatui_system(n: alacritty_terminal::vte::ansi::NamedColor) -> Color {
     use alacritty_terminal::vte::ansi::NamedColor::*;
     match n {
         Black | DimBlack => Color::Black,
@@ -205,4 +245,62 @@ fn named_to_ratatui(n: alacritty_terminal::vte::ansi::NamedColor) -> Color {
         BrightWhite => Color::Gray,
         _ => Color::Reset,
     }
+}
+
+fn palette_from_theme(theme: &crate::theme::ThemeColors) -> AnsiThemePalette {
+    let bg = theme.rgb_bg();
+    let fg = theme.rgb_fg();
+    let accent = theme.rgb_accent();
+    let accent2 = theme.rgb_accent2();
+    let red = mix(accent, [255, 96, 96], 0.60);
+    let green = mix(accent2, [96, 230, 130], 0.65);
+    let yellow = mix(red, green, 0.5);
+    let blue = accent;
+    let magenta = mix(accent, [210, 120, 240], 0.55);
+    let cyan = mix(accent2, [110, 220, 245], 0.55);
+    let black = darken(bg, 0.45);
+    let white = fg;
+
+    let normal = [
+        rgb(black),
+        rgb(red),
+        rgb(green),
+        rgb(yellow),
+        rgb(blue),
+        rgb(magenta),
+        rgb(cyan),
+        rgb(white),
+    ];
+    let bright = [
+        rgb(lighten(black, 0.35)),
+        rgb(lighten(red, 0.25)),
+        rgb(lighten(green, 0.20)),
+        rgb(lighten(yellow, 0.18)),
+        rgb(lighten(blue, 0.25)),
+        rgb(lighten(magenta, 0.20)),
+        rgb(lighten(cyan, 0.20)),
+        rgb(lighten(white, 0.12)),
+    ];
+    AnsiThemePalette { normal, bright }
+}
+
+fn rgb(v: [u8; 3]) -> Color {
+    Color::Rgb(v[0], v[1], v[2])
+}
+
+fn mix(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
+    let clamped = t.clamp(0.0, 1.0);
+    [
+        ((a[0] as f32) * (1.0 - clamped) + (b[0] as f32) * clamped).round() as u8,
+        ((a[1] as f32) * (1.0 - clamped) + (b[1] as f32) * clamped).round() as u8,
+        ((a[2] as f32) * (1.0 - clamped) + (b[2] as f32) * clamped).round() as u8,
+    ]
+}
+
+fn darken(c: [u8; 3], amt: f32) -> [u8; 3] {
+    mix(c, [0, 0, 0], amt)
+}
+
+fn lighten(c: [u8; 3], amt: f32) -> [u8; 3] {
+    mix(c, [255, 255, 255], amt)
 }

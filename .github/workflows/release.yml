@@ -2,15 +2,73 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  prepare:
+    name: Prepare Version and Tag
+    runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.meta.outputs.branch }}
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute branch version/tag
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BRANCH="${GITHUB_REF_NAME}"
+          if [ "$BRANCH" != "develop" ] && [ "$BRANCH" != "main" ]; then
+            echo "Unsupported branch: $BRANCH"
+            exit 1
+          fi
+
+          BASE_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)
+          if [ -z "$BASE_VERSION" ]; then
+            echo "Failed to parse version from Cargo.toml"
+            exit 1
+          fi
+
+          if [ "$BRANCH" = "develop" ]; then
+            VERSION="${BASE_VERSION}-alpha.${GITHUB_RUN_NUMBER}"
+            PRERELEASE=true
+          else
+            VERSION="$BASE_VERSION"
+            PRERELEASE=false
+          fi
+
+          TAG="v${VERSION}"
+
+          # For main branch this is required by policy; for develop this also prevents collisions.
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag already exists on origin: ${TAG}"
+            if [ "$BRANCH" = "main" ]; then
+              echo "Main branch release requires a new Cargo.toml version."
+            fi
+            exit 1
+          fi
+
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build ${{ matrix.target }}
+    needs: prepare
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -34,6 +92,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Apply alpha version on develop
+        if: needs.prepare.outputs.branch == 'develop'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.prepare.outputs.version }}"
+          awk -v v="$VERSION" '
+            BEGIN { done=0 }
+            !done && $0 ~ /^version = "/ { print "version = \"" v "\""; done=1; next }
+            { print }
+          ' Cargo.toml > Cargo.toml.tmp
+          mv Cargo.toml.tmp Cargo.toml
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -61,21 +132,33 @@ jobs:
       - name: Create tarball
         run: |
           cd target/${{ matrix.target }}/release
-          tar czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
-          mv ${{ matrix.asset_name }}.tar.gz ../../..
+          tar czf ${{ matrix.asset_name }}-${{ needs.prepare.outputs.tag }}.tar.gz ${{ matrix.artifact_name }}
+          mv ${{ matrix.asset_name }}-${{ needs.prepare.outputs.tag }}.tar.gz ../../..
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
-          path: ${{ matrix.asset_name }}.tar.gz
+          path: ${{ matrix.asset_name }}-${{ needs.prepare.outputs.tag }}.tar.gz
 
   release:
-    name: Create Release
-    needs: build
+    name: Tag and Create Release
+    needs: [prepare, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create and push release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.prepare.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -94,10 +177,16 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ needs.prepare.outputs.prerelease }}
           files: |
             artifacts/*/*.tar.gz
             artifacts/checksums.txt
           body: |
+            Branch: `${{ needs.prepare.outputs.branch }}`
+            Version: `${{ needs.prepare.outputs.version }}`
+
             ## Installation
 
             ### Quick Install (Linux/macOS)
@@ -122,13 +211,3 @@ jobs:
             See [CHANGELOG.md](CHANGELOG.md) for details.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  homebrew:
-    name: Update Homebrew Formula
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Update Homebrew tap
-        run: |
-          echo "Homebrew formula will be updated manually or via separate workflow"
-          # This would typically trigger a PR to homebrew-tap repository

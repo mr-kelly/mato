@@ -255,6 +255,7 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     let task = &app.offices[app.current_office].desks[app.selected()];
     let tab = task.active_tab_ref();
 
+    let term_bg = t.bg();
     f.render_widget(
         Block::default().borders(Borders::ALL)
             .title(Span::styled(
@@ -268,7 +269,7 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
                 title_style(t, active),
             ))
             .border_style(border_style(t, active))
-            .style(Style::default().bg(Color::Black)),
+            .style(Style::default().bg(term_bg)),
         area,
     );
 
@@ -291,12 +292,12 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
             if cells.len() < iw as usize {
                 cells.push(Span::styled(
                     " ".repeat(iw as usize - cells.len()),
-                    Style::default().bg(Color::Black),
+                    Style::default().bg(term_bg),
                 ));
             }
             cells
         } else {
-            vec![Span::styled(" ".repeat(iw as usize), Style::default().bg(Color::Black))]
+            vec![Span::styled(" ".repeat(iw as usize), Style::default().bg(term_bg))]
         };
         f.render_widget(Paragraph::new(Line::from(spans)), Rect { x: ix, y: iy + row_idx, width: iw, height: 1 });
     }
@@ -415,9 +416,10 @@ pub fn draw_settings(f: &mut Frame, app: &mut App, t: &ThemeColors) {
 
     let items: Vec<ListItem> = BUILTIN_THEMES.iter().enumerate().map(|(i, name)| {
         let sel = app.settings_selected == i;
+        let label = if *name == "system" { "system (follow terminal)" } else { *name };
         ListItem::new(Line::from(vec![
             Span::styled(if sel { " ▶ " } else { "   " }, Style::default().fg(t.accent())),
-            Span::styled(*name, Style::default().fg(if sel { t.fg() } else { t.fg_dim() })),
+            Span::styled(label, Style::default().fg(if sel { t.fg() } else { t.fg_dim() })),
         ])).style(Style::default().bg(if sel { t.sel_bg() } else { t.surface() }))
     }).collect();
 
