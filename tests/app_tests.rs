@@ -1,15 +1,17 @@
 /// Tests for Desk and App business logic (tab/task management, rename, nav, idle).
 /// Uses a NullProvider to avoid needing a live daemon socket.
 use mato::terminal_provider::{ScreenContent, TerminalProvider};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 struct NullProvider;
 impl TerminalProvider for NullProvider {
     fn spawn(&mut self, _: u16, _: u16) {}
     fn resize(&mut self, _: u16, _: u16) {}
     fn write(&mut self, _: &[u8]) {}
-    fn get_screen(&self, _: u16, _: u16) -> ScreenContent { ScreenContent::default() }
+    fn get_screen(&self, _: u16, _: u16) -> ScreenContent {
+        ScreenContent::default()
+    }
 }
 
 struct CountingMouseProvider {
@@ -24,27 +26,41 @@ impl TerminalProvider for CountingMouseProvider {
         self.calls.fetch_add(1, Ordering::Relaxed);
         self.enabled
     }
-    fn get_screen(&self, _: u16, _: u16) -> ScreenContent { ScreenContent::default() }
+    fn get_screen(&self, _: u16, _: u16) -> ScreenContent {
+        ScreenContent::default()
+    }
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-use mato::client::app::{RenameTarget, TabEntry, Desk};
+use mato::client::app::{Desk, RenameTarget, TabEntry};
 use std::collections::HashSet;
 
 fn make_tab(name: &str) -> TabEntry {
-    TabEntry { id: mato::utils::new_id(), name: name.into(), provider: Box::new(NullProvider) }
+    TabEntry {
+        id: mato::utils::new_id(),
+        name: name.into(),
+        provider: Box::new(NullProvider),
+    }
 }
 
 fn make_task(name: &str) -> Desk {
-    Desk { id: mato::utils::new_id(), name: name.into(), tabs: vec![make_tab("Terminal 1")], active_tab: 0 }
+    Desk {
+        id: mato::utils::new_id(),
+        name: name.into(),
+        tabs: vec![make_tab("Terminal 1")],
+        active_tab: 0,
+    }
 }
 
 fn make_mouse_mode_app(calls: Arc<AtomicUsize>) -> mato::client::app::App {
     let tab = TabEntry {
         id: mato::utils::new_id(),
         name: "Terminal 1".into(),
-        provider: Box::new(CountingMouseProvider { calls, enabled: true }),
+        provider: Box::new(CountingMouseProvider {
+            calls,
+            enabled: true,
+        }),
     };
     let desk = Desk {
         id: mato::utils::new_id(),
@@ -91,7 +107,10 @@ fn make_app_with(desks: Vec<Desk>) -> mato::client::app::App {
     app.current_office = 0;
     // Ensure exactly one office with the given desks
     app.offices = vec![mato::client::app::Office {
-        id: "test".into(), name: "Test".into(), desks, active_desk: 0,
+        id: "test".into(),
+        name: "Test".into(),
+        desks,
+        active_desk: 0,
     }];
     app.list_state.select(Some(0));
     app
@@ -131,7 +150,10 @@ fn commit_rename_empty_string_is_ignored() {
     let mut app = make_app_with(vec![make_task("Original")]);
     app.rename = Some((RenameTarget::Desk(0), "   ".into()));
     app.commit_rename();
-    assert_eq!(app.offices[0].desks[0].name, "Original", "empty rename should not apply");
+    assert_eq!(
+        app.offices[0].desks[0].name, "Original",
+        "empty rename should not apply"
+    );
     assert!(!app.dirty);
 }
 
@@ -159,11 +181,12 @@ fn idle_tabs_only_marks_above_threshold() {
     // Simulate what refresh_idle_status does: filter tabs >= threshold
     const THRESHOLD: u64 = 30;
     let raw: Vec<(String, u64)> = vec![
-        ("tab-a".into(), 5),   // active
-        ("tab-b".into(), 30),  // exactly at threshold → idle
-        ("tab-c".into(), 60),  // idle
+        ("tab-a".into(), 5),  // active
+        ("tab-b".into(), 30), // exactly at threshold → idle
+        ("tab-c".into(), 60), // idle
     ];
-    let idle: HashSet<String> = raw.into_iter()
+    let idle: HashSet<String> = raw
+        .into_iter()
         .filter(|(_, secs)| *secs >= THRESHOLD)
         .map(|(id, _)| id)
         .collect();
@@ -193,21 +216,24 @@ fn task_is_idle_only_when_all_tabs_idle() {
 
 #[test]
 fn vt100_renders_written_text() {
-    use mato::terminal_emulator::TerminalEmulator;
     use mato::emulators::Vt100Emulator;
+    use mato::terminal_emulator::TerminalEmulator;
 
     let mut emu = Vt100Emulator::new(24, 80);
     emu.process(b"Hello");
     let screen = emu.get_screen(24, 80);
 
     let first_row: String = screen.lines[0].cells.iter().map(|c| c.ch).collect();
-    assert!(first_row.starts_with("Hello"), "first row should start with 'Hello', got: {first_row:?}");
+    assert!(
+        first_row.starts_with("Hello"),
+        "first row should start with 'Hello', got: {first_row:?}"
+    );
 }
 
 #[test]
 fn vt100_cursor_advances_after_text() {
-    use mato::terminal_emulator::TerminalEmulator;
     use mato::emulators::Vt100Emulator;
+    use mato::terminal_emulator::TerminalEmulator;
 
     let mut emu = Vt100Emulator::new(24, 80);
     emu.process(b"Hi");
@@ -220,22 +246,37 @@ fn vt100_cursor_advances_after_text() {
 
 #[test]
 fn saved_state_roundtrip() {
-    use mato::client::persistence::{SavedState, SavedTab, SavedDesk, SavedOffice};
+    use mato::client::persistence::{SavedDesk, SavedOffice, SavedState, SavedTab};
 
     let state = SavedState {
         current_office: 0,
         offices: vec![SavedOffice {
-            id: "o1".into(), name: "Default".into(), active_desk: 1,
+            id: "o1".into(),
+            name: "Default".into(),
+            active_desk: 1,
             desks: vec![
                 SavedDesk {
-                    id: "t1".into(), name: "Work".into(), active_tab: 0,
-                    tabs: vec![SavedTab { id: "tb1".into(), name: "Terminal 1".into() }],
+                    id: "t1".into(),
+                    name: "Work".into(),
+                    active_tab: 0,
+                    tabs: vec![SavedTab {
+                        id: "tb1".into(),
+                        name: "Terminal 1".into(),
+                    }],
                 },
                 SavedDesk {
-                    id: "t2".into(), name: "Personal".into(), active_tab: 1,
+                    id: "t2".into(),
+                    name: "Personal".into(),
+                    active_tab: 1,
                     tabs: vec![
-                        SavedTab { id: "tb2".into(), name: "Terminal 1".into() },
-                        SavedTab { id: "tb3".into(), name: "Terminal 2".into() },
+                        SavedTab {
+                            id: "tb2".into(),
+                            name: "Terminal 1".into(),
+                        },
+                        SavedTab {
+                            id: "tb3".into(),
+                            name: "Terminal 2".into(),
+                        },
                     ],
                 },
             ],
@@ -260,5 +301,9 @@ fn mouse_mode_query_is_cached_briefly() {
     assert!(app.pty_mouse_mode_enabled());
     assert!(app.pty_mouse_mode_enabled());
 
-    assert_eq!(calls.load(Ordering::Relaxed), 1, "second call should hit cache");
+    assert_eq!(
+        calls.load(Ordering::Relaxed),
+        1,
+        "second call should hit cache"
+    );
 }

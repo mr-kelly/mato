@@ -1,8 +1,14 @@
-use std::{env, io::{Read, Write}, sync::{Arc, Mutex}, thread, time::Instant};
-use portable_pty::{native_pty_system, CommandBuilder, PtySize};
-use crate::terminal_provider::{TerminalProvider, ScreenContent};
+use crate::emulators::{AlacrittyEmulator, Vt100Emulator};
 use crate::terminal_emulator::TerminalEmulator;
-use crate::emulators::{Vt100Emulator, AlacrittyEmulator};
+use crate::terminal_provider::{ScreenContent, TerminalProvider};
+use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+use std::{
+    env,
+    io::{Read, Write},
+    sync::{Arc, Mutex},
+    thread,
+    time::Instant,
+};
 
 pub struct PtyProvider {
     pty: Option<PtyState>,
@@ -19,17 +25,17 @@ struct PtyState {
 
 impl PtyProvider {
     pub fn new() -> Self {
-        Self { 
-            pty: None, 
+        Self {
+            pty: None,
             last_output: Arc::new(Mutex::new(Instant::now())),
             current_size: (24, 80), // Default size
         }
     }
-    
+
     fn create_emulator(rows: u16, cols: u16) -> Box<dyn TerminalEmulator> {
         // Load config
         let config = crate::config::Config::load();
-        
+
         match config.emulator.as_str() {
             "vt100" => {
                 tracing::info!("Using VT100 emulator (from config)");
@@ -90,38 +96,47 @@ impl Default for PtyProvider {
 
 impl TerminalProvider for PtyProvider {
     fn spawn(&mut self, rows: u16, cols: u16) {
-        if self.pty.is_some() { return; }
-        
+        if self.pty.is_some() {
+            return;
+        }
+
         self.current_size = (rows, cols); // Track size
-        
+
         let pty_system = native_pty_system();
-        let pair = pty_system.openpty(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 }).expect("openpty");
+        let pair = pty_system
+            .openpty(PtySize {
+                rows,
+                cols,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .expect("openpty");
         let shell = Self::resolve_shell();
         tracing::info!("Spawning PTY shell: {}", shell);
         let mut cmd = CommandBuilder::new(shell);
         cmd.env("TERM", "xterm-256color");
         let child = pair.slave.spawn_command(cmd).expect("spawn");
-        
+
         // Use selected emulator
         let emulator = Self::create_emulator(rows, cols);
         let emulator = Arc::new(Mutex::new(emulator));
         let emulator_clone = Arc::clone(&emulator);
         let last_output = Arc::clone(&self.last_output);
-        
+
         let mut reader = pair.master.try_clone_reader().expect("reader");
         thread::spawn(move || {
             let mut buf = [0u8; 4096];
-            loop { 
-                match reader.read(&mut buf) { 
-                    Ok(0) | Err(_) => break, 
+            loop {
+                match reader.read(&mut buf) {
+                    Ok(0) | Err(_) => break,
                     Ok(n) => {
                         emulator_clone.lock().unwrap().process(&buf[..n]);
                         *last_output.lock().unwrap() = Instant::now();
                     }
-                } 
+                }
             }
         });
-        
+
         self.pty = Some(PtyState {
             writer: pair.master.take_writer().expect("writer"),
             emulator,
@@ -136,12 +151,22 @@ impl TerminalProvider for PtyProvider {
             tracing::debug!("Resize skipped: size unchanged ({}, {})", rows, cols);
             return;
         }
-        
-        tracing::info!("Resizing PTY from {:?} to ({}, {})", self.current_size, rows, cols);
+
+        tracing::info!(
+            "Resizing PTY from {:?} to ({}, {})",
+            self.current_size,
+            rows,
+            cols
+        );
         self.current_size = (rows, cols);
-        
+
         if let Some(p) = &mut self.pty {
-            let _ = p.master.resize(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 });
+            let _ = p.master.resize(PtySize {
+                rows,
+                cols,
+                pixel_width: 0,
+                pixel_height: 0,
+            });
             p.emulator.lock().unwrap().resize(rows, cols);
         }
     }
@@ -179,9 +204,9 @@ impl TerminalProvider for PtyProvider {
     }
 
     fn get_screen(&self, rows: u16, cols: u16) -> ScreenContent {
-        let Some(pty) = &self.pty else { 
+        let Some(pty) = &self.pty else {
             tracing::debug!("get_screen: PTY not spawned");
-            return ScreenContent::default(); 
+            return ScreenContent::default();
         };
         let content = pty.emulator.lock().unwrap().get_screen(rows, cols);
         tracing::debug!("get_screen: {} lines", content.lines.len());

@@ -17,7 +17,7 @@ impl DaemonLock {
             .write(true)
             .truncate(true)
             .open(&path)?;
-        
+
         #[cfg(unix)]
         {
             use libc::{flock, LOCK_EX, LOCK_NB};
@@ -25,16 +25,16 @@ impl DaemonLock {
             if unsafe { flock(fd, LOCK_EX | LOCK_NB) } != 0 {
                 return Err(io::Error::new(
                     io::ErrorKind::WouldBlock,
-                    "Daemon already running (lock file held)"
+                    "Daemon already running (lock file held)",
                 ));
             }
         }
-        
+
         // Write PID to lock file
         let mut f = &file;
         write!(f, "{}", std::process::id())?;
         f.flush()?;
-        
+
         Ok(Self { _file: file, path })
     }
 }

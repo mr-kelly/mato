@@ -71,13 +71,16 @@ fn lock_second_acquire_fails() {
     let _ = std::fs::remove_file(&path);
     let _lock1 = DaemonLock::acquire(path.clone()).unwrap();
     let result = DaemonLock::acquire(path.clone());
-    assert!(result.is_err(), "second acquire should fail while first is held");
+    assert!(
+        result.is_err(),
+        "second acquire should fail while first is held"
+    );
 }
 
 // ── AlacrittyEmulator ─────────────────────────────────────────────────────────
 
-use mato::terminal_emulator::TerminalEmulator;
 use mato::emulators::AlacrittyEmulator;
+use mato::terminal_emulator::TerminalEmulator;
 
 #[test]
 fn alacritty_renders_written_text() {
@@ -101,7 +104,10 @@ fn alacritty_newline_moves_cursor_down() {
     let mut emu = AlacrittyEmulator::new(24, 80);
     emu.process(b"A\r\nB");
     let screen = emu.get_screen(24, 80);
-    assert_eq!(screen.cursor.0, 1, "cursor should be on row 1 after newline");
+    assert_eq!(
+        screen.cursor.0, 1,
+        "cursor should be on row 1 after newline"
+    );
 }
 
 #[test]
@@ -119,21 +125,31 @@ fn alacritty_resize_preserves_content() {
     emu.resize(10, 40); // should be no-op for emulator
     let screen = emu.get_screen(10, 40);
     let first_row: String = screen.lines[0].cells.iter().map(|c| c.ch).collect();
-    assert!(first_row.starts_with("Hello"), "content should survive resize: {first_row:?}");
+    assert!(
+        first_row.starts_with("Hello"),
+        "content should survive resize: {first_row:?}"
+    );
 }
 
 // ── persistence ───────────────────────────────────────────────────────────────
 
-use mato::client::persistence::{SavedState, SavedTab, SavedDesk, SavedOffice};
+use mato::client::persistence::{SavedDesk, SavedOffice, SavedState, SavedTab};
 
 fn make_state() -> SavedState {
     SavedState {
         current_office: 0,
         offices: vec![SavedOffice {
-            id: "o1".into(), name: "Default".into(), active_desk: 0,
+            id: "o1".into(),
+            name: "Default".into(),
+            active_desk: 0,
             desks: vec![SavedDesk {
-                id: "t1".into(), name: "Work".into(), active_tab: 0,
-                tabs: vec![SavedTab { id: "tb1".into(), name: "Terminal 1".into() }],
+                id: "t1".into(),
+                name: "Work".into(),
+                active_tab: 0,
+                tabs: vec![SavedTab {
+                    id: "tb1".into(),
+                    name: "Terminal 1".into(),
+                }],
             }],
         }],
     }
@@ -146,7 +162,8 @@ fn persistence_save_and_load_roundtrip() {
     let path = dir.join("state.json");
     let json = serde_json::to_string_pretty(&make_state()).unwrap();
     std::fs::write(&path, &json).unwrap();
-    let restored: SavedState = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let restored: SavedState =
+        serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
     assert_eq!(restored.offices[0].desks.len(), 1);
     assert_eq!(restored.offices[0].desks[0].name, "Work");
     assert_eq!(restored.offices[0].desks[0].tabs[0].name, "Terminal 1");
@@ -167,31 +184,45 @@ fn persistence_missing_active_task_defaults_to_zero() {
 
 // ── persistence: save_state / load_state via XDG_CONFIG_HOME ─────────────────
 
+use mato::client::app::{App, Desk, RenameTarget, TabEntry};
 use mato::terminal_provider::{ScreenContent, TerminalProvider};
-use mato::client::app::{App, RenameTarget, TabEntry, Desk};
 
 struct NullProvider;
 impl TerminalProvider for NullProvider {
     fn spawn(&mut self, _: u16, _: u16) {}
     fn resize(&mut self, _: u16, _: u16) {}
     fn write(&mut self, _: &[u8]) {}
-    fn get_screen(&self, _: u16, _: u16) -> ScreenContent { ScreenContent::default() }
+    fn get_screen(&self, _: u16, _: u16) -> ScreenContent {
+        ScreenContent::default()
+    }
 }
 
 fn null_tab(name: &str) -> TabEntry {
-    TabEntry { id: mato::utils::new_id(), name: name.into(), provider: Box::new(NullProvider) }
+    TabEntry {
+        id: mato::utils::new_id(),
+        name: name.into(),
+        provider: Box::new(NullProvider),
+    }
 }
 
 fn null_task(name: &str, n: usize) -> Desk {
     let tabs = (0..n).map(|i| null_tab(&format!("T{}", i + 1))).collect();
-    Desk { id: mato::utils::new_id(), name: name.into(), tabs, active_tab: 0 }
+    Desk {
+        id: mato::utils::new_id(),
+        name: name.into(),
+        tabs,
+        active_tab: 0,
+    }
 }
 
 fn make_app(desks: Vec<Desk>) -> App {
     let mut app = App::new();
     app.current_office = 0;
     app.offices = vec![mato::client::app::Office {
-        id: "test".into(), name: "Test".into(), desks, active_desk: 0,
+        id: "test".into(),
+        name: "Test".into(),
+        desks,
+        active_desk: 0,
     }];
     app.list_state.select(Some(0));
     app

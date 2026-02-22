@@ -1,16 +1,16 @@
-use anyhow::Result;
-use dashmap::DashMap;
-use parking_lot::Mutex;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Instant;
-use tokio::net::{UnixListener, UnixStream};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use crate::config::Config;
+use crate::daemon::signals::SignalHandler;
 use crate::protocol::{ClientMsg, ServerMsg};
 use crate::providers::PtyProvider;
 use crate::terminal_provider::TerminalProvider;
-use crate::daemon::signals::SignalHandler;
-use crate::config::Config;
+use anyhow::Result;
+use dashmap::DashMap;
+use parking_lot::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::time::Instant;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::{UnixListener, UnixStream};
 
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const VERSION_URL: &str = "https://mato.sh/version.txt";
@@ -42,7 +42,7 @@ impl Daemon {
     pub fn new() -> Self {
         let config = Config::load();
         tracing::info!("Loaded config: emulator={}", config.emulator);
-        
+
         Self {
             tabs: Arc::new(DashMap::new()),
             signals: SignalHandler::new(),
@@ -55,7 +55,7 @@ impl Daemon {
     pub async fn run(&self, socket_path: &str) -> Result<()> {
         let _ = std::fs::remove_file(socket_path);
         let listener = UnixListener::bind(socket_path)?;
-        
+
         // Set socket permissions to 0700 (owner only)
         #[cfg(unix)]
         {
@@ -64,7 +64,7 @@ impl Daemon {
             std::fs::set_permissions(socket_path, perms)?;
             tracing::info!("Socket permissions set to 0700");
         }
-        
+
         tracing::info!("Daemon listening on {}", socket_path);
         tracing::info!("Active tabs at startup: {}", self.tabs.len());
 
@@ -77,7 +77,11 @@ impl Daemon {
                         Ok(resp) if resp.status().is_success() => {
                             if let Ok(text) = resp.text().await {
                                 let remote = text.trim().to_string();
-                                let update = if remote != CURRENT_VERSION { Some(remote) } else { None };
+                                let update = if remote != CURRENT_VERSION {
+                                    Some(remote)
+                                } else {
+                                    None
+                                };
                                 *latest_version.lock() = update;
                             }
                         }
@@ -98,12 +102,12 @@ impl Daemon {
                 self.shutdown();
                 break;
             }
-            
+
             // Check for reload signal
             if self.signals.should_reload() {
                 self.reload_config();
             }
-            
+
             // Accept connections with timeout
             tokio::select! {
                 result = listener.accept() => {
@@ -111,12 +115,12 @@ impl Daemon {
                         Ok((stream, _)) => {
                             let client_id = self.client_count.fetch_add(1, Ordering::Relaxed) + 1;
                             tracing::info!("Client #{} connecting (total: {})", client_id, client_id);
-                            
+
                             let tabs = self.tabs.clone();
                             let config = self.config.clone();
                             let client_count = self.client_count.clone();
                             let latest_version = self.latest_version.clone();
-                            
+
                             tokio::spawn(async move {
                                 if let Err(e) = handle_client(stream, tabs, config, client_id, latest_version).await {
                                     if is_disconnect_error(&e) {
@@ -142,7 +146,7 @@ impl Daemon {
 
         Ok(())
     }
-    
+
     fn reload_config(&self) {
         tracing::info!("Received SIGHUP, reloading configuration");
         let new_config = Config::load();
@@ -150,7 +154,7 @@ impl Daemon {
         *config = new_config;
         tracing::info!("Configuration reloaded: emulator={}", config.emulator);
     }
-    
+
     fn shutdown(&self) {
         tracing::info!("Starting graceful shutdown");
         tracing::info!("Closing {} active tabs", self.tabs.len());
@@ -180,9 +184,9 @@ pub async fn handle_client(
     loop {
         line.clear();
         let n = reader.read_line(&mut line).await?;
-        if n == 0 { 
+        if n == 0 {
             tracing::info!("Client #{} disconnected", client_id);
-            break; 
+            break;
         }
 
         let msg: ClientMsg = match serde_json::from_str(&line) {
@@ -192,25 +196,31 @@ pub async fn handle_client(
                 continue;
             }
         };
-        
+
         let response = match msg {
-            ClientMsg::Hello { .. } => ServerMsg::Welcome { version: "0.1".into() },
-            
+            ClientMsg::Hello { .. } => ServerMsg::Welcome {
+                version: "0.1".into(),
+            },
+
             ClientMsg::Spawn { tab_id, rows, cols } => {
                 if tabs.contains_key(&tab_id) {
                     tracing::info!("Tab {} already exists", tab_id);
                     // Don't resize on reconnect - it would clear the screen
                     // Client will send explicit Resize if needed
-                    ServerMsg::Welcome { version: "already exists".into() }
+                    ServerMsg::Welcome {
+                        version: "already exists".into(),
+                    }
                 } else {
                     tracing::info!("Spawning new tab {} ({}x{})", tab_id, rows, cols);
                     let mut provider = PtyProvider::new();
                     provider.spawn(rows, cols);
                     tabs.insert(tab_id.clone(), Arc::new(Mutex::new(provider)));
-                    ServerMsg::Welcome { version: "spawned".into() }
+                    ServerMsg::Welcome {
+                        version: "spawned".into(),
+                    }
                 }
             }
-            
+
             ClientMsg::Input { tab_id, data } => {
                 if let Some(tab) = tabs.get(&tab_id) {
                     (*tab.lock()).write(&data);
@@ -233,34 +243,48 @@ pub async fn handle_client(
                         bracketed_paste: tab.bracketed_paste_enabled(),
                     }
                 } else {
-                    ServerMsg::Error { message: "tab not found".into() }
+                    ServerMsg::Error {
+                        message: "tab not found".into(),
+                    }
                 }
             }
-            
+
             ClientMsg::Resize { tab_id, rows, cols } => {
                 // DON'T resize the PTY! This would clear the screen.
                 // The PTY should keep running at its original size.
                 // Only the client's display needs to adapt to window size.
-                tracing::debug!("Ignoring resize request for tab {} ({}x{}) - PTY size is fixed", tab_id, rows, cols);
+                tracing::debug!(
+                    "Ignoring resize request for tab {} ({}x{}) - PTY size is fixed",
+                    tab_id,
+                    rows,
+                    cols
+                );
                 continue;
             }
-            
+
             ClientMsg::GetScreen { tab_id, rows, cols } => {
                 if let Some(tab) = tabs.get(&tab_id) {
                     let content = (*tab.lock()).get_screen(rows, cols);
                     ServerMsg::Screen { tab_id, content }
                 } else {
                     tracing::debug!("Tab not found: {}", tab_id);
-                    ServerMsg::Error { message: "tab not found".into() }
+                    ServerMsg::Error {
+                        message: "tab not found".into(),
+                    }
                 }
             }
 
             ClientMsg::GetIdleStatus => {
                 let now = Instant::now();
-                let idle: Vec<(String, u64)> = tabs.iter().map(|entry| {
-                    let secs = now.duration_since(*entry.value().lock().last_output.lock().unwrap()).as_secs();
-                    (entry.key().clone(), secs)
-                }).collect();
+                let idle: Vec<(String, u64)> = tabs
+                    .iter()
+                    .map(|entry| {
+                        let secs = now
+                            .duration_since(*entry.value().lock().last_output.lock().unwrap())
+                            .as_secs();
+                        (entry.key().clone(), secs)
+                    })
+                    .collect();
                 ServerMsg::IdleStatus { tabs: idle }
             }
 

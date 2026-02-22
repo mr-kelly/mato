@@ -353,3 +353,70 @@ Observed result:
 
 ### Result
 - Status output now reflects real running terminal workload, not just recent output activity.
+
+---
+
+## 17) Multilingual Onboarding + Builder Template Cleanup
+
+### Onboarding language switch
+- Updated `src/client/onboarding_tui.rs`:
+  - Added language selector with `Left/Right` switching.
+  - Supported languages: English, Simplified Chinese, Traditional Chinese, Japanese, Korean.
+  - Localized onboarding UI strings (title, labels, help text).
+  - Localized template display content (name/description/details) per selected language.
+
+### Template cleanup
+- Updated `templates/power-user.json`:
+  - Removed placeholder desks named `Desk N` (21-45).
+  - Builder template reduced to meaningful desks only.
+  - Updated metadata summary to `20 desks, 248 tabs`.
+
+### Documentation updates
+- Updated `templates/README.md`:
+  - Renamed template section to `Mato Creator Office`.
+  - Updated counts from `45/250+` to `20/248`.
+  - Added onboarding language-switch note (`←/→`).
+- Updated `README.md` feature line to reflect current template scale.
+
+---
+
+## 18) One-Template Multilingual State Application
+
+### Decision
+- Keep one canonical template structure per use case.
+- Apply language localization at onboarding apply time (instead of maintaining per-language template files).
+
+### Implementation
+- Updated `src/client/onboarding_tui.rs`:
+  - `apply_template_return` now receives selected language.
+  - Added `localize_state_names(template_kind, language, state)` to rewrite desk/tab names before saving state.
+  - Added targeted translations for:
+    - Minimal template (`Desk 1`, `Terminal 1`)
+    - Core desks/tabs in Solo/One-Person/Fullstack/Data templates
+    - All desk names in `power-user` (Mato Creator Office)
+
+### Result
+- Onboarding language selection now affects the actual created workspace names, not only onboarding display text.
+- Template structure remains single-source and consistent across all languages.
+
+---
+
+## 19) Move Multilingual Data out of Rust into `templates/*.json`
+
+### Problem
+- Multilingual template naming was previously hardcoded in Rust (`localize_name` style logic).
+- This made copy updates and language edits code-heavy and difficult to maintain.
+
+### Refactor
+- Added `templates/i18n.json` as a data source for template localization:
+  - per-template localized `metadata` (name/description/details)
+  - per-template localized `names` map for desk/tab labels
+- Updated `src/client/onboarding_tui.rs` to:
+  - load `templates/i18n.json`
+  - render onboarding template text from JSON
+  - localize applied workspace names from JSON when creating state
+- Removed hardcoded template-name localization logic from Rust.
+
+### Result
+- Language content now lives in template JSON data, not code.
+- Adding/changing translations is now a data edit under `templates/`.

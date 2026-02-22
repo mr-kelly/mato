@@ -1,5 +1,5 @@
-pub mod pty_provider;
 pub mod daemon_provider;
+pub mod pty_provider;
 
-pub use pty_provider::PtyProvider;
 pub use daemon_provider::DaemonProvider;
+pub use pty_provider::PtyProvider;

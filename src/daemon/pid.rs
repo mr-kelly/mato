@@ -12,15 +12,10 @@ impl PidFile {
         fs::write(&path, pid.to_string())?;
         Ok(Self { path })
     }
-    
+
     pub fn read(path: &PathBuf) -> Option<u32> {
-        fs::read_to_string(path)
-            .ok()?
-            .trim()
-            .parse()
-            .ok()
+        fs::read_to_string(path).ok()?.trim().parse().ok()
     }
-    
 }
 
 impl Drop for PidFile {

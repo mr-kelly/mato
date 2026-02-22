@@ -6,240 +6,240 @@
       "desks": [
         {
           "id": "00000000a3b77",
-          "name": "\ud83d\ude80 Project X",
+          "name": "🚀 Project X",
           "tabs": [
             {
               "id": "00000000a7576",
-              "name": "\ud83d\udcbb coding"
+              "name": "💻 coding"
             },
             {
               "id": "00000001a7b3c",
-              "name": "\ud83d\udc1b debug"
+              "name": "🐛 debug"
             },
             {
               "id": "00000002abd1e",
-              "name": "\u25b6\ufe0f pnpm-dev"
+              "name": "▶️ pnpm-dev"
             },
             {
               "id": "00000003ab3f5",
-              "name": "\ud83e\udd16 gemini-cli"
+              "name": "🤖 gemini-cli"
             },
             {
               "id": "00000004a0eda",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "00000005a7b70",
-              "name": "\u26a1 codex"
+              "name": "⚡ codex"
             },
             {
               "id": "00000006ac57f",
-              "name": "\ud83d\udd2e copilot"
+              "name": "🔮 copilot"
             },
             {
               "id": "00000007ad870",
-              "name": "\ud83c\udfaf cursor"
+              "name": "🎯 cursor"
             },
             {
               "id": "00000008a615d",
-              "name": "\ud83d\udee0\ufe0f aider"
+              "name": "🛠️ aider"
             },
             {
               "id": "00000009af30d",
-              "name": "\ud83d\udd04 continue"
+              "name": "🔄 continue"
             },
             {
               "id": "0000000aa7d49",
-              "name": "\ud83c\udf0a cline"
+              "name": "🌊 cline"
             },
             {
               "id": "0000000ba19cb",
-              "name": "\u26a1 windsurf"
+              "name": "⚡ windsurf"
             },
             {
               "id": "0000000ca044c",
-              "name": "\ud83d\udd25 bolt"
+              "name": "🔥 bolt"
             },
             {
               "id": "0000000da9e90",
-              "name": "\ud83d\udce6 build"
+              "name": "📦 build"
             },
             {
               "id": "0000000eaba78",
-              "name": "\ud83d\ude80 deploy"
+              "name": "🚀 deploy"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000001a9e7a",
-          "name": "\ud83d\udcf1 Mobile App",
+          "name": "📱 Mobile App",
           "tabs": [
             {
               "id": "00000064a2165",
-              "name": "\ud83d\udcf2 expo"
+              "name": "📲 expo"
             },
             {
               "id": "00000065a947a",
-              "name": "\ud83c\udf4e ios-sim"
+              "name": "🍎 ios-sim"
             },
             {
               "id": "00000066ac53b",
-              "name": "\ud83e\udd16 android"
+              "name": "🤖 android"
             },
             {
               "id": "00000067af5f6",
-              "name": "\ud83e\uddea test"
+              "name": "🧪 test"
             },
             {
               "id": "00000068a8933",
-              "name": "\ud83e\udd16 gemini-cli"
+              "name": "🤖 gemini-cli"
             },
             {
               "id": "00000069a9835",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "0000006aa8030",
-              "name": "\u26a1 codex"
+              "name": "⚡ codex"
             },
             {
               "id": "0000006ba7702",
-              "name": "\ud83d\udd2e copilot"
+              "name": "🔮 copilot"
             },
             {
               "id": "0000006ca4160",
-              "name": "\ud83c\udfaf cursor"
+              "name": "🎯 cursor"
             },
             {
               "id": "0000006dac0be",
-              "name": "\ud83d\udd25 fastlane"
+              "name": "🔥 fastlane"
             },
             {
               "id": "0000006eaff16",
-              "name": "\ud83d\udcca analytics"
+              "name": "📊 analytics"
             },
             {
               "id": "0000006fadef3",
-              "name": "\ud83d\ude80 deploy"
+              "name": "🚀 deploy"
             },
             {
               "id": "00000070a6597",
-              "name": "\ud83d\udcdd logs"
+              "name": "📝 logs"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000002afc46",
-          "name": "\ud83c\udf10 Web Platform",
+          "name": "🌐 Web Platform",
           "tabs": [
             {
               "id": "000000c8ad308",
-              "name": "\u26a1 vite"
+              "name": "⚡ vite"
             },
             {
               "id": "000000c9a5560",
-              "name": "\ud83c\udfa8 storybook"
+              "name": "🎨 storybook"
             },
             {
               "id": "000000caa2b71",
-              "name": "\ud83e\uddea test"
+              "name": "🧪 test"
             },
             {
               "id": "000000cba60da",
-              "name": "\ud83e\udd16 gemini-cli"
+              "name": "🤖 gemini-cli"
             },
             {
               "id": "000000ccafff6",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "000000cdaea7f",
-              "name": "\u26a1 codex"
+              "name": "⚡ codex"
             },
             {
               "id": "000000ceacf69",
-              "name": "\ud83d\udd2e copilot"
+              "name": "🔮 copilot"
             },
             {
               "id": "000000cfafffc",
-              "name": "\ud83c\udfaf cursor"
+              "name": "🎯 cursor"
             },
             {
               "id": "000000d0a9a34",
-              "name": "\ud83d\udee0\ufe0f aider"
+              "name": "🛠️ aider"
             },
             {
               "id": "000000d1a96d9",
-              "name": "\ud83d\udd04 continue"
+              "name": "🔄 continue"
             },
             {
               "id": "000000d2add9e",
-              "name": "\ud83d\udce6 webpack"
+              "name": "📦 webpack"
             },
             {
               "id": "000000d3a7287",
-              "name": "\ud83d\ude80 vercel"
+              "name": "🚀 vercel"
             },
             {
               "id": "000000d4a3a9b",
-              "name": "\ud83d\udcca sentry"
+              "name": "📊 sentry"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000003a5f47",
-          "name": "\ud83d\udcbc Marketing Hub",
+          "name": "💼 Marketing Hub",
           "tabs": [
             {
               "id": "0000012ca71b2",
-              "name": "\ud83d\udcdd seo-agent"
+              "name": "📝 seo-agent"
             },
             {
               "id": "0000012da9e33",
-              "name": "\u270d\ufe0f content-writer"
+              "name": "✍️ content-writer"
             },
             {
               "id": "0000012ea0c78",
-              "name": "\ud83d\udcf1 social-media"
+              "name": "📱 social-media"
             },
             {
               "id": "0000012fa9941",
-              "name": "\ud83d\udce7 email-campaign"
+              "name": "📧 email-campaign"
             },
             {
               "id": "00000130a336c",
-              "name": "\ud83c\udfaf ads-optimizer"
+              "name": "🎯 ads-optimizer"
             },
             {
               "id": "00000131a143e",
-              "name": "\ud83d\udcca analytics"
+              "name": "📊 analytics"
             },
             {
               "id": "00000132ad422",
-              "name": "\ud83d\udd0d competitor"
+              "name": "🔍 competitor"
             },
             {
               "id": "00000133a728d",
-              "name": "\ud83e\udd16 gemini-cli"
+              "name": "🤖 gemini-cli"
             },
             {
               "id": "00000134acb90",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "00000135a9a7d",
-              "name": "\ud83c\udfa8 canva"
+              "name": "🎨 canva"
             },
             {
               "id": "00000136ae4d5",
-              "name": "\ud83d\udcc8 growth"
+              "name": "📈 growth"
             },
             {
               "id": "00000137a8395",
-              "name": "\ud83d\udcb0 roi-tracker"
+              "name": "💰 roi-tracker"
             },
             {
               "id": "25550b2b0",
@@ -254,1159 +254,884 @@
         },
         {
           "id": "00000004af8b7",
-          "name": "\ud83d\udcca Analytics Center",
+          "name": "📊 Analytics Center",
           "tabs": [
             {
               "id": "00000190a84fb",
-              "name": "\ud83d\udcc8 metabase"
+              "name": "📈 metabase"
             },
             {
               "id": "00000191a2c7e",
-              "name": "\ud83d\udd0d looker"
+              "name": "🔍 looker"
             },
             {
               "id": "00000192a21fb",
-              "name": "\ud83d\udcca tableau"
+              "name": "📊 tableau"
             },
             {
               "id": "00000193aeb6f",
-              "name": "\ud83d\udc0d jupyter"
+              "name": "🐍 jupyter"
             },
             {
               "id": "00000194a79db",
-              "name": "\u26a1 spark"
+              "name": "⚡ spark"
             },
             {
               "id": "00000195acbf6",
-              "name": "\ud83d\uddc4\ufe0f presto"
+              "name": "🗄️ presto"
             },
             {
               "id": "00000196a924d",
-              "name": "\ud83e\udd16 data-agent"
+              "name": "🤖 data-agent"
             },
             {
               "id": "00000197a9148",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "00000198ad452",
-              "name": "\ud83d\udcc9 trends"
+              "name": "📉 trends"
             },
             {
               "id": "00000199abb3e",
-              "name": "\ud83c\udfaf insights"
+              "name": "🎯 insights"
             },
             {
               "id": "0000019aae8f8",
-              "name": "\ud83d\udccb reports"
+              "name": "📋 reports"
             },
             {
               "id": "0000019ba684c",
-              "name": "\ud83d\udea8 alerts"
+              "name": "🚨 alerts"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000005a7fa6",
-          "name": "\ud83d\udcb0 Revenue Ops",
+          "name": "💰 Revenue Ops",
           "tabs": [
             {
               "id": "000001f4a4945",
-              "name": "\ud83d\udcb3 stripe"
+              "name": "💳 stripe"
             },
             {
               "id": "000001f5ab31c",
-              "name": "\ud83d\udcca revenue"
+              "name": "📊 revenue"
             },
             {
               "id": "000001f6a4682",
-              "name": "\ud83d\udcb0 billing"
+              "name": "💰 billing"
             },
             {
               "id": "000001f7a0e25",
-              "name": "\ud83d\udcc8 mrr"
+              "name": "📈 mrr"
             },
             {
               "id": "000001f8a46fb",
-              "name": "\ud83c\udfaf churn"
+              "name": "🎯 churn"
             },
             {
               "id": "000001f9aafb6",
-              "name": "\ud83d\udce7 dunning"
+              "name": "📧 dunning"
             },
             {
               "id": "000001faa9d57",
-              "name": "\ud83e\udd16 finance-agent"
+              "name": "🤖 finance-agent"
             },
             {
               "id": "000001fbaa571",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "000001fcaf029",
-              "name": "\ud83d\udcca forecast"
+              "name": "📊 forecast"
             },
             {
               "id": "000001fda43ff",
-              "name": "\ud83d\udcbc crm"
+              "name": "💼 crm"
             },
             {
               "id": "000001fea0b07",
-              "name": "\ud83d\udccb invoices"
+              "name": "📋 invoices"
             },
             {
               "id": "000001ffab5ce",
-              "name": "\ud83d\udd14 alerts"
+              "name": "🔔 alerts"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000006aa35f",
-          "name": "\ud83d\udcdd Content Studio",
+          "name": "📝 Content Studio",
           "tabs": [
             {
               "id": "00000258a88fc",
-              "name": "\u270d\ufe0f blog-writer"
+              "name": "✍️ blog-writer"
             },
             {
               "id": "00000259a8934",
-              "name": "\ud83d\udcc4 docs-gen"
+              "name": "📄 docs-gen"
             },
             {
               "id": "0000025aa3296",
-              "name": "\ud83c\udfac script-writer"
+              "name": "🎬 script-writer"
             },
             {
               "id": "0000025bab7a3",
-              "name": "\ud83c\udf99\ufe0f podcast"
+              "name": "🎙️ podcast"
             },
             {
               "id": "0000025cad76b",
-              "name": "\ud83d\udcda ebook"
+              "name": "📚 ebook"
             },
             {
               "id": "0000025daaf3b",
-              "name": "\ud83e\udd16 gemini-cli"
+              "name": "🤖 gemini-cli"
             },
             {
               "id": "0000025ea48dc",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "0000025fab33a",
-              "name": "\u26a1 codex"
+              "name": "⚡ codex"
             },
             {
               "id": "00000260a9b0f",
-              "name": "\ud83c\udfa8 midjourney"
+              "name": "🎨 midjourney"
             },
             {
               "id": "00000261adf7d",
-              "name": "\ud83d\udcf8 dalle"
+              "name": "📸 dalle"
             },
             {
               "id": "00000262a2689",
-              "name": "\ud83d\udd0d seo"
+              "name": "🔍 seo"
             },
             {
               "id": "00000263ab1c7",
-              "name": "\ud83d\udcca analytics"
+              "name": "📊 analytics"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000007ab1d2",
-          "name": "\ud83c\udfa8 Design Lab",
+          "name": "🎨 Design Lab",
           "tabs": [
             {
               "id": "000002bca85f3",
-              "name": "\ud83c\udfa8 figma"
+              "name": "🎨 figma"
             },
             {
               "id": "000002bdad5fd",
-              "name": "\ud83d\uddbc\ufe0f photoshop"
+              "name": "🖼️ photoshop"
             },
             {
               "id": "000002bea1f6a",
-              "name": "\ud83c\udfac after-effects"
+              "name": "🎬 after-effects"
             },
             {
               "id": "000002bfaa588",
-              "name": "\ud83e\udd16 design-agent"
+              "name": "🤖 design-agent"
             },
             {
               "id": "000002c0a9860",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "000002c1a206f",
-              "name": "\ud83c\udfaf midjourney"
+              "name": "🎯 midjourney"
             },
             {
               "id": "000002c2af7b5",
-              "name": "\ud83d\udcf8 dalle"
+              "name": "📸 dalle"
             },
             {
               "id": "000002c3a45c2",
-              "name": "\ud83c\udf08 stable-diffusion"
+              "name": "🌈 stable-diffusion"
             },
             {
               "id": "000002c4a7629",
-              "name": "\ud83c\udfad runway"
+              "name": "🎭 runway"
             },
             {
               "id": "000002c5a800b",
-              "name": "\u2728 canva"
+              "name": "✨ canva"
             },
             {
               "id": "000002c6a6ab3",
-              "name": "\ud83d\udcd0 sketch"
+              "name": "📐 sketch"
             },
             {
               "id": "000002c7a1b0a",
-              "name": "\ud83d\ude80 export"
+              "name": "🚀 export"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000008abe4e",
-          "name": "\ud83c\udfac Video Production",
+          "name": "🎬 Video Production",
           "tabs": [
             {
               "id": "00000320a0d65",
-              "name": "\ud83c\udfa5 premiere"
+              "name": "🎥 premiere"
             },
             {
               "id": "00000321abc27",
-              "name": "\ud83c\udf9e\ufe0f davinci"
+              "name": "🎞️ davinci"
             },
             {
               "id": "00000322a7b1d",
-              "name": "\ud83c\udf99\ufe0f audition"
+              "name": "🎙️ audition"
             },
             {
               "id": "00000323a2045",
-              "name": "\ud83e\udd16 video-agent"
+              "name": "🤖 video-agent"
             },
             {
               "id": "00000324a6c2f",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "00000325a5140",
-              "name": "\ud83c\udfac runway"
+              "name": "🎬 runway"
             },
             {
               "id": "00000326ad914",
-              "name": "\ud83c\udfad synthesia"
+              "name": "🎭 synthesia"
             },
             {
               "id": "00000327a096f",
-              "name": "\ud83d\udcf9 descript"
+              "name": "📹 descript"
             },
             {
               "id": "00000328a702c",
-              "name": "\ud83c\udfb5 music"
+              "name": "🎵 music"
             },
             {
               "id": "00000329accd2",
-              "name": "\ud83d\udcca analytics"
+              "name": "📊 analytics"
             },
             {
               "id": "0000032aac4bf",
-              "name": "\ud83d\ude80 youtube"
+              "name": "🚀 youtube"
             },
             {
               "id": "0000032ba8c91",
-              "name": "\ud83d\udcf1 tiktok"
+              "name": "📱 tiktok"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000009aaa17",
-          "name": "\ud83d\udee0\ufe0f DevOps Control",
+          "name": "🛠️ DevOps Control",
           "tabs": [
             {
               "id": "00000384a5936",
-              "name": "\ud83d\udc33 docker"
+              "name": "🐳 docker"
             },
             {
               "id": "00000385aa0fa",
-              "name": "\u2638\ufe0f k8s"
+              "name": "☸️ k8s"
             },
             {
               "id": "00000386aac84",
-              "name": "\ud83d\udd27 terraform"
+              "name": "🔧 terraform"
             },
             {
               "id": "00000387aa028",
-              "name": "\ud83d\udce6 helm"
+              "name": "📦 helm"
             },
             {
               "id": "00000388a6b4e",
-              "name": "\ud83e\udd16 ops-agent"
+              "name": "🤖 ops-agent"
             },
             {
               "id": "00000389ac3f6",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "0000038aa6323",
-              "name": "\u26a1 ansible"
+              "name": "⚡ ansible"
             },
             {
               "id": "0000038ba1621",
-              "name": "\ud83d\udd10 vault"
+              "name": "🔐 vault"
             },
             {
               "id": "0000038ca07e0",
-              "name": "\ud83d\udcca prometheus"
+              "name": "📊 prometheus"
             },
             {
               "id": "0000038da2583",
-              "name": "\ud83d\udcc8 grafana"
+              "name": "📈 grafana"
             },
             {
               "id": "0000038ea18b9",
-              "name": "\ud83d\udea8 pagerduty"
+              "name": "🚨 pagerduty"
             },
             {
               "id": "0000038fac5a1",
-              "name": "\ud83d\udccb logs"
+              "name": "📋 logs"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "0000000aa2f8b",
-          "name": "\ud83d\udd12 Security Center",
+          "name": "🔒 Security Center",
           "tabs": [
             {
               "id": "000003e8a25f8",
-              "name": "\ud83d\udd10 vault"
+              "name": "🔐 vault"
             },
             {
               "id": "000003e9aeb3c",
-              "name": "\ud83d\udee1\ufe0f waf"
+              "name": "🛡️ waf"
             },
             {
               "id": "000003eaa1266",
-              "name": "\ud83d\udd0d scan"
+              "name": "🔍 scan"
             },
             {
               "id": "000003ebabcf4",
-              "name": "\ud83d\udd75\ufe0f pentest"
+              "name": "🕵️ pentest"
             },
             {
               "id": "000003eca8989",
-              "name": "\ud83e\udd16 security-agent"
+              "name": "🤖 security-agent"
             },
             {
               "id": "000003edad199",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "000003eeaacc5",
-              "name": "\ud83d\udea8 siem"
+              "name": "🚨 siem"
             },
             {
               "id": "000003efa886b",
-              "name": "\ud83d\udccb audit"
+              "name": "📋 audit"
             },
             {
               "id": "000003f0a0b0a",
-              "name": "\ud83d\udd11 sso"
+              "name": "🔑 sso"
             },
             {
               "id": "000003f1ae8f0",
-              "name": "\ud83c\udfab certs"
+              "name": "🎫 certs"
             },
             {
               "id": "000003f2a52ac",
-              "name": "\ud83d\udd25 firewall"
+              "name": "🔥 firewall"
             },
             {
               "id": "000003f3a41d9",
-              "name": "\ud83d\udcca compliance"
+              "name": "📊 compliance"
             }
           ],
           "active_tab": 7
         },
         {
           "id": "0000000ba8a06",
-          "name": "\u2601\ufe0f Cloud Infra",
+          "name": "☁️ Cloud Infra",
           "tabs": [
             {
               "id": "0000044ca3b64",
-              "name": "\u2601\ufe0f aws"
+              "name": "☁️ aws"
             },
             {
               "id": "0000044da69f0",
-              "name": "\ud83c\udf10 gcp"
+              "name": "🌐 gcp"
             },
             {
               "id": "0000044eaf234",
-              "name": "\ud83d\udd37 azure"
+              "name": "🔷 azure"
             },
             {
               "id": "0000044fac921",
-              "name": "\ud83e\udd16 cloud-agent"
+              "name": "🤖 cloud-agent"
             },
             {
               "id": "00000450ab7d4",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "00000451a5803",
-              "name": "\ud83d\udcb0 cost"
+              "name": "💰 cost"
             },
             {
               "id": "00000452ad911",
-              "name": "\ud83d\udcca monitor"
+              "name": "📊 monitor"
             },
             {
               "id": "00000453a7165",
-              "name": "\ud83d\ude80 cdn"
+              "name": "🚀 cdn"
             },
             {
               "id": "00000454a2b9d",
-              "name": "\ud83d\uddc4\ufe0f s3"
+              "name": "🗄️ s3"
             },
             {
               "id": "00000455a496b",
-              "name": "\ud83d\udd25 lambda"
+              "name": "🔥 lambda"
             },
             {
               "id": "00000456abae0",
-              "name": "\ud83d\udce1 api-gateway"
+              "name": "📡 api-gateway"
             },
             {
               "id": "00000457ac8a5",
-              "name": "\ud83d\udd14 alerts"
+              "name": "🔔 alerts"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "0000000ca069d",
-          "name": "\ud83e\udd16 AI Research",
+          "name": "🤖 AI Research",
           "tabs": [
             {
               "id": "000004b0a9006",
-              "name": "\ud83e\uddea jupyter"
+              "name": "🧪 jupyter"
             },
             {
               "id": "000004b1a9bd7",
-              "name": "\ud83d\udd2c colab"
+              "name": "🔬 colab"
             },
             {
               "id": "000004b2a6058",
-              "name": "\ud83d\udcca wandb"
+              "name": "📊 wandb"
             },
             {
               "id": "000004b3a686a",
-              "name": "\ud83e\udd16 gemini-cli"
+              "name": "🤖 gemini-cli"
             },
             {
               "id": "000004b4ac4fa",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "000004b5a55eb",
-              "name": "\u26a1 codex"
+              "name": "⚡ codex"
             },
             {
               "id": "000004b6abcd7",
-              "name": "\ud83d\udd2e copilot"
+              "name": "🔮 copilot"
             },
             {
               "id": "000004b7a97fe",
-              "name": "\ud83c\udfaf cursor"
+              "name": "🎯 cursor"
             },
             {
               "id": "000004b8a0d53",
-              "name": "\ud83e\udde0 llama"
+              "name": "🧠 llama"
             },
             {
               "id": "000004b9a1d20",
-              "name": "\ud83c\udf0a mistral"
+              "name": "🌊 mistral"
             },
             {
               "id": "000004baa5ff5",
-              "name": "\ud83d\udd25 gpt4"
+              "name": "🔥 gpt4"
             },
             {
               "id": "000004bbab8f8",
-              "name": "\ud83d\udcc8 eval"
+              "name": "📈 eval"
             },
             {
               "id": "000004bca476e",
-              "name": "\ud83d\udcda papers"
+              "name": "📚 papers"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "0000000daaa44",
-          "name": "\ud83e\udde0 ML Pipeline",
+          "name": "🧠 ML Pipeline",
           "tabs": [
             {
               "id": "00000514a34f6",
-              "name": "\u2699\ufe0f airflow"
+              "name": "⚙️ airflow"
             },
             {
               "id": "00000515abd81",
-              "name": "\u26a1 spark"
+              "name": "⚡ spark"
             },
             {
               "id": "00000516aa07b",
-              "name": "\ud83d\udc0d dbt"
+              "name": "🐍 dbt"
             },
             {
               "id": "00000517a55a8",
-              "name": "\ud83e\udd16 ml-agent"
+              "name": "🤖 ml-agent"
             },
             {
               "id": "00000518a4220",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "00000519a58be",
-              "name": "\ud83d\udcca mlflow"
+              "name": "📊 mlflow"
             },
             {
               "id": "0000051aa9277",
-              "name": "\ud83c\udfaf optuna"
+              "name": "🎯 optuna"
             },
             {
               "id": "0000051ba2a4a",
-              "name": "\ud83d\udd25 ray"
+              "name": "🔥 ray"
             },
             {
               "id": "0000051ca462e",
-              "name": "\ud83d\udcc8 tensorboard"
+              "name": "📈 tensorboard"
             },
             {
               "id": "0000051dad6e5",
-              "name": "\ud83d\uddc4\ufe0f feature-store"
+              "name": "🗄️ feature-store"
             },
             {
               "id": "0000051ea1223",
-              "name": "\ud83d\ude80 deploy"
+              "name": "🚀 deploy"
             },
             {
               "id": "0000051faa76c",
-              "name": "\ud83d\udcca monitor"
+              "name": "📊 monitor"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "0000000eae778",
-          "name": "\ud83d\udd2c Prompt Lab",
+          "name": "🔬 Prompt Lab",
           "tabs": [
             {
               "id": "00000578a7cb3",
-              "name": "\u270d\ufe0f prompt-eng"
+              "name": "✍️ prompt-eng"
             },
             {
               "id": "00000579aff13",
-              "name": "\ud83e\uddea test"
+              "name": "🧪 test"
             },
             {
               "id": "0000057aac993",
-              "name": "\ud83d\udcca eval"
+              "name": "📊 eval"
             },
             {
               "id": "0000057ba414e",
-              "name": "\ud83e\udd16 gemini-cli"
+              "name": "🤖 gemini-cli"
             },
             {
               "id": "0000057ca6c77",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "0000057da2047",
-              "name": "\u26a1 codex"
+              "name": "⚡ codex"
             },
             {
               "id": "0000057ead0ca",
-              "name": "\ud83d\udd2e copilot"
+              "name": "🔮 copilot"
             },
             {
               "id": "0000057faafac",
-              "name": "\ud83c\udfaf cursor"
+              "name": "🎯 cursor"
             },
             {
               "id": "00000580a9160",
-              "name": "\ud83d\udcda library"
+              "name": "📚 library"
             },
             {
               "id": "00000581a079e",
-              "name": "\ud83d\udd0d search"
+              "name": "🔍 search"
             },
             {
               "id": "00000582accb3",
-              "name": "\ud83d\udcbe save"
+              "name": "💾 save"
             },
             {
               "id": "00000583a1773",
-              "name": "\ud83d\udcc8 analytics"
+              "name": "📈 analytics"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "0000000fa415d",
-          "name": "\ud83d\udcde Customer Support",
+          "name": "📞 Customer Support",
           "tabs": [
             {
               "id": "000005dcafa71",
-              "name": "\ud83d\udcac chat"
+              "name": "💬 chat"
             },
             {
               "id": "000005dda5a8c",
-              "name": "\ud83d\udce7 email"
+              "name": "📧 email"
             },
             {
               "id": "000005dea6f77",
-              "name": "\ud83c\udfab tickets"
+              "name": "🎫 tickets"
             },
             {
               "id": "000005dfac5ca",
-              "name": "\ud83e\udd16 support-agent"
+              "name": "🤖 support-agent"
             },
             {
               "id": "000005e0a46d7",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "000005e1aa158",
-              "name": "\ud83d\udcca zendesk"
+              "name": "📊 zendesk"
             },
             {
               "id": "000005e2adcb0",
-              "name": "\ud83d\udcac intercom"
+              "name": "💬 intercom"
             },
             {
               "id": "000005e3aca7f",
-              "name": "\ud83d\udcde twilio"
+              "name": "📞 twilio"
             },
             {
               "id": "000005e4a7230",
-              "name": "\ud83d\udccb kb"
+              "name": "📋 kb"
             },
             {
               "id": "000005e5a9e0e",
-              "name": "\ud83d\udcc8 satisfaction"
+              "name": "📈 satisfaction"
             },
             {
               "id": "000005e6a9446",
-              "name": "\ud83d\udea8 escalation"
+              "name": "🚨 escalation"
             },
             {
               "id": "000005e7a76c5",
-              "name": "\ud83d\udcca reports"
+              "name": "📊 reports"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000010a61a7",
-          "name": "\ud83c\udf93 Knowledge Base",
+          "name": "🎓 Knowledge Base",
           "tabs": [
             {
               "id": "00000640a2f72",
-              "name": "\ud83d\udcda docs"
+              "name": "📚 docs"
             },
             {
               "id": "00000641ad53d",
-              "name": "\u2753 faq"
+              "name": "❓ faq"
             },
             {
               "id": "00000642ac93e",
-              "name": "\ud83c\udfa5 tutorials"
+              "name": "🎥 tutorials"
             },
             {
               "id": "00000643a2e3d",
-              "name": "\ud83e\udd16 docs-agent"
+              "name": "🤖 docs-agent"
             },
             {
               "id": "00000644ab651",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "00000645a5148",
-              "name": "\ud83d\udd0d search"
+              "name": "🔍 search"
             },
             {
               "id": "00000646a7248",
-              "name": "\u270d\ufe0f writer"
+              "name": "✍️ writer"
             },
             {
               "id": "00000647a9582",
-              "name": "\ud83c\udfa8 design"
+              "name": "🎨 design"
             },
             {
               "id": "00000648aa73b",
-              "name": "\ud83d\udcca analytics"
+              "name": "📊 analytics"
             },
             {
               "id": "00000649ad74c",
-              "name": "\ud83d\udd04 update"
+              "name": "🔄 update"
             },
             {
               "id": "0000064aaba17",
-              "name": "\ud83c\udf10 translate"
+              "name": "🌐 translate"
             },
             {
               "id": "0000064ba7aae",
-              "name": "\ud83d\ude80 publish"
+              "name": "🚀 publish"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000011a331c",
-          "name": "\ud83c\udfaf Strategy",
+          "name": "🎯 Strategy",
           "tabs": [
             {
               "id": "000006a4ae6dc",
-              "name": "\ud83d\udcca okr"
+              "name": "📊 okr"
             },
             {
               "id": "000006a5a78e5",
-              "name": "\ud83d\uddfa\ufe0f roadmap"
+              "name": "🗺️ roadmap"
             },
             {
               "id": "000006a6aae0f",
-              "name": "\ud83d\udca1 ideas"
+              "name": "💡 ideas"
             },
             {
               "id": "000006a7a3466",
-              "name": "\ud83e\udd16 strategy-agent"
+              "name": "🤖 strategy-agent"
             },
             {
               "id": "000006a8ad34f",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "000006a9ad0f1",
-              "name": "\ud83d\udcc8 metrics"
+              "name": "📈 metrics"
             },
             {
               "id": "000006aaae9b7",
-              "name": "\ud83d\udd0d research"
+              "name": "🔍 research"
             },
             {
               "id": "000006abafbeb",
-              "name": "\ud83d\udcbc competitors"
+              "name": "💼 competitors"
             },
             {
               "id": "000006aca729b",
-              "name": "\ud83d\udccb swot"
+              "name": "📋 swot"
             },
             {
               "id": "000006ada6fc0",
-              "name": "\ud83c\udfaf goals"
+              "name": "🎯 goals"
             },
             {
               "id": "000006aea9ed6",
-              "name": "\ud83d\udcca dashboard"
+              "name": "📊 dashboard"
             },
             {
               "id": "000006afa9c27",
-              "name": "\ud83d\ude80 execution"
+              "name": "🚀 execution"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000012a61e3",
-          "name": "\ud83d\udd2c Research2",
+          "name": "🔬 Research2",
           "tabs": [
             {
               "id": "00000708add88",
-              "name": "\ud83d\udcda papers"
+              "name": "📚 papers"
             },
             {
               "id": "00000709a554b",
-              "name": "\ud83d\udd0d trends"
+              "name": "🔍 trends"
             },
             {
               "id": "0000070aa085f",
-              "name": "\ud83d\udca1 insights"
+              "name": "💡 insights"
             },
             {
               "id": "0000070bab42a",
-              "name": "\ud83e\udd16 research-agent"
+              "name": "🤖 research-agent"
             },
             {
               "id": "0000070ca47ff",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "0000070dac244",
-              "name": "\ud83d\udcca data"
+              "name": "📊 data"
             },
             {
               "id": "0000070ea78b1",
-              "name": "\ud83e\uddea experiments"
+              "name": "🧪 experiments"
             },
             {
               "id": "0000070faf197",
-              "name": "\ud83d\udcc8 analysis"
+              "name": "📈 analysis"
             },
             {
               "id": "00000710a27c9",
-              "name": "\ud83d\udcdd reports"
+              "name": "📝 reports"
             },
             {
               "id": "00000711ad04c",
-              "name": "\ud83c\udfaf findings"
+              "name": "🎯 findings"
             },
             {
               "id": "00000712a37e5",
-              "name": "\ud83d\ude80 publish"
+              "name": "🚀 publish"
             },
             {
               "id": "00000713a2810",
-              "name": "\ud83d\udce2 share"
+              "name": "📢 share"
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000013aaf14",
-          "name": "\ud83d\udcbc Business Ops",
+          "name": "💼 Business Ops",
           "tabs": [
             {
               "id": "0000076ca1b96",
-              "name": "\ud83d\udcca metrics"
+              "name": "📊 metrics"
             },
             {
               "id": "0000076da6c60",
-              "name": "\ud83d\udcb0 finance"
+              "name": "💰 finance"
             },
             {
               "id": "0000076ead486",
-              "name": "\ud83d\udcc8 growth"
+              "name": "📈 growth"
             },
             {
               "id": "0000076fa08bf",
-              "name": "\ud83e\udd16 ops-agent"
+              "name": "🤖 ops-agent"
             },
             {
               "id": "00000770ad062",
-              "name": "\ud83e\udde0 claude-code"
+              "name": "🧠 claude-code"
             },
             {
               "id": "00000771a098d",
-              "name": "\ud83d\udccb reports"
+              "name": "📋 reports"
             },
             {
               "id": "00000772a66f3",
-              "name": "\ud83c\udfaf kpi"
+              "name": "🎯 kpi"
             },
             {
               "id": "00000773a97f2",
-              "name": "\ud83d\udcbc crm"
+              "name": "💼 crm"
             },
             {
               "id": "00000774abc03",
-              "name": "\ud83d\udce7 email"
+              "name": "📧 email"
             },
             {
               "id": "00000775a1999",
-              "name": "\ud83d\udcde calls"
+              "name": "📞 calls"
             },
             {
               "id": "00000776a6797",
-              "name": "\ud83d\ude80 automation"
+              "name": "🚀 automation"
             },
             {
               "id": "00000777a6a81",
-              "name": "\ud83d\udcca dashboard"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "12019f950",
-          "name": "Desk 21",
-          "tabs": [
-            {
-              "id": "1201e0dc1",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "11b30b1f2",
-          "name": "Desk 22",
-          "tabs": [
-            {
-              "id": "11b318db3",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "2db03f434",
-          "name": "Desk 23",
-          "tabs": [
-            {
-              "id": "2db04ace5",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "3b125d136",
-          "name": "Desk 24",
-          "tabs": [
-            {
-              "id": "3b126aee7",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "46904eb8",
-          "name": "Desk 25",
-          "tabs": [
-            {
-              "id": "46911ea9",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "f06f625a",
-          "name": "Desk 26",
-          "tabs": [
-            {
-              "id": "f070811b",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "15542a4fc",
-          "name": "Desk 27",
-          "tabs": [
-            {
-              "id": "155438d4d",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "1db7793fe",
-          "name": "Desk 28",
-          "tabs": [
-            {
-              "id": "1db78507f",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "26135dd510",
-          "name": "Desk 29",
-          "tabs": [
-            {
-              "id": "2613697511",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "2e2a548512",
-          "name": "Desk 30",
-          "tabs": [
-            {
-              "id": "2e2a640e13",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "36c11fb014",
-          "name": "Desk 31",
-          "tabs": [
-            {
-              "id": "36c12ecc15",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "2e1af5216",
-          "name": "Desk 32",
-          "tabs": [
-            {
-              "id": "2e1d29517",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "a85c8e218",
-          "name": "Desk 33",
-          "tabs": [
-            {
-              "id": "a85e6d219",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "12f888921a",
-          "name": "Desk 34",
-          "tabs": [
-            {
-              "id": "12f898bc1b",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "1b4c31121c",
-          "name": "Desk 35",
-          "tabs": [
-            {
-              "id": "1b4c49c41d",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "22c5b6561e",
-          "name": "Desk 36",
-          "tabs": [
-            {
-              "id": "22c5d5f51f",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "2b79103520",
-          "name": "Desk 37",
-          "tabs": [
-            {
-              "id": "2b79248521",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "32a1dbe022",
-          "name": "Desk 38",
-          "tabs": [
-            {
-              "id": "32a1f3a223",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "2dd9a324",
-          "name": "Desk 39",
-          "tabs": [
-            {
-              "id": "2dee0725",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "702f20026",
-          "name": "Desk 40",
-          "tabs": [
-            {
-              "id": "70302e827",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "f884ba928",
-          "name": "Desk 41",
-          "tabs": [
-            {
-              "id": "f88590c29",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "17cd2ca42a",
-          "name": "Desk 42",
-          "tabs": [
-            {
-              "id": "17cd3b662b",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "1f4392822c",
-          "name": "Desk 43",
-          "tabs": [
-            {
-              "id": "1f43b4a32d",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "2788427e2e",
-          "name": "Desk 44",
-          "tabs": [
-            {
-              "id": "278852612f",
-              "name": "Terminal 1"
-            }
-          ],
-          "active_tab": 0
-        },
-        {
-          "id": "2fc1221f30",
-          "name": "Desk 45",
-          "tabs": [
-            {
-              "id": "2fc1303631",
-              "name": "Terminal 1"
+              "name": "📊 dashboard"
             }
           ],
           "active_tab": 0
@@ -1417,8 +1142,8 @@
   ],
   "current_office": 0,
   "metadata": {
-    "name": "\u2728 Mato Creator Office",
-    "description": "45 desks, 250+ tabs (Mato builder setup)",
+    "name": "✨ Mato Creator Office",
+    "description": "20 desks, 248 tabs (Mato builder setup)",
     "details": "The exact office used by Mato creators and builders. Includes the full AI toolchain (Claude, Gemini, Codex, Copilot, Cursor, Aider, Continue, Cline, Windsurf, Bolt) plus engineering, ops, and business desks for high-context multi-project workflows."
   }
 }

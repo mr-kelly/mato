@@ -1,5 +1,5 @@
-pub mod paths;
 pub mod id;
+pub mod paths;
 
-pub use paths::*;
 pub use id::*;
+pub use paths::*;

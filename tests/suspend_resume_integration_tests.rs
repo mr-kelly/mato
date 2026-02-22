@@ -137,7 +137,10 @@ fn client_survives_suspend_and_resume_signals() {
     thread::sleep(Duration::from_millis(500));
 
     let still_alive = unsafe { libc::kill(pid, 0) == 0 };
-    assert!(still_alive, "client should still be alive after SIGTSTP/SIGCONT");
+    assert!(
+        still_alive,
+        "client should still be alive after SIGTSTP/SIGCONT"
+    );
 
     unsafe {
         libc::kill(pid, libc::SIGTERM);

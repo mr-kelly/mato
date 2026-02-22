@@ -1,37 +1,37 @@
+use crate::client::persistence::SavedState;
+use crate::protocol::{ClientMsg, ServerMsg};
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, BufRead, BufReader, Write};
 use std::process::Command;
 use std::time::SystemTime;
-use crate::client::persistence::SavedState;
-use crate::protocol::{ClientMsg, ServerMsg};
 
 pub fn show_status() -> io::Result<()> {
     use std::os::unix::net::UnixStream;
-    
+
     let socket_path = crate::utils::get_socket_path();
     let log_path = crate::utils::get_log_path();
     let pid_path = crate::utils::get_pid_path();
     let state_path = crate::utils::get_state_file_path();
     let config_path = crate::utils::get_config_file_path();
-    
+
     let mut process_status: Option<Vec<(String, u32)>> = None;
     let mut daemon_pid: Option<u32> = None;
 
     println!("Mato Status");
     println!("═══════════════════════════════════════════════════════");
-    
+
     // Daemon status
     match UnixStream::connect(&socket_path) {
         Ok(mut stream) => {
             println!("✅ Daemon:        Running");
-            
+
             // Show PID
             if let Some(pid) = super::PidFile::read(&pid_path) {
                 daemon_pid = Some(pid);
                 println!("   PID:           {}", pid);
             }
-            
+
             // Show uptime
             if let Ok(metadata) = fs::metadata(&socket_path) {
                 if let Ok(created) = metadata.modified() {
@@ -48,7 +48,7 @@ pub fn show_status() -> io::Result<()> {
                     }
                 }
             }
-            
+
             println!("   Socket:        {}", socket_path.display());
             process_status = query_process_status(&mut stream).ok();
         }
@@ -59,7 +59,7 @@ pub fn show_status() -> io::Result<()> {
             }
         }
     }
-    
+
     println!();
 
     if let Some(pid) = daemon_pid {
@@ -70,14 +70,14 @@ pub fn show_status() -> io::Result<()> {
             println!();
         }
     }
-    
+
     let mut tab_names: HashMap<String, String> = HashMap::new();
 
     // Workspace status
     let mut state_opt: Option<SavedState> = None;
     if state_path.exists() {
         println!("📁 Workspace:     Configured");
-        
+
         // Parse state file to show office/desk/tab counts
         if let Ok(content) = fs::read_to_string(&state_path) {
             if let Ok(state) = serde_json::from_str::<SavedState>(&content) {
@@ -86,38 +86,40 @@ pub fn show_status() -> io::Result<()> {
         }
 
         if let Some(state) = state_opt.as_ref() {
-                tab_names = tab_name_map(state);
-                let office_count = state.offices.len();
-                let desk_count: usize = state.offices.iter().map(|o| o.desks.len()).sum();
-                let total_tabs: usize = state.offices.iter()
-                    .flat_map(|o| o.desks.iter())
-                    .map(|d| d.tabs.len())
-                    .sum();
+            tab_names = tab_name_map(state);
+            let office_count = state.offices.len();
+            let desk_count: usize = state.offices.iter().map(|o| o.desks.len()).sum();
+            let total_tabs: usize = state
+                .offices
+                .iter()
+                .flat_map(|o| o.desks.iter())
+                .map(|d| d.tabs.len())
+                .sum();
 
-                println!("   Offices:       {}", office_count);
-                println!("   Desks:         {}", desk_count);
-                println!("   Total Tabs:    {}", total_tabs);
-                match process_status.as_ref() {
-                    Some(tabs) => {
-                        println!("   Running TTYs:  {}/{}", tabs.len(), total_tabs);
-                    }
-                    None if daemon_pid.is_some() => println!("   Running TTYs:  unavailable"),
-                    None => {}
+            println!("   Offices:       {}", office_count);
+            println!("   Desks:         {}", desk_count);
+            println!("   Total Tabs:    {}", total_tabs);
+            match process_status.as_ref() {
+                Some(tabs) => {
+                    println!("   Running TTYs:  {}/{}", tabs.len(), total_tabs);
                 }
+                None if daemon_pid.is_some() => println!("   Running TTYs:  unavailable"),
+                None => {}
+            }
 
-                if let Some(active_office) = state.offices.get(state.current_office) {
-                    println!("   Active Office: {}", active_office.name);
-                    if let Some(active_desk) = active_office.desks.get(active_office.active_desk) {
-                        println!("   Active Desk:   {}", active_desk.name);
-                    }
+            if let Some(active_office) = state.offices.get(state.current_office) {
+                println!("   Active Office: {}", active_office.name);
+                if let Some(active_desk) = active_office.desks.get(active_office.active_desk) {
+                    println!("   Active Desk:   {}", active_desk.name);
                 }
+            }
         }
-        
+
         println!("   State:         {}", state_path.display());
     } else {
         println!("📁 Workspace:     Not configured (first run)");
     }
-    
+
     println!();
 
     if let Some(proc_tabs) = process_status.as_ref() {
@@ -131,7 +133,10 @@ pub fn show_status() -> io::Result<()> {
             if let Some((cpu, rss_kb)) = usage.get(pid).copied() {
                 total_cpu += cpu;
                 total_rss_kb += rss_kb;
-                let label = tab_names.get(tab_id).cloned().unwrap_or_else(|| tab_id.clone());
+                let label = tab_names
+                    .get(tab_id)
+                    .cloned()
+                    .unwrap_or_else(|| tab_id.clone());
                 details.push((label, *pid, cpu, rss_kb));
             }
         }
@@ -142,18 +147,24 @@ pub fn show_status() -> io::Result<()> {
         println!("   Total CPU:     {:.1}%", total_cpu);
         println!("   Total Memory:  {}", format_size(total_rss_kb * 1024));
         for (label, pid, cpu, rss_kb) in details.into_iter().take(5) {
-            println!("   - {} (pid {}, cpu {:.1}%, mem {})", label, pid, cpu, format_size(rss_kb * 1024));
+            println!(
+                "   - {} (pid {}, cpu {:.1}%, mem {})",
+                label,
+                pid,
+                cpu,
+                format_size(rss_kb * 1024)
+            );
         }
         if proc_tabs.len() > 5 {
             println!("   ... and {} more", proc_tabs.len() - 5);
         }
         println!();
     }
-    
+
     // Configuration
     if config_path.exists() {
         println!("⚙️  Config:        {}", config_path.display());
-        
+
         // Show emulator setting
         if let Ok(content) = fs::read_to_string(&config_path) {
             if let Ok(config) = toml::from_str::<toml::Value>(&content) {
@@ -165,9 +176,9 @@ pub fn show_status() -> io::Result<()> {
     } else {
         println!("⚙️  Config:        Using defaults (vte)");
     }
-    
+
     println!();
-    
+
     // Logs
     println!("📝 Logs:");
     if log_path.exists() {
@@ -176,9 +187,9 @@ pub fn show_status() -> io::Result<()> {
             println!("   Daemon:        {} ({})", log_path.display(), size);
         }
     }
-    
+
     println!("═══════════════════════════════════════════════════════");
-    
+
     Ok(())
 }
 
@@ -192,7 +203,9 @@ fn format_size(bytes: u64) -> String {
     }
 }
 
-fn query_process_status(stream: &mut std::os::unix::net::UnixStream) -> io::Result<Vec<(String, u32)>> {
+fn query_process_status(
+    stream: &mut std::os::unix::net::UnixStream,
+) -> io::Result<Vec<(String, u32)>> {
     let msg = serde_json::to_vec(&ClientMsg::GetProcessStatus)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
     stream.write_all(&msg)?;
@@ -203,7 +216,10 @@ fn query_process_status(stream: &mut std::os::unix::net::UnixStream) -> io::Resu
     let mut line = String::new();
     reader.read_line(&mut line)?;
     if line.trim().is_empty() {
-        return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "empty daemon response"));
+        return Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "empty daemon response",
+        ));
     }
 
     match serde_json::from_str::<ServerMsg>(line.trim_end())
@@ -211,7 +227,10 @@ fn query_process_status(stream: &mut std::os::unix::net::UnixStream) -> io::Resu
     {
         ServerMsg::ProcessStatus { tabs } => Ok(tabs),
         ServerMsg::Error { message } => Err(io::Error::other(message)),
-        _ => Err(io::Error::new(io::ErrorKind::InvalidData, "unexpected daemon response")),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "unexpected daemon response",
+        )),
     }
 }
 
@@ -251,7 +270,11 @@ fn query_process_usage_map(pids: &[u32]) -> HashMap<u32, (f64, u64)> {
         return HashMap::new();
     }
 
-    let pid_list = pids.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(",");
+    let pid_list = pids
+        .iter()
+        .map(|p| p.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
     let output = match Command::new("ps")
         .args(["-o", "pid=,%cpu=,rss=", "-p", &pid_list])
         .output()

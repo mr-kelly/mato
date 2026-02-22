@@ -1,21 +1,20 @@
 use std::io;
-use std::time::Duration;
 use std::path::Path;
+use std::time::Duration;
 
 pub fn run_daemon(foreground: bool) -> io::Result<()> {
     let socket_path = crate::utils::get_socket_path();
     let log_path = crate::utils::get_log_path();
     let lock_path = crate::utils::get_lock_path();
     let pid_path = crate::utils::get_pid_path();
-    
+
     // Acquire lock file BEFORE forking to prevent race conditions
-    let _lock = super::DaemonLock::acquire(lock_path)
-        .map_err(|e| {
-            eprintln!("Failed to acquire daemon lock: {}", e);
-            eprintln!("Is another daemon already running?");
-            e
-        })?;
-    
+    let _lock = super::DaemonLock::acquire(lock_path).map_err(|e| {
+        eprintln!("Failed to acquire daemon lock: {}", e);
+        eprintln!("Is another daemon already running?");
+        e
+    })?;
+
     if !foreground {
         // Fork to background
         unsafe {
@@ -34,15 +33,15 @@ pub fn run_daemon(foreground: bool) -> io::Result<()> {
             libc::setsid();
         }
     }
-    
+
     // Create PID file after fork (so it has the correct PID)
     let _pid_file = super::PidFile::create(pid_path)?;
-    
+
     let log_file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(&log_path)?;
-    
+
     // Log to file (background mode) or console + file (foreground mode)
     if foreground {
         use tracing_subscriber::fmt::writer::MakeWriterExt;
@@ -56,33 +55,35 @@ pub fn run_daemon(foreground: bool) -> io::Result<()> {
             .with_ansi(false)
             .init();
     }
-    
+
     tracing::info!("========== DAEMON STARTING ==========");
     tracing::info!("Socket: {}", socket_path.display());
     tracing::info!("Log: {}", log_path.display());
     tracing::info!("PID: {}", std::process::id());
-    tracing::info!("Start time: {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"));
-    
+    tracing::info!(
+        "Start time: {}",
+        chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
+    );
+
     let daemon = super::Daemon::new();
     let rt = tokio::runtime::Runtime::new()?;
-    rt.block_on(async {
-        daemon.run(&socket_path.to_string_lossy()).await
-    }).map_err(io::Error::other)
+    rt.block_on(async { daemon.run(&socket_path.to_string_lossy()).await })
+        .map_err(io::Error::other)
 }
 
 pub fn ensure_daemon_running() -> io::Result<()> {
     use std::os::unix::net::UnixStream;
-    
+
     let socket_path = crate::utils::get_socket_path();
-    
+
     // Try to connect
     if UnixStream::connect(&socket_path).is_ok() {
         return Ok(()); // Already running
     }
-    
+
     // Remove stale socket
     let _ = std::fs::remove_file(&socket_path);
-    
+
     // Spawn daemon
     std::process::Command::new(std::env::current_exe()?)
         .arg("--daemon")
@@ -90,7 +91,7 @@ pub fn ensure_daemon_running() -> io::Result<()> {
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .spawn()?;
-    
+
     // Wait for daemon to be ready
     for _ in 0..20 {
         std::thread::sleep(Duration::from_millis(50));
@@ -98,8 +99,11 @@ pub fn ensure_daemon_running() -> io::Result<()> {
             return Ok(());
         }
     }
-    
-    Err(io::Error::new(io::ErrorKind::TimedOut, "Daemon failed to start"))
+
+    Err(io::Error::new(
+        io::ErrorKind::TimedOut,
+        "Daemon failed to start",
+    ))
 }
 
 pub fn kill_all() -> io::Result<()> {
@@ -182,14 +186,20 @@ fn kill_client_processes(exe: &Path, self_pid: u32, daemon_pid: Option<u32>) -> 
 
     for entry in entries.flatten() {
         let name = entry.file_name();
-        let Some(pid_str) = name.to_str() else { continue };
-        let Ok(pid) = pid_str.parse::<u32>() else { continue };
+        let Some(pid_str) = name.to_str() else {
+            continue;
+        };
+        let Ok(pid) = pid_str.parse::<u32>() else {
+            continue;
+        };
         if pid == self_pid || daemon_pid == Some(pid) {
             continue;
         }
 
         let proc_exe = entry.path().join("exe");
-        let Ok(link) = std::fs::read_link(proc_exe) else { continue };
+        let Ok(link) = std::fs::read_link(proc_exe) else {
+            continue;
+        };
         if !same_executable(exe, &link) {
             continue;
         }
@@ -252,18 +262,28 @@ fn collect_descendants(root_pid: u32) -> Vec<u32> {
     let mut children: HashMap<u32, Vec<u32>> = HashMap::new();
     for entry in entries.flatten() {
         let name = entry.file_name();
-        let Some(pid_str) = name.to_str() else { continue };
-        let Ok(pid) = pid_str.parse::<u32>() else { continue };
+        let Some(pid_str) = name.to_str() else {
+            continue;
+        };
+        let Ok(pid) = pid_str.parse::<u32>() else {
+            continue;
+        };
         let stat_path = entry.path().join("stat");
-        let Ok(stat) = std::fs::read_to_string(stat_path) else { continue };
+        let Ok(stat) = std::fs::read_to_string(stat_path) else {
+            continue;
+        };
         // /proc/<pid>/stat: field 4 is ppid; comm can contain spaces in parentheses.
-        let Some(end_comm) = stat.rfind(')') else { continue };
+        let Some(end_comm) = stat.rfind(')') else {
+            continue;
+        };
         let tail = &stat[end_comm + 1..];
         let parts: Vec<&str> = tail.split_whitespace().collect();
         if parts.len() < 3 {
             continue;
         }
-        let Ok(ppid) = parts[1].parse::<u32>() else { continue };
+        let Ok(ppid) = parts[1].parse::<u32>() else {
+            continue;
+        };
         children.entry(ppid).or_default().push(pid);
     }
 

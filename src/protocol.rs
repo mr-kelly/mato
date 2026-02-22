@@ -1,32 +1,75 @@
-use serde::{Deserialize, Serialize};
 use crate::terminal_provider::ScreenContent;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ClientMsg {
-    Hello { version: String },
-    Spawn { tab_id: String, rows: u16, cols: u16 },
-    Input { tab_id: String, data: Vec<u8> },
-    Paste { tab_id: String, data: String },
-    GetInputModes { tab_id: String },
-    Resize { tab_id: String, rows: u16, cols: u16 },
-    GetScreen { tab_id: String, rows: u16, cols: u16 },
+    Hello {
+        version: String,
+    },
+    Spawn {
+        tab_id: String,
+        rows: u16,
+        cols: u16,
+    },
+    Input {
+        tab_id: String,
+        data: Vec<u8>,
+    },
+    Paste {
+        tab_id: String,
+        data: String,
+    },
+    GetInputModes {
+        tab_id: String,
+    },
+    Resize {
+        tab_id: String,
+        rows: u16,
+        cols: u16,
+    },
+    GetScreen {
+        tab_id: String,
+        rows: u16,
+        cols: u16,
+    },
     GetIdleStatus,
     GetProcessStatus,
     GetUpdateStatus,
-    ClosePty { tab_id: String },
-    Scroll { tab_id: String, delta: i32 },
+    ClosePty {
+        tab_id: String,
+    },
+    Scroll {
+        tab_id: String,
+        delta: i32,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerMsg {
-    Welcome { version: String },
-    Screen { tab_id: String, content: ScreenContent },
-    Error { message: String },
+    Welcome {
+        version: String,
+    },
+    Screen {
+        tab_id: String,
+        content: ScreenContent,
+    },
+    Error {
+        message: String,
+    },
     /// tab_id -> idle seconds
-    IdleStatus { tabs: Vec<(String, u64)> },
+    IdleStatus {
+        tabs: Vec<(String, u64)>,
+    },
     /// tab_id -> child pid for each running PTY-backed tab
-    ProcessStatus { tabs: Vec<(String, u32)> },
+    ProcessStatus {
+        tabs: Vec<(String, u32)>,
+    },
     /// None = up to date or check failed; Some(ver) = update available
-    UpdateStatus { latest: Option<String> },
-    InputModes { mouse: bool, bracketed_paste: bool },
+    UpdateStatus {
+        latest: Option<String>,
+    },
+    InputModes {
+        mouse: bool,
+        bracketed_paste: bool,
+    },
 }

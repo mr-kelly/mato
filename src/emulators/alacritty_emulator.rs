@@ -1,15 +1,15 @@
-use std::sync::{Arc, Mutex};
-use alacritty_terminal::Term;
 use alacritty_terminal::event::{Event, EventListener};
 use alacritty_terminal::grid::Dimensions;
 use alacritty_terminal::grid::Scroll;
-use alacritty_terminal::term::Config;
-use alacritty_terminal::vte::ansi::{Processor, CursorShape as AlacrittyCursorShape};
 use alacritty_terminal::index::{Column, Line};
+use alacritty_terminal::term::Config;
+use alacritty_terminal::vte::ansi::{CursorShape as AlacrittyCursorShape, Processor};
+use alacritty_terminal::Term;
 use ratatui::style::Color;
+use std::sync::{Arc, Mutex};
 
 use crate::terminal_emulator::TerminalEmulator;
-use crate::terminal_provider::{ScreenContent, ScreenLine, ScreenCell, CursorShape};
+use crate::terminal_provider::{CursorShape, ScreenCell, ScreenContent, ScreenLine};
 
 #[derive(Clone)]
 struct TitleCapture(Arc<Mutex<Option<String>>>);
@@ -28,9 +28,15 @@ struct TermSize {
 }
 
 impl Dimensions for TermSize {
-    fn columns(&self) -> usize { self.cols }
-    fn screen_lines(&self) -> usize { self.lines }
-    fn total_lines(&self) -> usize { self.lines }
+    fn columns(&self) -> usize {
+        self.cols
+    }
+    fn screen_lines(&self) -> usize {
+        self.lines
+    }
+    fn total_lines(&self) -> usize {
+        self.lines
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -54,8 +60,14 @@ impl AlacrittyEmulator {
     pub fn new(rows: u16, cols: u16) -> Self {
         let title = Arc::new(Mutex::new(None));
         let listener = TitleCapture(Arc::clone(&title));
-        let size = TermSize { cols: cols as usize, lines: rows as usize };
-        let config = Config { scrolling_history: 10000, ..Config::default() };
+        let size = TermSize {
+            cols: cols as usize,
+            lines: rows as usize,
+        };
+        let config = Config {
+            scrolling_history: 10000,
+            ..Config::default()
+        };
         let term = Term::new(config, &size, listener);
         let theme = crate::theme::load();
         Self {
@@ -66,7 +78,11 @@ impl AlacrittyEmulator {
             bracketed_paste: false,
             mouse_mode: false,
             mode_tail: Vec::new(),
-            theme_palette: if theme.follow_terminal { None } else { Some(palette_from_theme(&theme)) },
+            theme_palette: if theme.follow_terminal {
+                None
+            } else {
+                Some(palette_from_theme(&theme))
+            },
         }
     }
 
@@ -89,15 +105,27 @@ impl AlacrittyEmulator {
         if merged.windows(DISABLE.len()).any(|w| w == DISABLE) {
             self.bracketed_paste = false;
         }
-        if merged.windows(MOUSE_ENABLE_1000.len()).any(|w| w == MOUSE_ENABLE_1000)
-            || merged.windows(MOUSE_ENABLE_1002.len()).any(|w| w == MOUSE_ENABLE_1002)
-            || merged.windows(MOUSE_ENABLE_1003.len()).any(|w| w == MOUSE_ENABLE_1003)
+        if merged
+            .windows(MOUSE_ENABLE_1000.len())
+            .any(|w| w == MOUSE_ENABLE_1000)
+            || merged
+                .windows(MOUSE_ENABLE_1002.len())
+                .any(|w| w == MOUSE_ENABLE_1002)
+            || merged
+                .windows(MOUSE_ENABLE_1003.len())
+                .any(|w| w == MOUSE_ENABLE_1003)
         {
             self.mouse_mode = true;
         }
-        if merged.windows(MOUSE_DISABLE_1000.len()).any(|w| w == MOUSE_DISABLE_1000)
-            || merged.windows(MOUSE_DISABLE_1002.len()).any(|w| w == MOUSE_DISABLE_1002)
-            || merged.windows(MOUSE_DISABLE_1003.len()).any(|w| w == MOUSE_DISABLE_1003)
+        if merged
+            .windows(MOUSE_DISABLE_1000.len())
+            .any(|w| w == MOUSE_DISABLE_1000)
+            || merged
+                .windows(MOUSE_DISABLE_1002.len())
+                .any(|w| w == MOUSE_DISABLE_1002)
+            || merged
+                .windows(MOUSE_DISABLE_1003.len())
+                .any(|w| w == MOUSE_DISABLE_1003)
         {
             self.mouse_mode = false;
         }
@@ -156,15 +184,26 @@ impl TerminalEmulator for AlacrittyEmulator {
                     ch: cell.c,
                     fg: self.ansi_color_to_ratatui(cell.fg),
                     bg: self.ansi_color_to_ratatui(cell.bg),
-                    bold: cell.flags.contains(alacritty_terminal::term::cell::Flags::BOLD),
-                    italic: cell.flags.contains(alacritty_terminal::term::cell::Flags::ITALIC),
-                    underline: cell.flags.contains(alacritty_terminal::term::cell::Flags::UNDERLINE),
+                    bold: cell
+                        .flags
+                        .contains(alacritty_terminal::term::cell::Flags::BOLD),
+                    italic: cell
+                        .flags
+                        .contains(alacritty_terminal::term::cell::Flags::ITALIC),
+                    underline: cell
+                        .flags
+                        .contains(alacritty_terminal::term::cell::Flags::UNDERLINE),
                 });
             }
             lines.push(ScreenLine { cells });
         }
 
-        ScreenContent { lines, cursor: (cursor.line.0 as u16, cursor.column.0 as u16), title, cursor_shape }
+        ScreenContent {
+            lines,
+            cursor: (cursor.line.0 as u16, cursor.column.0 as u16),
+            title,
+            cursor_shape,
+        }
     }
 
     fn resize(&mut self, _rows: u16, _cols: u16) {

@@ -10,7 +10,7 @@ fn test_protocol_serialization() {
     };
     let json = serde_json::to_string(&msg).unwrap();
     let deserialized: ClientMsg = serde_json::from_str(&json).unwrap();
-    
+
     match deserialized {
         ClientMsg::Spawn { tab_id, rows, cols } => {
             assert_eq!(tab_id, "test123");
@@ -28,7 +28,7 @@ fn test_server_msg_serialization() {
     };
     let json = serde_json::to_string(&msg).unwrap();
     let deserialized: ServerMsg = serde_json::from_str(&json).unwrap();
-    
+
     match deserialized {
         ServerMsg::Welcome { version } => {
             assert_eq!(version, "0.1.0");
@@ -75,7 +75,7 @@ fn test_resize_msg() {
     };
     let json = serde_json::to_string(&msg).unwrap();
     let deserialized: ClientMsg = serde_json::from_str(&json).unwrap();
-    
+
     match deserialized {
         ClientMsg::Resize { rows, cols, .. } => {
             assert_eq!(rows, 30);
@@ -109,7 +109,10 @@ fn test_input_modes_server_msg() {
     let deserialized: ServerMsg = serde_json::from_str(&json).unwrap();
 
     match deserialized {
-        ServerMsg::InputModes { mouse, bracketed_paste } => {
+        ServerMsg::InputModes {
+            mouse,
+            bracketed_paste,
+        } => {
             assert!(mouse);
             assert!(!bracketed_paste);
         }

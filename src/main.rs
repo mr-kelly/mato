@@ -1,18 +1,18 @@
 mod client;
-mod terminal_provider;
-mod terminal_emulator;
-mod protocol;
-mod daemon;
-mod providers;
-mod emulators;
 mod config;
-mod utils;
+mod daemon;
+mod emulators;
 mod error;
-mod theme;
+mod protocol;
+mod providers;
 mod terminal;
+mod terminal_emulator;
+mod terminal_provider;
+mod theme;
+mod utils;
 
-use std::time::Duration;
 use error::{MatoError, Result};
+use std::time::Duration;
 
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, MouseButton, MouseEventKind},
@@ -21,10 +21,10 @@ use crossterm::{
 };
 use ratatui::{backend::CrosstermBackend, layout::Rect, Terminal};
 
-use client::{App, save_state};
-use client::ui::draw;
+use client::app::{Desk, Focus, Office, TabEntry};
 use client::input::handle_key;
-use client::app::{Focus, Office, Desk, TabEntry};
+use client::ui::draw;
+use client::{save_state, App};
 use terminal::{consume_resumed, TerminalGuard};
 
 fn main() -> Result<()> {
@@ -62,9 +62,12 @@ fn main() -> Result<()> {
         std::process::exit(2);
     }
 
-    let mode_count = (want_version as u8) + (want_daemon as u8) + (want_status as u8) + (want_kill as u8);
+    let mode_count =
+        (want_version as u8) + (want_daemon as u8) + (want_status as u8) + (want_kill as u8);
     if mode_count > 1 {
-        eprintln!("Conflicting command flags. Use only one of: --version, --daemon, --status, --kill");
+        eprintln!(
+            "Conflicting command flags. Use only one of: --version, --daemon, --status, --kill"
+        );
         eprintln!();
         print_help();
         std::process::exit(2);
@@ -149,12 +152,17 @@ fn print_help() {
 
 fn run_client() -> Result<()> {
     let _terminal_guard = TerminalGuard::new();
-    
+
     enable_raw_mode()?;
     let mut stdout = std::io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture, crossterm::event::EnableBracketedPaste)?;
+    execute!(
+        stdout,
+        EnterAlternateScreen,
+        EnableMouseCapture,
+        crossterm::event::EnableBracketedPaste
+    )?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
-    terminal.show_cursor()?;  // Show cursor at startup
+    terminal.show_cursor()?; // Show cursor at startup
 
     let mut app = App::new();
     terminal.draw(|f| draw(f, &mut app))?;
@@ -165,33 +173,38 @@ fn run_client() -> Result<()> {
         if consume_resumed() {
             // Reinitialize terminal after resume
             enable_raw_mode()?;
-            execute!(terminal.backend_mut(), EnterAlternateScreen, EnableMouseCapture, crossterm::event::EnableBracketedPaste)?;
+            execute!(
+                terminal.backend_mut(),
+                EnterAlternateScreen,
+                EnableMouseCapture,
+                crossterm::event::EnableBracketedPaste
+            )?;
             terminal.clear()?;
             app.last_cursor_shape = None;
         }
-        
+
         // Update active status and spinner animation
         app.refresh_active_status();
         app.refresh_update_status();
         app.update_spinner();
         app.sync_tab_titles();
         app.sync_focus_events();
-        
+
         terminal.draw(|f| draw(f, &mut app))?;
         if let Some(elapsed) = app.finish_tab_switch_measurement() {
             tracing::info!("Tab switch first-frame latency: {}ms", elapsed.as_millis());
         }
-        
+
         // Apply pending resize after user stops resizing
         app.apply_pending_resize();
-        
+
         // Poll at ~12fps for smooth animation (80ms spinner frame + some overhead)
         let timeout = if app.has_active_tabs() || matches!(app.focus, client::app::Focus::Content) {
-            Duration::from_millis(80)  // Fast polling when active
+            Duration::from_millis(80) // Fast polling when active
         } else {
-            Duration::from_millis(200)  // Slower when idle
+            Duration::from_millis(200) // Slower when idle
         };
-        
+
         if event::poll(timeout)? {
             match event::read()? {
                 Event::Key(key) => {
@@ -218,22 +231,40 @@ fn run_client() -> Result<()> {
                 _ => {}
             }
         }
-        
+
         if app.should_show_onboarding {
             app.should_show_onboarding = false;
             disable_raw_mode()?;
-            execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture, crossterm::event::DisableBracketedPaste)?;
-            
+            execute!(
+                terminal.backend_mut(),
+                LeaveAlternateScreen,
+                DisableMouseCapture,
+                crossterm::event::DisableBracketedPaste
+            )?;
+
             if let Some(state) = client::show_onboarding_tui()? {
                 let new_office_idx = app.offices.len();
                 let new_office = state.offices.into_iter().next().unwrap();
                 let office = Office {
                     id: new_office.id,
                     name: new_office.name,
-                    desks: new_office.desks.into_iter().map(|d| {
-                        let tabs = d.tabs.into_iter().map(|tb| TabEntry::with_id(tb.id, tb.name)).collect();
-                        Desk { id: d.id, name: d.name, tabs, active_tab: d.active_tab }
-                    }).collect(),
+                    desks: new_office
+                        .desks
+                        .into_iter()
+                        .map(|d| {
+                            let tabs = d
+                                .tabs
+                                .into_iter()
+                                .map(|tb| TabEntry::with_id(tb.id, tb.name))
+                                .collect();
+                            Desk {
+                                id: d.id,
+                                name: d.name,
+                                tabs,
+                                active_tab: d.active_tab,
+                            }
+                        })
+                        .collect(),
                     active_desk: new_office.active_desk,
                 };
                 app.offices.push(office);
@@ -242,16 +273,26 @@ fn run_client() -> Result<()> {
                     tracing::warn!("Failed to save state after onboarding: {}", e);
                 }
             }
-            
+
             enable_raw_mode()?;
-            execute!(terminal.backend_mut(), EnterAlternateScreen, EnableMouseCapture, crossterm::event::EnableBracketedPaste)?;
+            execute!(
+                terminal.backend_mut(),
+                EnterAlternateScreen,
+                EnableMouseCapture,
+                crossterm::event::EnableBracketedPaste
+            )?;
             terminal.clear()?;
             app.last_cursor_shape = None;
         }
     }
 
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture, crossterm::event::DisableBracketedPaste)?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture,
+        crossterm::event::DisableBracketedPaste
+    )?;
     terminal.show_cursor()?;
     Ok(())
 }
@@ -290,12 +331,12 @@ fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
             return;
         }
         let (btn, is_up) = match me.kind {
-            MouseEventKind::Down(MouseButton::Left)   => (0u8, false),
-            MouseEventKind::Down(MouseButton::Middle) => (1,   false),
-            MouseEventKind::Down(MouseButton::Right)  => (2,   false),
-            MouseEventKind::Up(_)                     => (3,   true),
-            MouseEventKind::Drag(MouseButton::Left)   => (32,  false),
-            MouseEventKind::Moved                     => (35,  false),
+            MouseEventKind::Down(MouseButton::Left) => (0u8, false),
+            MouseEventKind::Down(MouseButton::Middle) => (1, false),
+            MouseEventKind::Down(MouseButton::Right) => (2, false),
+            MouseEventKind::Up(_) => (3, true),
+            MouseEventKind::Drag(MouseButton::Left) => (32, false),
+            MouseEventKind::Moved => (35, false),
             _ => return,
         };
         let suffix = if is_up { 'm' } else { 'M' };
@@ -310,7 +351,9 @@ fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
             // Office selector
             if in_rect(col, row, app.new_desk_area) {
                 app.office_selector.active = true;
-                app.office_selector.list_state.select(Some(app.current_office));
+                app.office_selector
+                    .list_state
+                    .select(Some(app.current_office));
                 handled = true;
             }
 
@@ -319,8 +362,12 @@ fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
             if !handled && col >= a.x && col < a.x + a.width && row > a.y && row < a.y + a.height {
                 let idx = (row - a.y - 1) as usize;
                 if idx < app.offices[app.current_office].desks.len() {
-                    let is_double = app.last_click.as_ref()
-                        .map(|&(lc, lr, ref t)| lc == col && lr == row && t.elapsed().as_millis() < 400)
+                    let is_double = app
+                        .last_click
+                        .as_ref()
+                        .map(|&(lc, lr, ref t)| {
+                            lc == col && lr == row && t.elapsed().as_millis() < 400
+                        })
                         .unwrap_or(false);
                     app.list_state.select(Some(idx));
                     if is_double {
@@ -349,10 +396,16 @@ fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
                     for (i, ta) in tab_areas.iter().enumerate() {
                         if in_rect(col, row, *ta) {
                             let ti = app.selected();
-                            let is_double = app.last_click.as_ref()
-                                .map(|&(lc, lr, ref t)| lc == col && lr == row && t.elapsed().as_millis() < 400)
+                            let is_double = app
+                                .last_click
+                                .as_ref()
+                                .map(|&(lc, lr, ref t)| {
+                                    lc == col && lr == row && t.elapsed().as_millis() < 400
+                                })
                                 .unwrap_or(false);
-                            if is_double && app.offices[app.current_office].desks[ti].active_tab == i {
+                            if is_double
+                                && app.offices[app.current_office].desks[ti].active_tab == i
+                            {
                                 app.begin_rename_tab();
                             } else {
                                 app.offices[app.current_office].desks[ti].active_tab = i;
@@ -368,7 +421,8 @@ fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
 
             // Content area
             if !handled && in_rect(col, row, app.content_area) {
-                app.focus = Focus::Content; handled = true;
+                app.focus = Focus::Content;
+                handled = true;
             }
             if !handled && in_rect(col, row, app.sidebar_area) {
                 app.focus = Focus::Sidebar;
@@ -377,18 +431,25 @@ fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
             app.last_click = Some((col, row, std::time::Instant::now()));
         }
         MouseEventKind::ScrollUp => {
-            if in_rect(col, row, app.sidebar_area) { app.nav(-1); }
-            else if in_rect(col, row, app.topbar_area) {
+            if in_rect(col, row, app.sidebar_area) {
+                app.nav(-1);
+            } else if in_rect(col, row, app.topbar_area) {
                 app.tab_scroll = app.tab_scroll.saturating_sub(1);
             } else if in_rect(col, row, app.content_area) {
                 app.pty_scroll(3);
             }
         }
         MouseEventKind::ScrollDown => {
-            if in_rect(col, row, app.sidebar_area) { app.nav(1); }
-            else if in_rect(col, row, app.topbar_area) {
-                let max = app.offices[app.current_office].desks[app.selected()].tabs.len().saturating_sub(1);
-                if app.tab_scroll < max { app.tab_scroll += 1; }
+            if in_rect(col, row, app.sidebar_area) {
+                app.nav(1);
+            } else if in_rect(col, row, app.topbar_area) {
+                let max = app.offices[app.current_office].desks[app.selected()]
+                    .tabs
+                    .len()
+                    .saturating_sub(1);
+                if app.tab_scroll < max {
+                    app.tab_scroll += 1;
+                }
             } else if in_rect(col, row, app.content_area) {
                 app.pty_scroll(-3);
             }

@@ -73,9 +73,8 @@ fn install_signal_cleanup() {
         };
 
         SIGNAL_HOOK_ONCE.call_once(|| {
-            let mut signals =
-                Signals::new([SIGCONT, SIGTERM, SIGINT, SIGHUP, SIGQUIT, SIGTSTP])
-                    .expect("failed to register signal handlers");
+            let mut signals = Signals::new([SIGCONT, SIGTERM, SIGINT, SIGHUP, SIGQUIT, SIGTSTP])
+                .expect("failed to register signal handlers");
             std::thread::spawn(move || {
                 for signal in signals.forever() {
                     match signal {

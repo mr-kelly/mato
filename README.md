@@ -9,12 +9,15 @@
 
 English: MAH-toh /ˈmɑːtoʊ/, 普通话: 吗头（mǎ tóu）, 粤语: 嗎桃（maa1 tou4）, 한국어: 마토（ma-to）, 日本語: マト（mato）
 
-[![Rust](https://img.shields.io/badge/rust-2021-orange?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-stable-orange?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v0.2.0-64A0FF?style=for-the-badge)](https://github.com/mr-kelly/mato/releases)
+[![Version](https://img.shields.io/github/v/release/mr-kelly/mato?display_name=tag&style=for-the-badge)](https://github.com/mr-kelly/mato/releases/latest)
 [![Stars](https://img.shields.io/github/stars/mr-kelly/mato?style=for-the-badge&color=gold)](https://github.com/mr-kelly/mato/stargazers)
 
 [**Why Mato?**](#-the-vision) • [**Showcase**](#-showcase) • [**Quick Start**](#-get-started-in-60s) • [**Documentation**](#-pro-resources)
+
+<img src="docs/images/screenshot-0.png" alt="Mato Screenshot" width="900" style="border-radius: 12px; border: 1px solid #1C1C2A;">
+<p align="center"><i>Desk + tab workspace with jump mode and activity-aware terminal layout.</i></p>
 
 ---
 
@@ -57,7 +60,7 @@ Navigate like a pro. Hit `Esc` and use **EasyMotion-style jump labels** to telep
 
 ### 🍱 Office Templates
 Start with the perfect setup. Choose from 6 curated templates:
-- **Power User**: 250+ tabs for complex swarms.
+- **Mato Creator Office**: 20 desks / 248 tabs for complex swarms.
 - **Full-Stack**: Frontend, Backend, and DB in one view.
 - **Solo Dev**: Focused, minimalist productivity.
 
@@ -71,11 +74,6 @@ Start with the perfect setup. Choose from 6 curated templates:
 
 > [!TIP]
 > **Experience the Flow**: Watch how Mato's activity indicators eliminate the need for constant tab-switching during a complex multi-agent development session.
-
-<div align="center">
-  <img src="docs/demo.gif" alt="Mato Showcase" width="900" style="border-radius: 12px; border: 1px solid #1C1C2A;">
-  <p align="center"><i>Real-time activity indicators syncing across desks and tabs.</i></p>
-</div>
 
 ---
 

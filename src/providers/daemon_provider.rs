@@ -1,6 +1,6 @@
-use crate::terminal_provider::{TerminalProvider, ScreenContent};
 use crate::protocol::{ClientMsg, ServerMsg};
-use std::io::{Write, BufReader, BufRead};
+use crate::terminal_provider::{ScreenContent, TerminalProvider};
+use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream as StdUnixStream;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -17,7 +17,7 @@ struct ScreenCacheEntry {
 pub struct DaemonProvider {
     tab_id: String,
     socket_path: String,
-    current_size: (u16, u16),  // Track size to avoid unnecessary resizes
+    current_size: (u16, u16), // Track size to avoid unnecessary resizes
     screen_cache: Arc<Mutex<Option<ScreenCacheEntry>>>,
     screen_requested_size: Arc<Mutex<(u16, u16)>>,
     last_screen_request_at: Arc<Mutex<Instant>>,
@@ -42,7 +42,7 @@ impl DaemonProvider {
         Self {
             tab_id,
             socket_path,
-            current_size: (0, 0),  // Will be set on first spawn/resize
+            current_size: (0, 0), // Will be set on first spawn/resize
             screen_cache: Arc::new(Mutex::new(None)),
             screen_requested_size: Arc::new(Mutex::new((0, 0))),
             last_screen_request_at: Arc::new(Mutex::new(Instant::now())),
@@ -229,7 +229,7 @@ impl Drop for DaemonProvider {
 
 impl TerminalProvider for DaemonProvider {
     fn spawn(&mut self, rows: u16, cols: u16) {
-        self.current_size = (rows, cols);  // Track size
+        self.current_size = (rows, cols); // Track size
         if let Ok(mut s) = self.screen_requested_size.lock() {
             *s = (rows, cols);
         }
@@ -246,13 +246,13 @@ impl TerminalProvider for DaemonProvider {
         if self.current_size == (rows, cols) {
             return;
         }
-        
+
         self.current_size = (rows, cols);
         if let Ok(mut s) = self.screen_requested_size.lock() {
             *s = (rows, cols);
         }
         self.invalidate_screen_cache();
-        
+
         // Fire and forget - no response needed
         self.send_msg_no_response(ClientMsg::Resize {
             tab_id: self.tab_id.clone(),
@@ -289,7 +289,9 @@ impl TerminalProvider for DaemonProvider {
         match self.send_msg(ClientMsg::GetInputModes {
             tab_id: self.tab_id.clone(),
         }) {
-            Some(ServerMsg::InputModes { bracketed_paste, .. }) => bracketed_paste,
+            Some(ServerMsg::InputModes {
+                bracketed_paste, ..
+            }) => bracketed_paste,
             _ => false,
         }
     }
@@ -355,7 +357,7 @@ impl TerminalProvider for DaemonProvider {
                     }
                 }
                 ScreenContent::default()
-            },
+            }
         }
     }
 

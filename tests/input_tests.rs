@@ -1,9 +1,9 @@
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use mato::client::app::{App, Desk, Focus, JumpMode, RenameTarget, TabEntry};
+use mato::client::input::handle_key;
 /// Tests for handle_key input logic.
 /// Uses NullProvider + make_app helper (same pattern as app_tests).
 use mato::terminal_provider::{ScreenContent, TerminalProvider};
-use mato::client::app::{App, Focus, JumpMode, RenameTarget, TabEntry, Desk};
-use mato::client::input::handle_key;
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use std::sync::{Arc, Mutex};
 
 struct NullProvider;
@@ -11,7 +11,9 @@ impl TerminalProvider for NullProvider {
     fn spawn(&mut self, _: u16, _: u16) {}
     fn resize(&mut self, _: u16, _: u16) {}
     fn write(&mut self, _: &[u8]) {}
-    fn get_screen(&self, _: u16, _: u16) -> ScreenContent { ScreenContent::default() }
+    fn get_screen(&self, _: u16, _: u16) -> ScreenContent {
+        ScreenContent::default()
+    }
 }
 
 struct CaptureProvider {
@@ -23,15 +25,26 @@ impl TerminalProvider for CaptureProvider {
     fn write(&mut self, bytes: &[u8]) {
         self.sink.lock().unwrap().extend_from_slice(bytes);
     }
-    fn get_screen(&self, _: u16, _: u16) -> ScreenContent { ScreenContent::default() }
+    fn get_screen(&self, _: u16, _: u16) -> ScreenContent {
+        ScreenContent::default()
+    }
 }
 
 fn make_tab(name: &str) -> TabEntry {
-    TabEntry { id: mato::utils::new_id(), name: name.into(), provider: Box::new(NullProvider) }
+    TabEntry {
+        id: mato::utils::new_id(),
+        name: name.into(),
+        provider: Box::new(NullProvider),
+    }
 }
 
 fn make_task(name: &str) -> Desk {
-    Desk { id: mato::utils::new_id(), name: name.into(), tabs: vec![make_tab("T1")], active_tab: 0 }
+    Desk {
+        id: mato::utils::new_id(),
+        name: name.into(),
+        tabs: vec![make_tab("T1")],
+        active_tab: 0,
+    }
 }
 
 fn make_capture_app() -> (App, Arc<Mutex<Vec<u8>>>) {
@@ -41,7 +54,12 @@ fn make_capture_app() -> (App, Arc<Mutex<Vec<u8>>>) {
         name: "T1".into(),
         provider: Box::new(CaptureProvider { sink: sink.clone() }),
     };
-    let desk = Desk { id: mato::utils::new_id(), name: "Desk".into(), tabs: vec![tab], active_tab: 0 };
+    let desk = Desk {
+        id: mato::utils::new_id(),
+        name: "Desk".into(),
+        tabs: vec![tab],
+        active_tab: 0,
+    };
     let mut app = make_app(vec![desk]);
     app.focus = Focus::Content;
     (app, sink)
@@ -51,18 +69,31 @@ fn make_app(desks: Vec<Desk>) -> App {
     let mut app = App::new();
     app.current_office = 0;
     app.offices = vec![mato::client::app::Office {
-        id: "test".into(), name: "Test".into(), desks, active_desk: 0,
+        id: "test".into(),
+        name: "Test".into(),
+        desks,
+        active_desk: 0,
     }];
     app.list_state.select(Some(0));
     app
 }
 
 fn key(code: KeyCode) -> KeyEvent {
-    KeyEvent { code, modifiers: KeyModifiers::NONE, kind: KeyEventKind::Press, state: crossterm::event::KeyEventState::NONE }
+    KeyEvent {
+        code,
+        modifiers: KeyModifiers::NONE,
+        kind: KeyEventKind::Press,
+        state: crossterm::event::KeyEventState::NONE,
+    }
 }
 
 fn key_mod(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
-    KeyEvent { code, modifiers, kind: KeyEventKind::Press, state: crossterm::event::KeyEventState::NONE }
+    KeyEvent {
+        code,
+        modifiers,
+        kind: KeyEventKind::Press,
+        state: crossterm::event::KeyEventState::NONE,
+    }
 }
 
 // ── quit ──────────────────────────────────────────────────────────────────────

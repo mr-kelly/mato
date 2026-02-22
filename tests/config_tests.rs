@@ -11,10 +11,10 @@ fn test_config_serialization() {
     let config = Config {
         emulator: "vte".to_string(),
     };
-    
+
     let toml = toml::to_string(&config).unwrap();
     assert!(toml.contains("vte"));
-    
+
     let deserialized: Config = toml::from_str(&toml).unwrap();
     assert_eq!(deserialized.emulator, "vte");
 }

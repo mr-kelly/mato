@@ -3,9 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "next build",
-    "dev": "next dev",
-    "start": "next start",
+    "sync:release-assets": "bash -lc 'set -euo pipefail; mkdir -p public; VERSION=$(sed -n \"s/^version = \\\"\\(.*\\)\\\"/\\1/p\" ../Cargo.toml | head -n1); test -n \"$VERSION\"; printf \"%s\\n\" \"${MATO_VERSION:-$VERSION}\" > public/version.txt; cp ../install.sh public/install.sh'",
+    "build": "npm run sync:release-assets && next build",
+    "dev": "npm run sync:release-assets && next dev",
+    "start": "npm run sync:release-assets && next start",
     "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
     "postinstall": "fumadocs-mdx",
     "lint": "biome check",

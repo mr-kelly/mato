@@ -6,28 +6,28 @@ use std::io;
 pub enum MatoError {
     // IO errors
     Io(io::Error),
-    
+
     // Daemon errors
     DaemonNotRunning,
     DaemonAlreadyRunning,
     DaemonConnectionFailed(String),
-    
+
     // Lock errors
     LockAcquisitionFailed(String),
-    
+
     // Configuration errors
     ConfigLoadFailed(String),
     ConfigParseFailed(String),
-    
+
     // State errors
     StateLoadFailed(String),
     StateParseFailed(String),
     StateSaveFailed(String),
-    
+
     // Protocol errors
     ProtocolError(String),
     SerializationError(String),
-    
+
     // Terminal errors
     TerminalInitFailed(String),
     PtySpawnFailed(String),
@@ -37,7 +37,7 @@ impl fmt::Display for MatoError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             MatoError::Io(e) => write!(f, "IO error: {}", e),
-            
+
             MatoError::DaemonNotRunning => {
                 write!(f, "Daemon is not running. Start it with 'mato'")
             }
@@ -47,35 +47,47 @@ impl fmt::Display for MatoError {
             MatoError::DaemonConnectionFailed(msg) => {
                 write!(f, "Failed to connect to daemon: {}", msg)
             }
-            
+
             MatoError::LockAcquisitionFailed(msg) => {
-                write!(f, "Failed to acquire lock: {}. Another daemon may be starting", msg)
+                write!(
+                    f,
+                    "Failed to acquire lock: {}. Another daemon may be starting",
+                    msg
+                )
             }
-            
+
             MatoError::ConfigLoadFailed(msg) => {
                 write!(f, "Failed to load config: {}", msg)
             }
             MatoError::ConfigParseFailed(msg) => {
-                write!(f, "Failed to parse config: {}. Check your config.toml syntax", msg)
+                write!(
+                    f,
+                    "Failed to parse config: {}. Check your config.toml syntax",
+                    msg
+                )
             }
-            
+
             MatoError::StateLoadFailed(msg) => {
                 write!(f, "Failed to load state: {}", msg)
             }
             MatoError::StateParseFailed(msg) => {
-                write!(f, "Failed to parse state: {}. Your state.json may be corrupted", msg)
+                write!(
+                    f,
+                    "Failed to parse state: {}. Your state.json may be corrupted",
+                    msg
+                )
             }
             MatoError::StateSaveFailed(msg) => {
                 write!(f, "Failed to save state: {}", msg)
             }
-            
+
             MatoError::ProtocolError(msg) => {
                 write!(f, "Protocol error: {}", msg)
             }
             MatoError::SerializationError(msg) => {
                 write!(f, "Serialization error: {}", msg)
             }
-            
+
             MatoError::TerminalInitFailed(msg) => {
                 write!(f, "Failed to initialize terminal: {}", msg)
             }

@@ -6,9 +6,15 @@ pub trait TerminalProvider: Send {
     fn spawn(&mut self, rows: u16, cols: u16);
     fn resize(&mut self, rows: u16, cols: u16);
     fn write(&mut self, bytes: &[u8]);
-    fn paste(&mut self, text: &str) { self.write(text.as_bytes()); }
-    fn mouse_mode_enabled(&self) -> bool { false }
-    fn bracketed_paste_enabled(&self) -> bool { false }
+    fn paste(&mut self, text: &str) {
+        self.write(text.as_bytes());
+    }
+    fn mouse_mode_enabled(&self) -> bool {
+        false
+    }
+    fn bracketed_paste_enabled(&self) -> bool {
+        false
+    }
     fn get_screen(&self, rows: u16, cols: u16) -> ScreenContent;
     fn scroll(&mut self, _delta: i32) {}
 }
@@ -75,6 +81,11 @@ mod color_serde {
 
 impl Default for ScreenContent {
     fn default() -> Self {
-        Self { lines: vec![], cursor: (0, 0), title: None, cursor_shape: CursorShape::Block }
+        Self {
+            lines: vec![],
+            cursor: (0, 0),
+            title: None,
+            cursor_shape: CursorShape::Block,
+        }
     }
 }

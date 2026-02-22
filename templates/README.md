@@ -4,10 +4,10 @@ Pre-configured office templates for different use cases.
 
 ## Available Templates
 
-### 1. Power User (`power-user.json`) ⭐ RECOMMENDED
+### 1. Mato Creator Office (`power-user.json`) ⭐ RECOMMENDED
 **Best for**: Serious professionals managing complex workflows
 
-**Structure**: 45 desks with comprehensive coverage
+**Structure**: 20 desks with comprehensive coverage
 - 🚀 Project X (15 tabs) - Main development with all AI tools
 - 📱 Mobile App (13 tabs) - Mobile development
 - 🌐 Web Platform (13 tabs) - Web development
@@ -28,9 +28,7 @@ Pre-configured office templates for different use cases.
 - 🎯 Strategy (12 tabs) - Strategic planning
 - 🔬 Research2 (12 tabs) - Research
 - 💼 Business Ops (12 tabs) - Business operations
-- Plus 25 additional desks for expansion
-
-**Total**: 45 desks, 250+ tabs
+**Total**: 20 desks, 248 tabs
 
 **Features**:
 - All major AI coding assistants (Claude, Gemini, Codex, Copilot, Cursor, Aider, Continue, Cline, Windsurf, Bolt)
@@ -160,7 +158,7 @@ You'll see:
 Welcome to Mato! 🎉
 
 Choose a office template:
-1. Power User (45 desks, 250+ tabs) ⭐ RECOMMENDED
+1. Mato Creator Office (20 desks, 248 tabs) ⭐ RECOMMENDED
 2. Solo Developer (3 desks, 8 tabs)
 3. One-Person Company (4 desks, 13 tabs)
 4. Full-Stack Developer (4 desks, 11 tabs)
@@ -169,6 +167,10 @@ Choose a office template:
 
 Enter your choice (1-6):
 ```
+
+Language selection:
+- Use `←` / `→` in onboarding to switch language.
+- Supported languages: English, Simplified Chinese, Traditional Chinese, Japanese, Korean.
 
 ### Method 2: Manual Setup
 

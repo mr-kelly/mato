@@ -39,7 +39,9 @@ fn start_daemon(socket_path: &str) -> Arc<DashMap<String, Arc<Mutex<PtyProvider>
 
     for _ in 0..50 {
         std::thread::sleep(Duration::from_millis(20));
-        if UnixStream::connect(&path_wait).is_ok() { break; }
+        if UnixStream::connect(&path_wait).is_ok() {
+            break;
+        }
     }
     tabs
 }
@@ -61,7 +63,12 @@ fn send_recv(socket_path: &str, msg: &ClientMsg) -> ServerMsg {
 fn daemon_hello_returns_welcome() {
     let socket = "/tmp/mato_test_hello.sock";
     start_daemon(socket);
-    let resp = send_recv(socket, &ClientMsg::Hello { version: "test".into() });
+    let resp = send_recv(
+        socket,
+        &ClientMsg::Hello {
+            version: "test".into(),
+        },
+    );
     assert!(matches!(resp, ServerMsg::Welcome { .. }));
 }
 
@@ -69,7 +76,14 @@ fn daemon_hello_returns_welcome() {
 fn daemon_spawn_creates_tab() {
     let socket = "/tmp/mato_test_spawn.sock";
     let tabs = start_daemon(socket);
-    send_recv(socket, &ClientMsg::Spawn { tab_id: "tab-1".into(), rows: 24, cols: 80 });
+    send_recv(
+        socket,
+        &ClientMsg::Spawn {
+            tab_id: "tab-1".into(),
+            rows: 24,
+            cols: 80,
+        },
+    );
     std::thread::sleep(Duration::from_millis(100));
     assert!(tabs.contains_key("tab-1"));
 }
@@ -78,17 +92,42 @@ fn daemon_spawn_creates_tab() {
 fn daemon_get_screen_returns_screen() {
     let socket = "/tmp/mato_test_screen.sock";
     start_daemon(socket);
-    send_recv(socket, &ClientMsg::Spawn { tab_id: "tab-s".into(), rows: 24, cols: 80 });
+    send_recv(
+        socket,
+        &ClientMsg::Spawn {
+            tab_id: "tab-s".into(),
+            rows: 24,
+            cols: 80,
+        },
+    );
     std::thread::sleep(Duration::from_millis(100));
-    let resp = send_recv(socket, &ClientMsg::GetScreen { tab_id: "tab-s".into(), rows: 24, cols: 80 });
-    assert!(matches!(resp, ServerMsg::Screen { .. }), "expected Screen, got {:?}", resp);
+    let resp = send_recv(
+        socket,
+        &ClientMsg::GetScreen {
+            tab_id: "tab-s".into(),
+            rows: 24,
+            cols: 80,
+        },
+    );
+    assert!(
+        matches!(resp, ServerMsg::Screen { .. }),
+        "expected Screen, got {:?}",
+        resp
+    );
 }
 
 #[test]
 fn daemon_get_screen_unknown_tab_returns_error() {
     let socket = "/tmp/mato_test_err.sock";
     start_daemon(socket);
-    let resp = send_recv(socket, &ClientMsg::GetScreen { tab_id: "no-such-tab".into(), rows: 24, cols: 80 });
+    let resp = send_recv(
+        socket,
+        &ClientMsg::GetScreen {
+            tab_id: "no-such-tab".into(),
+            rows: 24,
+            cols: 80,
+        },
+    );
     assert!(matches!(resp, ServerMsg::Error { .. }));
 }
 
@@ -96,13 +135,24 @@ fn daemon_get_screen_unknown_tab_returns_error() {
 fn daemon_get_idle_status_includes_spawned_tab() {
     let socket = "/tmp/mato_test_idle.sock";
     start_daemon(socket);
-    send_recv(socket, &ClientMsg::Spawn { tab_id: "tab-idle".into(), rows: 24, cols: 80 });
+    send_recv(
+        socket,
+        &ClientMsg::Spawn {
+            tab_id: "tab-idle".into(),
+            rows: 24,
+            cols: 80,
+        },
+    );
     std::thread::sleep(Duration::from_millis(100));
     let resp = send_recv(socket, &ClientMsg::GetIdleStatus);
     match resp {
         ServerMsg::IdleStatus { tabs } => {
             let ids: Vec<&str> = tabs.iter().map(|(id, _)| id.as_str()).collect();
-            assert!(ids.contains(&"tab-idle"), "idle status should include spawned tab, got: {:?}", ids);
+            assert!(
+                ids.contains(&"tab-idle"),
+                "idle status should include spawned tab, got: {:?}",
+                ids
+            );
         }
         other => panic!("expected IdleStatus, got {:?}", other),
     }
@@ -113,7 +163,14 @@ fn daemon_spawn_twice_is_idempotent() {
     let socket = "/tmp/mato_test_idem.sock";
     let tabs = start_daemon(socket);
     for _ in 0..2 {
-        send_recv(socket, &ClientMsg::Spawn { tab_id: "tab-dup".into(), rows: 24, cols: 80 });
+        send_recv(
+            socket,
+            &ClientMsg::Spawn {
+                tab_id: "tab-dup".into(),
+                rows: 24,
+                cols: 80,
+            },
+        );
     }
     std::thread::sleep(Duration::from_millis(100));
     assert_eq!(tabs.iter().filter(|e| e.key() == "tab-dup").count(), 1);
