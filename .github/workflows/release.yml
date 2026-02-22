@@ -19,7 +19,6 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
       tag: ${{ steps.meta.outputs.tag }}
       prerelease: ${{ steps.meta.outputs.prerelease }}
-      should_release: ${{ steps.meta.outputs.should_release }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,31 +52,14 @@ jobs:
 
           TAG="v${VERSION}"
 
-          # For main branch this is required by policy; for develop this also prevents collisions.
-          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
-            echo "Tag already exists on origin: ${TAG}"
-            if [ "$BRANCH" = "main" ]; then
-              echo "Skipping main release for existing tag (non-fatal)."
-              echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
-              echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-              echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-              echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
-              echo "should_release=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            exit 1
-          fi
-
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
-          echo "should_release=true" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build ${{ matrix.target }}
     needs: prepare
-    if: needs.prepare.outputs.should_release == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -162,12 +144,23 @@ jobs:
   release:
     name: Tag and Create Release
     needs: [prepare, build]
-    if: needs.prepare.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Validate tag policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH="${{ needs.prepare.outputs.branch }}"
+          TAG="${{ needs.prepare.outputs.tag }}"
+          if [ "$BRANCH" = "main" ] && git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag already exists on origin: ${TAG}"
+            echo "Main branch release requires a new Cargo.toml version."
+            exit 1
+          fi
 
       - name: Create and push release tag
         shell: bash
@@ -235,7 +228,7 @@ jobs:
     name: Update Homebrew Tap Formula
     needs: [prepare, release]
     runs-on: ubuntu-latest
-    if: needs.prepare.outputs.should_release == 'true' && (needs.prepare.outputs.branch == 'main' || needs.prepare.outputs.branch == 'develop')
+    if: needs.prepare.outputs.branch == 'main' || needs.prepare.outputs.branch == 'develop'
     steps:
       - name: Validate required secret
         shell: bash
