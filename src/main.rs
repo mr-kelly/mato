@@ -28,25 +28,69 @@ use client::app::{Focus, Office, Desk, TabEntry};
 use terminal::{consume_resumed, TerminalGuard};
 
 fn main() -> Result<()> {
-    // Check for --version flag
-    if std::env::args().any(|a| a == "--version" || a == "-v") {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+
+    let mut want_help = false;
+    let mut want_version = false;
+    let mut want_daemon = false;
+    let mut want_foreground = false;
+    let mut want_status = false;
+    let mut want_kill = false;
+    let mut unknown: Vec<String> = Vec::new();
+
+    for arg in &args {
+        match arg.as_str() {
+            "--help" | "-h" | "help" => want_help = true,
+            "--version" | "-v" => want_version = true,
+            "--daemon" => want_daemon = true,
+            "--foreground" => want_foreground = true,
+            "--status" => want_status = true,
+            "--kill" => want_kill = true,
+            _ => unknown.push(arg.clone()),
+        }
+    }
+
+    if want_help {
+        print_help();
+        return Ok(());
+    }
+
+    if !unknown.is_empty() {
+        eprintln!("Unknown argument(s): {}", unknown.join(" "));
+        eprintln!();
+        print_help();
+        std::process::exit(2);
+    }
+
+    let mode_count = (want_version as u8) + (want_daemon as u8) + (want_status as u8) + (want_kill as u8);
+    if mode_count > 1 {
+        eprintln!("Conflicting command flags. Use only one of: --version, --daemon, --status, --kill");
+        eprintln!();
+        print_help();
+        std::process::exit(2);
+    }
+
+    if want_foreground && !want_daemon {
+        eprintln!("--foreground can only be used with --daemon");
+        eprintln!();
+        print_help();
+        std::process::exit(2);
+    }
+
+    if want_version {
         println!("mato {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
 
-    // Check for --daemon flag
-    if std::env::args().any(|a| a == "--daemon") {
-        let foreground = std::env::args().any(|a| a == "--foreground");
-        return daemon::run_daemon(foreground).map_err(MatoError::from);
+    if want_daemon {
+        return daemon::run_daemon(want_foreground).map_err(MatoError::from);
     }
 
-    // Check for --status flag
-    if std::env::args().any(|a| a == "--status") {
+    if want_status {
         return daemon::show_status().map_err(MatoError::from);
     }
 
-    // Check for --kill flag
-    if std::env::args().any(|a| a == "--kill") {
+    if want_kill {
         return daemon::kill_all().map_err(MatoError::from);
     }
 
@@ -84,6 +128,23 @@ fn main() -> Result<()> {
         eprintln!("Error: {}", e);
         e
     })
+}
+
+fn print_help() {
+    println!(
+        "mato {}\n\
+         Multi-Agent Terminal Office\n\n\
+         Usage:\n\
+           mato                    Start client UI (auto-start daemon if needed)\n\
+           mato --daemon           Run daemon in background mode\n\
+           mato --daemon --foreground\n\
+                                   Run daemon in foreground (debug)\n\
+           mato --status           Show daemon/runtime status\n\
+           mato --kill             Kill daemon, clients, and managed tab processes\n\
+           mato --version, -v      Show version\n\
+           mato --help, -h, help   Show this help\n",
+        env!("CARGO_PKG_VERSION")
+    );
 }
 
 fn run_client() -> Result<()> {
