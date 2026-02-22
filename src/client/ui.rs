@@ -106,8 +106,8 @@ fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
         // In Jump Mode, always show explicit focus targets as separate keys.
         match app.focus {
             Focus::Content => &[("a-z/A-Z", "Jump"), ("←", "Focus Sidebar"), ("↑", "Focus Tabbar"), ("q", "Quit"), ("Esc", "Cancel")],
-            Focus::Topbar => &[("a-z/A-Z", "Jump"), ("←", "Focus Sidebar"), ("↑", "Focus Tabbar"), ("q", "Quit"), ("Esc", "Cancel")],
-            Focus::Sidebar => &[("a-z/A-Z", "Jump"), ("←", "Focus Sidebar"), ("↑", "Focus Tabbar"), ("Esc", "Cancel")],
+            Focus::Topbar => &[("a-z/A-Z", "Jump"), ("←", "Focus Sidebar"), ("↓", "Focus Content"), ("q", "Quit"), ("Esc", "Cancel")],
+            Focus::Sidebar => &[("a-z/A-Z", "Jump"), ("→", "Focus Content"), ("↑", "Focus Tabbar"), ("Esc", "Cancel")],
         }
     } else {
         match app.focus {
@@ -480,9 +480,9 @@ fn draw_jump_mode(f: &mut Frame, app: &App, t: &ThemeColors) {
     
     // Help text varies by focus
     let help_line_3 = match app.focus {
-        Focus::Content => " ← ↑ to switch focus | q to quit | ESC to cancel ",
-        Focus::Topbar => " ← ↑ to switch focus | q to quit | ESC to cancel ",
-        Focus::Sidebar => " ← ↑ to switch focus | ESC to cancel ",
+        Focus::Content => " ← Sidebar | ↑ Tabbar | q quit | ESC cancel ",
+        Focus::Topbar => " ← Sidebar | ↓ Content | q quit | ESC cancel ",
+        Focus::Sidebar => " → Content | ↑ Tabbar | ESC cancel ",
     };
     
     f.render_widget(

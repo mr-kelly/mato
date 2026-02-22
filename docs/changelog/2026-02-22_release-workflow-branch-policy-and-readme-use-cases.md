@@ -146,3 +146,80 @@ Results:
 - Tests passed.
 - Clippy warnings reduced significantly; only structural naming warning remained (`module_inception`).
 
+---
+
+## 8) Homebrew Tap Setup and Verification
+
+### Goal
+- Enable installation via:
+  - `brew tap mr-kelly/tap`
+  - `brew install mato`
+
+### Actions taken
+- Created repository: `mr-kelly/homebrew-tap` (public).
+- Cloned to local path: `~/Documents/homebrew-tap`.
+- Added formula: `Formula/mato.rb` targeting release `v0.4.0-alpha.2` assets with per-platform SHA256.
+- Added tap README with install instructions.
+- Committed and pushed initial tap content to `main`.
+- Set default branch of `mr-kelly/homebrew-tap` to `main`.
+
+### Root cause of previous failure
+- `mr-kelly/tap` shorthand maps to `mr-kelly/homebrew-tap`.
+- That repository did not exist before setup, so `brew tap` failed.
+
+### Verification
+
+Executed:
+
+```bash
+brew tap mr-kelly/tap
+brew install mato
+```
+
+Observed result:
+- Tap cloned successfully.
+- Formula resolved as `mato (0.4.0-alpha.2)`.
+- Installation completed successfully.
+
+---
+
+## 9) Remove Local Formula Template from Main Repo
+
+### Change
+- Deleted local `Formula/` directory from `mato` repository.
+
+### Reason
+- Active Homebrew formula now lives in dedicated tap repo: `mr-kelly/homebrew-tap`.
+- Keeping a second formula copy in `mato` risks version drift and maintenance confusion.
+
+### Documentation update
+- Updated `docs/agents/RELEASE_GUIDE.md`:
+  - Removed `cp Formula/mato.rb` flow from main repo.
+  - Clarified that `Formula/mato.rb` should be updated directly in tap repo.
+
+---
+
+## 10) CI Automation: Update `homebrew-tap` Formula
+
+### Goal
+- Automatically update `mr-kelly/homebrew-tap/Formula/mato.rb` from release workflow.
+
+### Workflow changes
+- Added new job in `.github/workflows/release.yml`:
+  - `update_homebrew_tap`
+  - `needs: [prepare, release]`
+  - runs only for `main` branch releases
+
+### What the job does
+1. Validates secret `HOMEBREW_TAP_TOKEN` exists.
+2. Downloads `checksums.txt` from the just-created release tag.
+3. Resolves per-platform asset names and SHA256 values.
+4. Generates `Formula/mato.rb` content with:
+   - exact release URLs
+   - exact checksums
+   - stable formula version
+5. Clones `mr-kelly/homebrew-tap`, updates formula, commits, and pushes to `main`.
+
+### Why main-only
+- Keeps `brew install mato` stable.
+- Avoids promoting `develop` alpha prereleases into default formula.

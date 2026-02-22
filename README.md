@@ -1,651 +1,156 @@
 <div align="center">
 
+<img src="logo.svg" alt="Mato Logo" width="160">
+
 # Mato
 
-### 🏖️ Multi-Agent Terminal Office
+### 🏖️ The Multi-Agent Terminal Office
+**Elevate your terminal workflow with real-time activity intelligence.**
 
-**Monitor AI agents and tasks at a glance with real-time activity indicators**
+[![Rust](https://img.shields.io/badge/rust-2021-orange?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
+[![Version](https://img.shields.io/badge/version-v0.2.0-64A0FF?style=for-the-badge)](https://github.com/YOUR_USERNAME/mato/releases)
+[![Stars](https://img.shields.io/github/stars/YOUR_USERNAME/mato?style=for-the-badge&color=gold)](https://github.com/YOUR_USERNAME/mato/stargazers)
 
-[![Rust](https://img.shields.io/badge/rust-2021-orange?style=flat-square)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-8_passing-brightgreen?style=flat-square)](tests/)
+[**Why Mato?**](#-the-vision) • [**Showcase**](#-showcase) • [**Quick Start**](#-get-started-in-60s) • [**Documentation**](#-pro-resources)
 
-[Why Mato?](#-why-mato) • [Perfect For](#-perfect-for) • [Features](#-features) • [Quick Start](#-quick-start)
+---
+
+**Mato** is a high-performance terminal workspace designed for the era of AI agents. It transforms your CLI into a powerful "Office" where you can monitor parallel tasks, manage complex agent swarms, and maintain persistent sessions—all with zero keyboard conflicts and a beautiful, modern TUI.
 
 </div>
 
 ---
 
-<!-- Demo GIF - Shows activity indicators in action -->
-<div align="center">
-  <img src="docs/demo.gif" alt="Mato Activity Indicators Demo" width="800">
-  <p><em>Real-time spinners show which terminals are working - perfect for AI agents and parallel tasks</em></p>
-  <p><i>⚠️ GIF placeholder - Record demo showing spinner animation on active terminals</i></p>
-</div>
+## 👁️ The Vision: Visual Intelligence for CLI
+
+Traditional terminal multiplexers (tmux/screen) are "blind." You never know what's happening in another tab until you switch to it. **Mato changes that.**
+
+| **The Problem** | **The Mato Solution** |
+| :--- | :--- |
+| 🕵️ **Lost in Tabs** | **Real-time Activity Spinners** notify you exactly where the work is happening. |
+| ⌨️ **Shortcut Hell** | **Zero-Conflict Design**: Your shell belongs to you. Only `Esc` is special. |
+| 📉 **Task Anxiety** | **Visual Breadcrumbs**: Instant status of every background agent or build process. |
+| 🔌 **Session Loss** | **Daemon-First Architecture**: Your workspace lives even if the client dies. |
 
 ---
 
-## 🤔 Why Mato?
+## ✨ Premium Features
 
-### The Problem: Lost in Terminal Chaos
-
-When running multiple AI agents or long-running tasks:
-
-| Challenge | Impact |
-|-----------|--------|
-| ❌ **Which terminal is still working?** | Constantly switching tabs to check |
-| ❌ **Did my agent finish or hang?** | Wasting time on stuck processes |
-| ❌ **Is that tab idle or just slow?** | No visual feedback on progress |
-| ❌ **Keyboard conflicts with AI tools** | Claude Code, Cursor can't use Ctrl freely |
-
-### Mato's Solution: Visual Progress Control
-
-**See at a glance what's happening:**
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  Agent 1 ⠋    Agent 2    Agent 3 ⠴    Agent 4          │  ← Topbar
-├─────────────────────────────────────────────────────────┤
-│ ▶ Development ⠋  │                                      │
-│   Testing        │  $ npm run dev                       │
-│   Production ⠴   │  > Starting server...                │
-│   Data Pipeline  │  ⠋ Compiling...                      │
-└─────────────────────────────────────────────────────────┘
-     ↑ Sidebar shows which tasks have active terminals
-```
-
-**Key Benefits:**
-
-✅ **Real-time activity spinners** - Know exactly which terminals are busy  
-✅ **Perfect for AI agents** - Monitor Claude, Codex, Copilot simultaneously  
-✅ **Zero keyboard conflicts** - Only ONE special key (`Esc`)  
-✅ **At-a-glance status** - No more tab-switching to check progress
-
----
-
-## 🎯 Perfect For
-
-### 1) SSH + Cloud Host + Coding Agents
-
-**Problem:**
-- You run multiple coding agents on a remote server.
-- Your SSH client disconnects, laptop sleeps, or network drops.
-- In many setups, the interactive agent state is lost.
-
-**Why Mato:**
-- Mato runs with a background daemon, so sessions stay alive after disconnects.
-- Your workspace layout and tab state remain available when you reconnect.
-- You can return to the same "office" and continue without rebuilding context.
-
-### 2) Low-Spec Laptop, Heavy AI Workloads
-
-**Problem:**
-- Browser-based or GUI-heavy agent tools can overload your local machine.
-- Running many windows/tabs for multiple agents increases CPU/RAM pressure.
-
-**Why Mato:**
-- CLI-first workflow is much lighter than multiple GUI apps.
-- You can move heavy agent execution to a remote host and manage it from a thin client.
-- Better resource efficiency while keeping parallel workflows organized.
-
-### 3) One Screen, Many Agents, Real-Time Visibility
-
-**Problem:**
-- You need to track many agent terminals at once.
-- Constant tab switching makes it hard to know what is active, idle, or stuck.
-
-**Why Mato:**
-- Single-screen overview for desks + tabs.
-- Activity spinners show which terminals are currently producing output.
-- You get immediate visual status without leaving the current terminal.
-
----
-
-## ✨ Features
-
-<table>
+<table border="0">
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
-### 🎯 Activity Indicators
-- **Real-time spinners** show working terminals
-- Perfect for monitoring AI agents
-- At-a-glance progress tracking
-- Auto-adapts refresh rate (saves CPU)
+### 🎯 Live Activity Monitoring
+Never poll your terminals again. **Mato's signature spinners** appear in your sidebar and topbar the moment a process produces output. Perfect for tracking long-running builds or AI agents.
 
-### 🤖 AI-Agent Friendly
-- **Zero shortcut conflicts**
-- Claude Code, Cursor, Windsurf work perfectly
-- All shell shortcuts preserved
-- [Learn more →](docs/AI_AGENT_FRIENDLY.md)
-
-### 🎨 Beautiful Interface
-- Modern TUI with deep navy theme
-- Mouse support (click, scroll, double-click)
-- Visual feedback for all actions
-- Smooth animations
+### 🤖 AI-Agent Native
+Built specifically for tools like **Claude Code, Cursor, and Windsurf**. Mato preserves 100% of your shell's keyboard shortcuts, ensuring your agents operate without interference.
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
-### 🚀 Powerful Features
-- **Jump Mode** - EasyMotion-style navigation
-- **Daemon-based** - Sessions survive client restart
-- **Multi-client** - Share sessions across terminals
-- **6 Templates** - Power User, Solo Dev, Full-Stack, etc.
+### ⚡ Jump Mode (EasyMotion)
+Navigate like a pro. Hit `Esc` and use **EasyMotion-style jump labels** to teleport to any desk or tab instantly. No more repetitive arrow-key mashing.
 
-### 🔧 Developer Friendly
-- Hot reload config (SIGHUP)
-- Pluggable architecture
-- Comprehensive tests
-- Well-documented
-
-### ⚡ Performance
-- Adaptive polling (12.5 FPS active, 5 FPS idle)
-- Minimal CPU usage when idle
-- Efficient daemon architecture
+### 🍱 Office Templates
+Start with the perfect setup. Choose from 6 curated templates:
+- **Power User**: 250+ tabs for complex swarms.
+- **Full-Stack**: Frontend, Backend, and DB in one view.
+- **Solo Dev**: Focused, minimalist productivity.
 
 </td>
 </tr>
 </table>
 
-## 🆚 Comparison
+---
 
-| Feature | Traditional Multiplexers | Mato |
-|---------|-------------------------|------|
-| **Activity Indicators** | ❌ No visual feedback | ✅ Real-time spinners |
-| **Progress Monitoring** | ❌ Manual checking | ✅ At-a-glance status |
-| **Prefix Key** | Ctrl+B, Ctrl+A | ❌ None |
-| **Special Keys** | 20+ shortcuts | ✅ Just `Esc` |
-| **Shell Shortcuts** | ⚠️ Often conflicts | ✅ All preserved |
-| **AI Agent Friendly** | ⚠️ Ctrl conflicts | ✅ Zero interference |
-| **Learning Curve** | Steep | Gentle |
-| **Navigation** | Prefix + arrows | Visual jump |
+## 📽️ Showcase
 
-## 🚀 Quick Start
+> [!TIP]
+> **Experience the Flow**: Watch how Mato's activity indicators eliminate the need for constant tab-switching during a complex multi-agent development session.
 
-### Installation
+<div align="center">
+  <img src="docs/demo.gif" alt="Mato Showcase" width="900" style="border-radius: 12px; border: 1px solid #1C1C2A;">
+  <p align="center"><i>Real-time activity indicators syncing across desks and tabs.</i></p>
+</div>
 
+---
+
+## 🚀 Get Started in 60s
+
+### 1. Installation
 ```bash
-# From source
+# Clone and build with high-performance optimizations
 git clone https://github.com/YOUR_USERNAME/mato
 cd mato
 cargo build --release
+
+# Install to your path
 sudo mv target/release/mato /usr/local/bin/
 ```
 
-### First Run
-
+### 2. Launch your first Office
 ```bash
 mato
 ```
+Select a template (we recommend **Full-Stack** for your first run) and start coding.
 
-Choose from 6 workspace templates:
-- **Power User** - 45 tasks, 250+ tabs (AI tools, dev, ops)
-- **Solo Developer** - 3 tasks, 8 tabs (code, test, deploy)
-- **Full-Stack Developer** - 4 tasks, 11 tabs (frontend, backend, db)
-- **Data Scientist** - 4 tasks, 11 tabs (analysis, ML, viz)
-- **One-Person Company** - 4 tasks, 13 tabs (dev, marketing, ops)
-- **Minimal** - 1 task, 1 tab (start from scratch)
+### 3. Mastering the Flow
+*   **`Esc`**: Enter Jump Mode (Teleport anywhere)
+*   **`n`**: New Desk/Tab (Context-aware)
+*   **`r`**: Rename instantly
+*   **`Enter`**: Dive back into the terminal
 
-### Basic Usage
+---
 
-```bash
-# In terminal, press Esc to navigate
-Esc → a-z    # Jump to any task/tab
-Esc → ←/↑    # Switch focus areas
+## ⌨️ Shortcut Philosophy
 
-# That's all you need to know!
-```
+Mato follows the **"Rule of One"**: Only one key (`Esc`) is reserved by the system. Everything else belongs to your shell.
 
-## ⌨️ Keyboard Shortcuts
+| Key | Action | Context |
+| :--- | :--- | :--- |
+| **`Esc`** | **Jump / Teleport** | Global |
+| `n` | Create New | Sidebar/Topbar |
+| `x` | Close / Terminate | Sidebar/Topbar |
+| `r` | Rename | Sidebar/Topbar |
+| `o` | Office Selector | Sidebar |
+| `q` | Soft Quit | Sidebar |
 
-### Essential (You Only Need These)
+---
 
-| Key | Action | Description |
-|-----|--------|-------------|
-| `Esc` | Jump Mode | Navigate anywhere |
-| `a-z` | Jump | In Jump Mode → instant jump |
-| `n` | New | New task (sidebar) / tab (topbar) |
-| `x` | Close | Close task (sidebar) / tab (topbar) |
-| `r` | Rename | Rename task or tab |
-| `q` | Quit | Exit Mato |
+## 🛠️ Pro Resources
 
-**That's it.** 6 keys for everything.
-
-### Optional Convenience
-
-| Key | Action |
-|-----|--------|
-| `↑↓←→` | Navigate lists |
-| `Enter` | Focus terminal |
-
-📖 **[Full keyboard reference →](docs/KEYBOARD_SHORTCUTS.md)**
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────┐
-│  Client (TUI)                           │
-│  - Beautiful interface                  │
-│  - Jump Mode navigation                 │
-│  - Mouse support                        │
-└─────────────────┬───────────────────────┘
-                  │ Unix Socket
-┌─────────────────▼───────────────────────┐
-│  Daemon (Background)                    │
-│  - Persistent sessions                  │
-│  - PTY management                       │
-│  - Multi-client support                 │
-└─────────────────────────────────────────┘
-```
-
-**Benefits**:
-- Sessions survive client crashes
-- Multiple clients can share one session
-- Zero data loss on window resize
-- Daemon runs continuously in background
-
-## 📚 Documentation
-
-<table>
+<table border="0">
 <tr>
-<td width="50%">
+<td>
 
-### 📖 User Guides
-- **[Keyboard Shortcuts](docs/KEYBOARD_SHORTCUTS.md)** - Complete reference
-- **[AI Agent Friendly](docs/AI_AGENT_FRIENDLY.md)** - Why Mato is perfect for AI assistants
-- **[Terminal Persistence](docs/TERMINAL_PERSISTENCE.md)** - How sessions survive
+#### 📖 Documentation
+- [**Keyboard Shortcuts**](docs/KEYBOARD_SHORTCUTS.md)
+- [**AI Agent Guide**](docs/AI_AGENT_FRIENDLY.md)
+- [**Persistence Specs**](docs/TERMINAL_PERSISTENCE.md)
 
 </td>
-<td width="50%">
+<td>
 
-### 🔧 Developer Docs
-- **[AGENTS.md](AGENTS.md)** - AI-assisted development guide
-- **[CHANGELOG.md](CHANGELOG.md)** - Version history
-- **[Tests](tests/README.md)** - Testing guide
+#### 🔧 Customization
+- [**Theme Engine**](docs/changelog/2026-02-22_themes-settings-update-check.md)
+- [**Template Gallery**](templates/README.md)
+- [**Configuration API**](src/config.rs)
 
 </td>
 </tr>
 </table>
 
-## 🎨 Templates
-
-Mato includes 6 pre-configured workspace templates:
-
-<details>
-<summary><b>Power User</b> - 45 tasks, 250+ tabs</summary>
-
-Complete setup for AI-powered development:
-- AI Tools (Claude, ChatGPT, Gemini, etc.)
-- Development (Frontend, Backend, Mobile, etc.)
-- DevOps (Docker, K8s, CI/CD, etc.)
-- And much more...
-
-</details>
-
-<details>
-<summary><b>Solo Developer</b> - 3 tasks, 8 tabs</summary>
-
-Focused setup for individual developers:
-- Development (Code, Test, Debug)
-- Deployment (Build, Deploy, Monitor)
-- Research (Docs, Search, Notes)
-
-</details>
-
-<details>
-<summary><b>Full-Stack Developer</b> - 4 tasks, 11 tabs</summary>
-
-Balanced setup for full-stack work:
-- Frontend (React, Vue, etc.)
-- Backend (API, Services, etc.)
-- Database (SQL, Redis, etc.)
-- DevOps (Deploy, Monitor, etc.)
-
-</details>
-
-📖 **[See all templates →](templates/README.md)**
-
-## 🛠️ Advanced Usage
-
-### Daemon Management
-
-```bash
-# Check daemon status
-mato --status
-
-# Run daemon in foreground (debugging)
-mato --daemon --foreground
-
-# Reload config without restart
-kill -HUP $(cat ~/.local/state/mato/daemon.pid)
-```
-
-### Configuration
-
-Terminal emulator config: `~/.config/mato/config.toml`
-
-```toml
-emulator = "vte"  # or "vt100"
-```
-
-Theme config: `~/.config/mato/theme.toml`
-
-```toml
-# Default (recommended): follow terminal/OS theme
-name = "system"
-
-# Optional: built-in themes
-# name = "navy"
-# name = "gruvbox"
-# name = "catppuccin"
-```
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-cargo test
-
-# Run integration tests (requires daemon)
-./tests/run_persistence_tests.sh
-```
-
-**Test coverage**: 8 tests (5 unit + 3 integration)
-- Terminal persistence
-- Content survival on resize
-- Multi-client support
-
-## 🗺️ Roadmap
-
-**Current**: v0.2.0 - Production Ready ✅
-
-**Future**:
-- [ ] Scrollback buffer (Phase 9)
-- [ ] Session management (Phase 10)
-- [ ] Plugin system (Phase 11)
-- [ ] Cloud sync (Phase 12)
-
-📖 **[Full roadmap →](docs/todos/TODO.md)**
-
-## 🤝 Contributing
-
-Contributions welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
-## 🙏 Acknowledgments
-
-- Built with [ratatui](https://ratatui.rs) TUI framework
-- Terminal emulation via [vt100](https://crates.io/crates/vt100) and [vte](https://crates.io/crates/vte)
-- Developed with AI assistance (see [AGENTS.md](AGENTS.md))
-
 ---
 
 <div align="center">
 
-**Made with 🏖️ for developers who value simplicity**
+### Built for the future of development.
+Join the **Mato** community and stop hunting for active terminals.
 
-[⭐ Star us on GitHub](https://github.com/YOUR_USERNAME/mato) • [🐛 Report Bug](https://github.com/YOUR_USERNAME/mato/issues) • [💡 Request Feature](https://github.com/YOUR_USERNAME/mato/issues)
+[**Star this project**](https://github.com/YOUR_USERNAME/mato) • [**Report a Bug**](https://github.com/YOUR_USERNAME/mato/issues) • [**Follow Roadmap**](docs/todos/TODO.md)
+
+**Made with 🏖️ for developers who value clarity.**
 
 </div>
-
-## 📖 Usage
-
-### Basic Commands
-
-```bash
-# Start mato (auto-starts daemon if needed)
-mato
-
-# Check daemon status (shows uptime, clients, tabs)
-mato --status
-
-# Reload configuration without restart
-kill -HUP $(cat ~/.local/state/mato/daemon.pid)
-
-# Run daemon in foreground (for debugging)
-mato --daemon --foreground
-```
-
-### The One Key You Need
-
-**In terminal focus**: Press `Esc` to enter Jump Mode, then:
-- `a-z` → Jump to any task/tab
-- `←` or `↑` → Switch focus areas
-- `Esc` → Cancel
-
-**Everything else** goes directly to your shell. No prefix, no conflicts.
-
-📖 **[Read why this matters for AI agents →](docs/AI_AGENT_FRIENDLY.md)**
-
-### Optional Shortcuts
-
-| Shortcut | Action | Context |
-|----------|--------|---------|
-| `Alt+1-9` | Jump to tab 1-9 | Anywhere |
-| `Ctrl+PageUp/Down` | Previous/Next tab | Anywhere |
-| `n` | New task/tab | Sidebar/Topbar |
-| `x` | Close task/tab | Sidebar/Topbar |
-| `r` | Rename | Sidebar/Topbar |
-| `q` | Quit | Sidebar |
-
-**Context-aware**: `n` and `x` adapt to where you are:
-- Sidebar → Task operations
-- Topbar → Tab operations
-| `Alt+1-9` | Quick switch to tab 1-9 |
-| `Ctrl+PageUp/Down` | Previous/Next tab |
-| `Tab` | Switch focus (sidebar ↔ terminal) |
-| `↑↓` | Navigate tasks/tabs |
-| `F2` | Rename task/tab |
-| `Esc` | Cancel rename |
-
-📖 **[Complete Keyboard Shortcuts Guide](docs/KEYBOARD_SHORTCUTS.md)**
-
-### Configuration
-
-Create `~/.config/mato/config.toml`:
-
-```toml
-# Choose terminal emulator
-emulator = "vte"  # or "vt100" for basic ANSI
-```
-
-Hot reload after editing:
-```bash
-kill -HUP $(cat ~/.local/state/mato/daemon.pid)
-```
-
-### Emulator Selection
-
-| Emulator | Compatibility | Best For |
-|----------|---------------|----------|
-| **vt100** (default) | Basic ANSI | General use, fast |
-| **vte** | Better (GNOME Terminal / Alacritty) | Complex TUI apps (vim, htop) |
-
-## ⌨️ Keybindings
-
-### Global
-
-| Key | Action |
-|-----|--------|
-| `Ctrl+Z` | Suspend (restore with `fg`) |
-
-### Sidebar (task list)
-
-| Key | Action |
-|-----|--------|
-| `↑ / ↓` | Navigate tasks |
-| `n` | New task |
-| `x` | Close task |
-| `r` | Rename task |
-| `Enter` | Focus terminal |
-| `q` | Quit |
-
-### Topbar (tabs)
-
-| Key | Action |
-|-----|--------|
-| `← / →` | Switch tab |
-| `t` | New tab |
-| `w` | Close tab |
-| `r` | Rename tab |
-| `Enter` | Focus terminal |
-| `Esc` | Back to sidebar |
-
-### Terminal (content)
-
-| Key | Action |
-|-----|--------|
-| All keys | Forwarded to shell |
-| `Esc` | Enter switch mode |
-| `Esc` → `← / a` | Focus sidebar |
-| `Esc` → `↑ / w` | Focus topbar |
-
-### Mouse
-
-| Action | Effect |
-|--------|--------|
-| Click task | Select task |
-| Double-click task | Select + focus terminal |
-| Click tab | Switch tab |
-| Double-click tab | Rename tab |
-| Click `＋` (topbar) | New tab |
-| Click `＋` (sidebar) | New task |
-| Scroll in sidebar | Navigate tasks |
-
-### Quick Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Alt+1-9` | Quick switch to tab 1-9 |
-| `Ctrl+PageUp/PageDown` | Previous/Next tab |
-| `n` / `t` | New task / New tab |
-| `r` | Rename |
-| `q` | Quit |
-
-📖 **[Complete Keyboard Shortcuts Guide →](docs/KEYBOARD_SHORTCUTS.md)**
-
-## 🏗️ Architecture
-
-```
-Client (UI) → DaemonProvider → Daemon → PtyProvider → TerminalEmulator
-                    ↓ Unix Socket
-            ~/.local/state/mato/daemon.sock
-```
-
-**Two-layer pluggable design:**
-1. **Provider layer**: `PtyProvider` (direct) or `DaemonProvider` (persistent)
-2. **Emulator layer**: `Vt100Emulator` or `VteEmulator` (configurable)
-
-## 📁 File Locations
-
-| File | Purpose |
-|------|---------|
-| `~/.config/mato/config.toml` | Configuration |
-| `~/.config/mato/state.json` | Task and tab metadata |
-| `~/.local/state/mato/daemon.sock` | Daemon communication |
-| `~/.local/state/mato/daemon.log` | Daemon logs |
-| `~/.local/state/mato/client.log` | Client logs |
-
-## 🔧 Daemon Management
-
-Mato uses a background daemon to persist terminal sessions:
-
-- **Auto-start**: Daemon starts automatically when you run `mato`
-- **Persistence**: Close the UI, sessions keep running
-- **Reconnect**: Reopen `mato` to see your previous sessions
-- **Status**: Run `mato --status` to check daemon state
-- **Logs**: Check `~/.local/state/mato/daemon.log` for debugging
-
-### Daemon Status
-
-```bash
-$ mato --status
-✓ Daemon running
-  Started: 2026-02-21 16:00:00
-  Uptime: 2h 15m
-  Active tabs: 8
-  Socket: /home/user/.local/state/mato/daemon.sock
-```
-
-## 🎯 Roadmap
-
-**Current Status**: v0.2.0 - Production ready! See [TODO.md](docs/todos/TODO.md) for future plans.
-
-### Completed (v0.2.0)
-- ✅ Lock file mechanism (prevent race conditions)
-- ✅ Signal handling (SIGTERM, SIGHUP)
-- ✅ Socket permissions (security)
-- [ ] Graceful shutdown
-- [ ] PID file management
-- [ ] Multiple clients support
-
-### Phase 5: Code Refactoring
-- [ ] Reorganize codebase structure
-- [ ] Simplify main.rs
-- [ ] Add utility modules
-
-### Phase 6: UI/UX Improvements
-- [ ] Tab reordering
-- [ ] Split panes
-- [ ] Copy mode
-- [ ] Customizable keybindings
-
-See [TODO.md](TODO.md) for complete roadmap.
-
-## 🤝 Contributing
-
-Contributions welcome! See [docs/todos/](docs/todos/) for implementation plans.
-
-### Development
-
-```bash
-# Build
-cargo build
-
-# Run tests
-cargo test
-
-# Run with logging
-RUST_LOG=debug cargo run
-
-# Check daemon logs
-tail -f ~/.local/state/mato/daemon.log
-```
-
-## 📚 Documentation
-
-### User Guides
-- [Keyboard Shortcuts](docs/KEYBOARD_SHORTCUTS.md) - Complete shortcuts reference
-- [Idle Detection](docs/IDLE_DETECTION.md) - Idle tab and task markers
-- [Templates Guide](templates/README.md) - Workspace templates
-
-### Development
-- [AGENTS.md](AGENTS.md) - AI-assisted development guide
-- [CHANGELOG.md](CHANGELOG.md) - Version history
-- [TODO](docs/todos/TODO.md) - Development roadmap
-- [Development Changelog](docs/changelog/) - Historical development docs
-
-## 📦 Dependencies
-
-- [ratatui](https://github.com/ratatui-org/ratatui) — TUI framework
-- [crossterm](https://github.com/crossterm-rs/crossterm) — Terminal backend
-- [portable-pty](https://github.com/wez/wezterm/tree/main/pty) — PTY management
-- [vt100](https://github.com/doy/vt100-rust) — Terminal emulation
-- [vte](https://github.com/jwilm/vte) — Advanced terminal parser
-- [tokio](https://tokio.rs) — Async runtime
-- [serde](https://serde.rs) — Serialization
-
-## 📄 License
-
-MIT
-
-## 🙏 Acknowledgments
-
-- Built with [ratatui](https://ratatui.rs) TUI framework
-- Terminal emulation via [vt100](https://crates.io/crates/vt100) and [vte](https://crates.io/crates/vte)
-- Developed with AI assistance (see [AGENTS.md](AGENTS.md))

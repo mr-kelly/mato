@@ -2,7 +2,7 @@
   "offices": [
     {
       "id": "office-default",
-      "name": "Power User",
+      "name": "Mato Creator Office",
       "desks": [
         {
           "id": "00000000a3b77",
@@ -1417,8 +1417,8 @@
   ],
   "current_office": 0,
   "metadata": {
-    "name": "\u2b50 Power User",
-    "description": "45 desks, 250+ tabs",
-    "details": "Complete office setup with all AI tools (Claude, Gemini, Codex, Copilot, Cursor, Aider, Continue, Cline, Windsurf, Bolt) and comprehensive business functions. Perfect for serious professionals managing complex workflows."
+    "name": "\u2728 Mato Creator Office",
+    "description": "45 desks, 250+ tabs (Mato builder setup)",
+    "details": "The exact office used by Mato creators and builders. Includes the full AI toolchain (Claude, Gemini, Codex, Copilot, Cursor, Aider, Continue, Cline, Windsurf, Bolt) plus engineering, ops, and business desks for high-context multi-project workflows."
   }
 }

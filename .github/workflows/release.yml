@@ -220,3 +220,115 @@ jobs:
             See [CHANGELOG.md](CHANGELOG.md) for details.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update_homebrew_tap:
+    name: Update Homebrew Tap Formula
+    needs: [prepare, release]
+    runs-on: ubuntu-latest
+    # Keep `brew install mato` stable: only update formula from main releases.
+    if: needs.prepare.outputs.branch == 'main'
+    steps:
+      - name: Validate required secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${{ secrets.HOMEBREW_TAP_TOKEN }}" ]; then
+            echo "Missing required secret: HOMEBREW_TAP_TOKEN"
+            echo "Create a PAT with repo scope and add it to repository secrets."
+            exit 1
+          fi
+
+      - name: Generate Formula from release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          OWNER="${{ github.repository_owner }}"
+          TAG="${{ needs.prepare.outputs.tag }}"
+          VERSION="${{ needs.prepare.outputs.version }}"
+          CHECKSUMS_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/checksums.txt"
+
+          curl -fsSL "$CHECKSUMS_URL" -o checksums.txt
+
+          LINUX_ARM_FILE="mato-linux-aarch64-${TAG}.tar.gz"
+          LINUX_X86_FILE="mato-linux-x86_64-${TAG}.tar.gz"
+          MACOS_ARM_FILE="mato-macos-aarch64-${TAG}.tar.gz"
+          MACOS_X86_FILE="mato-macos-x86_64-${TAG}.tar.gz"
+
+          LINUX_ARM_SHA=$(awk -v f="$LINUX_ARM_FILE" '$2==f {print $1}' checksums.txt)
+          LINUX_X86_SHA=$(awk -v f="$LINUX_X86_FILE" '$2==f {print $1}' checksums.txt)
+          MACOS_ARM_SHA=$(awk -v f="$MACOS_ARM_FILE" '$2==f {print $1}' checksums.txt)
+          MACOS_X86_SHA=$(awk -v f="$MACOS_X86_FILE" '$2==f {print $1}' checksums.txt)
+
+          for val in "$LINUX_ARM_SHA" "$LINUX_X86_SHA" "$MACOS_ARM_SHA" "$MACOS_X86_SHA"; do
+            if [ -z "$val" ]; then
+              echo "Failed to resolve all checksums from checksums.txt"
+              cat checksums.txt
+              exit 1
+            fi
+          done
+
+          mkdir -p tap-work/Formula
+          cat > tap-work/Formula/mato.rb <<EOF
+          class Mato < Formula
+            desc "Multi-Agent Terminal Office"
+            homepage "https://github.com/${OWNER}/mato"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/${OWNER}/mato/releases/download/${TAG}/${MACOS_ARM_FILE}"
+                sha256 "${MACOS_ARM_SHA}"
+              else
+                url "https://github.com/${OWNER}/mato/releases/download/${TAG}/${MACOS_X86_FILE}"
+                sha256 "${MACOS_X86_SHA}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "https://github.com/${OWNER}/mato/releases/download/${TAG}/${LINUX_ARM_FILE}"
+                sha256 "${LINUX_ARM_SHA}"
+              else
+                url "https://github.com/${OWNER}/mato/releases/download/${TAG}/${LINUX_X86_FILE}"
+                sha256 "${LINUX_X86_SHA}"
+              end
+            end
+
+            def install
+              bin.install "mato"
+            end
+
+            test do
+              assert_match "mato", shell_output("#{bin}/mato --version")
+            end
+          end
+          EOF
+
+      - name: Push formula update to tap repo
+        shell: bash
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          OWNER="${{ github.repository_owner }}"
+          TAP_REPO="homebrew-tap"
+
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/${OWNER}/${TAP_REPO}.git" tap-repo
+          mkdir -p tap-repo/Formula
+          cp tap-work/Formula/mato.rb tap-repo/Formula/mato.rb
+
+          cd tap-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- Formula/mato.rb; then
+            echo "No formula changes detected; skipping commit."
+            exit 0
+          fi
+
+          git add Formula/mato.rb
+          git commit -m "mato ${{ needs.prepare.outputs.version }}"
+          git push origin HEAD:main
