@@ -1,21 +1,57 @@
 {
   "metadata": {
-    "name": "\u2728 Start from Scratch",
-    "description": "1 desk, 1 tab",
-    "details": "Begin with a clean slate. Perfect if you want to build your own office from the ground up."
+    "name": {
+      "en": "✨ Start from Scratch",
+      "zh-CN": "从零开始",
+      "zh-TW": "從零開始",
+      "ja": "ゼロから開始",
+      "ko": "빈 템플릿으로 시작"
+    },
+    "description": {
+      "en": "1 desk, 1 tab",
+      "zh-CN": "最小化起步，按需自行扩展。",
+      "zh-TW": "最小化起步，按需自行擴充。",
+      "ja": "最小構成から自由に組み立て。",
+      "ko": "최소 구성에서 직접 확장."
+    },
+    "details": {
+      "en": "Begin with a clean slate. Perfect if you want to build your own office from the ground up.",
+      "zh-CN": "空白模板，仅保留最小结构，适合完全自定义你的 Office。",
+      "zh-TW": "空白模板，僅保留最小結構，適合完全自訂你的 Office。",
+      "ja": "最小構成のみの空テンプレート。自分の Office を一から作れます。",
+      "ko": "빈 템플릿. 최소 구조만 두고 Office를 처음부터 직접 구성할 수 있음."
+    }
   },
   "offices": [
     {
       "id": "office-default",
-      "name": "Default",
+      "name": {
+        "en": "Default",
+        "zh-CN": "Default",
+        "zh-TW": "Default",
+        "ja": "Default",
+        "ko": "Default"
+      },
       "desks": [
         {
           "id": "desk-1",
-          "name": "Desk 1",
+          "name": {
+            "en": "Desk 1",
+            "zh-CN": "工作台 1",
+            "zh-TW": "工作台 1",
+            "ja": "デスク 1",
+            "ko": "데스크 1"
+          },
           "tabs": [
             {
               "id": "tab-1",
-              "name": "Terminal 1"
+              "name": {
+                "en": "Terminal 1",
+                "zh-CN": "终端 1",
+                "zh-TW": "終端 1",
+                "ja": "ターミナル 1",
+                "ko": "터미널 1"
+              }
             }
           ],
           "active_tab": 0

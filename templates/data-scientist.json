@@ -2,76 +2,172 @@
   "offices": [
     {
       "id": "office-default",
-      "name": "Data Scientist",
+      "name": {
+        "en": "Data Scientist",
+        "zh-CN": "Data Scientist",
+        "zh-TW": "Data Scientist",
+        "ja": "Data Scientist",
+        "ko": "Data Scientist"
+      },
       "desks": [
         {
           "id": "data-analysis",
-          "name": "\ud83d\udcca Data Analysis",
+          "name": {
+            "en": "📊 Data Analysis",
+            "zh-CN": "📊 数据分析",
+            "zh-TW": "📊 資料分析",
+            "ja": "📊 データ分析",
+            "ko": "📊 데이터 분석"
+          },
           "tabs": [
             {
               "id": "tab-jupyter",
-              "name": "\ud83d\udcd3 Jupyter"
+              "name": {
+                "en": "📓 Jupyter",
+                "zh-CN": "📓 Jupyter",
+                "zh-TW": "📓 Jupyter",
+                "ja": "📓 Jupyter",
+                "ko": "📓 Jupyter"
+              }
             },
             {
               "id": "tab-python",
-              "name": "\ud83d\udc0d Python"
+              "name": {
+                "en": "🐍 Python",
+                "zh-CN": "🐍 Python",
+                "zh-TW": "🐍 Python",
+                "ja": "🐍 Python",
+                "ko": "🐍 Python"
+              }
             },
             {
               "id": "tab-viz",
-              "name": "\ud83d\udcc8 Visualization"
+              "name": {
+                "en": "📈 Visualization",
+                "zh-CN": "📈 Visualization",
+                "zh-TW": "📈 Visualization",
+                "ja": "📈 Visualization",
+                "ko": "📈 Visualization"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "ml-training",
-          "name": "\ud83e\udd16 ML Training",
+          "name": {
+            "en": "🤖 ML Training",
+            "zh-CN": "🤖 ML 训练",
+            "zh-TW": "🤖 ML 訓練",
+            "ja": "🤖 ML 学習",
+            "ko": "🤖 ML 학습"
+          },
           "tabs": [
             {
               "id": "tab-train",
-              "name": "\ud83c\udfcb\ufe0f Training"
+              "name": {
+                "en": "🏋️ Training",
+                "zh-CN": "🏋️ Training",
+                "zh-TW": "🏋️ Training",
+                "ja": "🏋️ Training",
+                "ko": "🏋️ Training"
+              }
             },
             {
               "id": "tab-tensorboard",
-              "name": "\ud83d\udcca TensorBoard"
+              "name": {
+                "en": "📊 TensorBoard",
+                "zh-CN": "📊 TensorBoard",
+                "zh-TW": "📊 TensorBoard",
+                "ja": "📊 TensorBoard",
+                "ko": "📊 TensorBoard"
+              }
             },
             {
               "id": "tab-gpu",
-              "name": "\ud83c\udfae GPU Monitor"
+              "name": {
+                "en": "🎮 GPU Monitor",
+                "zh-CN": "🎮 GPU Monitor",
+                "zh-TW": "🎮 GPU Monitor",
+                "ja": "🎮 GPU Monitor",
+                "ko": "🎮 GPU Monitor"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "data-pipeline",
-          "name": "\ud83d\udd04 Data Pipeline",
+          "name": {
+            "en": "🔄 Data Pipeline",
+            "zh-CN": "🔄 数据管道",
+            "zh-TW": "🔄 資料管線",
+            "ja": "🔄 データパイプライン",
+            "ko": "🔄 데이터 파이프라인"
+          },
           "tabs": [
             {
               "id": "tab-etl",
-              "name": "\ud83d\udd27 ETL"
+              "name": {
+                "en": "🔧 ETL",
+                "zh-CN": "🔧 ETL",
+                "zh-TW": "🔧 ETL",
+                "ja": "🔧 ETL",
+                "ko": "🔧 ETL"
+              }
             },
             {
               "id": "tab-airflow",
-              "name": "\ud83c\udf0a Airflow"
+              "name": {
+                "en": "🌊 Airflow",
+                "zh-CN": "🌊 Airflow",
+                "zh-TW": "🌊 Airflow",
+                "ja": "🌊 Airflow",
+                "ko": "🌊 Airflow"
+              }
             },
             {
               "id": "tab-db",
-              "name": "\ud83d\uddc4\ufe0f Database"
+              "name": {
+                "en": "🗄️ Database",
+                "zh-CN": "🗄️ Database",
+                "zh-TW": "🗄️ Database",
+                "ja": "🗄️ Database",
+                "ko": "🗄️ Database"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "deployment",
-          "name": "\ud83d\ude80 Deployment",
+          "name": {
+            "en": "🚀 Deployment",
+            "zh-CN": "🚀 部署",
+            "zh-TW": "🚀 部署",
+            "ja": "🚀 デプロイ",
+            "ko": "🚀 배포"
+          },
           "tabs": [
             {
               "id": "tab-api",
-              "name": "\ud83d\udd0c API"
+              "name": {
+                "en": "🔌 API",
+                "zh-CN": "🔌 API",
+                "zh-TW": "🔌 API",
+                "ja": "🔌 API",
+                "ko": "🔌 API"
+              }
             },
             {
               "id": "tab-docker",
-              "name": "\ud83d\udc33 Docker"
+              "name": {
+                "en": "🐳 Docker",
+                "zh-CN": "🐳 Docker",
+                "zh-TW": "🐳 Docker",
+                "ja": "🐳 Docker",
+                "ko": "🐳 Docker"
+              }
             }
           ],
           "active_tab": 0
@@ -82,8 +178,26 @@
   ],
   "current_office": 0,
   "metadata": {
-    "name": "\ud83d\udcca Data Scientist",
-    "description": "4 desks, 11 tabs",
-    "details": "Data-focused office with Data Analysis (Jupyter, Python, Viz), ML Training (TensorBoard, GPU), Data Pipeline (ETL, Airflow), and Deployment."
+    "name": {
+      "en": "📊 Data Scientist",
+      "zh-CN": "数据科学家",
+      "zh-TW": "資料科學家",
+      "ja": "データサイエンティスト",
+      "ko": "데이터 사이언티스트"
+    },
+    "description": {
+      "en": "4 desks, 11 tabs",
+      "zh-CN": "数据分析、训练与部署的一站式布局。",
+      "zh-TW": "資料分析、訓練與部署的一站式佈局。",
+      "ja": "分析・学習・運用をまとめたデータ構成。",
+      "ko": "분석/학습/배포를 한 번에 다루는 데이터 구성."
+    },
+    "details": {
+      "en": "Data-focused office with Data Analysis (Jupyter, Python, Viz), ML Training (TensorBoard, GPU), Data Pipeline (ETL, Airflow), and Deployment.",
+      "zh-CN": "面向数据工作：分析、训练、数据管道与部署 desk 预先组织好。",
+      "zh-TW": "面向資料工作：分析、訓練、資料管線與部署 desk 已預先組織。",
+      "ja": "データ作業向け。分析、学習、パイプライン、デプロイを分離済み。",
+      "ko": "데이터 작업용. 분석/학습/파이프라인/배포 desk가 미리 구성됨."
+    }
   }
 }

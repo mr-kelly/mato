@@ -1,4 +1,4 @@
-use crate::client::persistence::SavedState;
+use crate::client::persistence::{SavedDesk, SavedOffice, SavedState, SavedTab};
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
@@ -17,29 +17,59 @@ use std::collections::HashMap;
 use std::io;
 
 #[derive(Deserialize, Clone)]
+#[serde(untagged)]
+enum LocalizedText {
+    Plain(String),
+    ByLang(HashMap<String, String>),
+}
+
+impl LocalizedText {
+    fn resolve(&self, language: Language) -> &str {
+        match self {
+            Self::Plain(s) => s.as_str(),
+            Self::ByLang(map) => map
+                .get(language.code())
+                .or_else(|| map.get("en"))
+                .map(|s| s.as_str())
+                .unwrap_or(""),
+        }
+    }
+}
+
+#[derive(Deserialize, Clone)]
 struct TemplateMetadata {
-    name: String,
-    description: String,
-    details: String,
+    name: LocalizedText,
+    description: LocalizedText,
+    details: LocalizedText,
+}
+
+#[derive(Deserialize, Clone)]
+struct TemplateTab {
+    id: String,
+    name: LocalizedText,
+}
+
+#[derive(Deserialize, Clone)]
+struct TemplateDesk {
+    id: String,
+    name: LocalizedText,
+    tabs: Vec<TemplateTab>,
+    active_tab: usize,
+}
+
+#[derive(Deserialize, Clone)]
+struct TemplateOffice {
+    id: String,
+    name: LocalizedText,
+    desks: Vec<TemplateDesk>,
+    active_desk: usize,
 }
 
 #[derive(Deserialize)]
 struct TemplateFile {
     metadata: TemplateMetadata,
-}
-
-#[derive(Deserialize, Clone, Default)]
-struct TemplateI18n {
-    #[serde(default)]
-    metadata: HashMap<String, TemplateMetadata>,
-    #[serde(default)]
-    names: HashMap<String, HashMap<String, String>>,
-}
-
-#[derive(Deserialize, Default)]
-struct I18nCatalog {
-    #[serde(default)]
-    templates: HashMap<String, TemplateI18n>,
+    offices: Vec<TemplateOffice>,
+    current_office: usize,
 }
 
 // Embed templates at compile time
@@ -48,35 +78,32 @@ const ONE_PERSON_COMPANY: &str = include_str!("../../templates/one-person-compan
 const FULLSTACK_DEVELOPER: &str = include_str!("../../templates/fullstack-developer.json");
 const DATA_SCIENTIST: &str = include_str!("../../templates/data-scientist.json");
 const POWER_USER: &str = include_str!("../../templates/power-user.json");
+const MARKETING_OPS: &str = include_str!("../../templates/marketing-ops.json");
+const FINANCIAL_TRADER: &str = include_str!("../../templates/financial-trader.json");
+const HR_ADMIN: &str = include_str!("../../templates/hr-admin.json");
 const START_FROM_SCRATCH: &str = include_str!("../../templates/minimal.json");
-const TEMPLATE_I18N: &str = include_str!("../../templates/i18n.json");
+
+const ONBOARDING_ASCII_LOGO: [&str; 5] = [
+    "███╗   ███╗ █████╗ ████████╗ ██████╗",
+    "████╗ ████║██╔══██╗╚══██╔══╝██╔═══██╗",
+    "██╔████╔██║███████║   ██║   ██║   ██║",
+    "██║╚██╔╝██║██╔══██║   ██║   ██║   ██║",
+    "██║ ╚═╝ ██║██║  ██║   ██║   ╚██████╔╝",
+];
 
 struct Template {
     metadata: TemplateMetadata,
-    content: &'static str,
-    i18n: TemplateI18n,
+    offices: Vec<TemplateOffice>,
+    current_office: usize,
 }
 
 impl Template {
     fn localized_metadata(&self, language: Language) -> (&str, &str, &str) {
-        if let Some(meta) = self.i18n.metadata.get(language.code()) {
-            (&meta.name, &meta.description, &meta.details)
-        } else {
-            (
-                &self.metadata.name,
-                &self.metadata.description,
-                &self.metadata.details,
-            )
-        }
-    }
-
-    fn localize_state_name(&self, language: Language, name: &str) -> String {
-        self.i18n
-            .names
-            .get(language.code())
-            .and_then(|m| m.get(name))
-            .cloned()
-            .unwrap_or_else(|| name.to_string())
+        (
+            self.metadata.name.resolve(language),
+            self.metadata.description.resolve(language),
+            self.metadata.details.resolve(language),
+        )
     }
 }
 
@@ -166,24 +193,26 @@ impl OfficeNameDraft {
     }
 }
 
-fn parse_template(key: &'static str, content: &'static str, catalog: &I18nCatalog) -> Template {
+fn parse_template(content: &'static str) -> Template {
     let file: TemplateFile = serde_json::from_str(content).expect("Failed to parse template");
     Template {
         metadata: file.metadata,
-        content,
-        i18n: catalog.templates.get(key).cloned().unwrap_or_default(),
+        offices: file.offices,
+        current_office: file.current_office,
     }
 }
 
 fn get_templates() -> Vec<Template> {
-    let catalog: I18nCatalog = serde_json::from_str(TEMPLATE_I18N).expect("Failed to parse i18n");
     vec![
-        parse_template("solo-developer", SOLO_DEVELOPER, &catalog),
-        parse_template("one-person-company", ONE_PERSON_COMPANY, &catalog),
-        parse_template("fullstack-developer", FULLSTACK_DEVELOPER, &catalog),
-        parse_template("data-scientist", DATA_SCIENTIST, &catalog),
-        parse_template("power-user", POWER_USER, &catalog),
-        parse_template("minimal", START_FROM_SCRATCH, &catalog),
+        parse_template(SOLO_DEVELOPER),
+        parse_template(ONE_PERSON_COMPANY),
+        parse_template(FULLSTACK_DEVELOPER),
+        parse_template(DATA_SCIENTIST),
+        parse_template(POWER_USER),
+        parse_template(MARKETING_OPS),
+        parse_template(FINANCIAL_TRADER),
+        parse_template(HR_ADMIN),
+        parse_template(START_FROM_SCRATCH),
     ]
 }
 
@@ -242,7 +271,7 @@ pub fn show_onboarding_tui() -> io::Result<Option<SavedState>> {
                             &templates[selected],
                             language,
                             &office_name.committed,
-                        )?;
+                        );
                         break;
                     }
                     KeyCode::Char('r') => office_name.start_edit(),
@@ -268,7 +297,7 @@ fn draw_onboarding(
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
+            Constraint::Length(8),
             Constraint::Length(2),
             Constraint::Length(3),
             Constraint::Min(10),
@@ -277,20 +306,25 @@ fn draw_onboarding(
         ])
         .split(f.area());
 
-    let title = Paragraph::new(vec![
-        Line::from(Span::styled(
-            ui_text(language, UiText::WelcomeTitle),
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        )),
-        Line::from(Span::styled(
-            ui_text(language, UiText::WelcomeSubtitle),
-            Style::default().fg(Color::Gray),
-        )),
-    ])
-    .alignment(Alignment::Center)
-    .block(Block::default().borders(Borders::BOTTOM));
+    let mut title_lines: Vec<Line> = ONBOARDING_ASCII_LOGO
+        .iter()
+        .map(|line| {
+            Line::from(Span::styled(
+                *line,
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ))
+        })
+        .collect();
+    title_lines.push(Line::from(Span::styled(
+        ui_text(language, UiText::WelcomeSubtitle),
+        Style::default().fg(Color::Gray),
+    )));
+
+    let title = Paragraph::new(title_lines)
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::BOTTOM));
     f.render_widget(title, chunks[0]);
 
     let language_line = Paragraph::new(format!(
@@ -392,30 +426,48 @@ fn apply_template_return(
     template: &Template,
     language: Language,
     office_name: &str,
-) -> io::Result<Option<SavedState>> {
-    let mut state: SavedState = serde_json::from_str(template.content)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+) -> Option<SavedState> {
+    let offices: Vec<SavedOffice> = template
+        .offices
+        .iter()
+        .map(|o| SavedOffice {
+            id: o.id.clone(),
+            name: o.name.resolve(language).to_string(),
+            desks: o
+                .desks
+                .iter()
+                .map(|d| SavedDesk {
+                    id: d.id.clone(),
+                    name: d.name.resolve(language).to_string(),
+                    tabs: d
+                        .tabs
+                        .iter()
+                        .map(|t| SavedTab {
+                            id: t.id.clone(),
+                            name: t.name.resolve(language).to_string(),
+                        })
+                        .collect(),
+                    active_tab: d.active_tab,
+                })
+                .collect(),
+            active_desk: o.active_desk,
+        })
+        .collect();
 
-    if !matches!(language, Language::English) {
-        for office in &mut state.offices {
-            for desk in &mut office.desks {
-                desk.name = template.localize_state_name(language, &desk.name);
-                for tab in &mut desk.tabs {
-                    tab.name = template.localize_state_name(language, &tab.name);
-                }
-            }
-        }
-    }
+    let mut state = SavedState {
+        offices,
+        current_office: template.current_office,
+    };
 
     if let Some(first_office) = state.offices.first_mut() {
         first_office.name = office_name.to_string();
     }
-    Ok(Some(state))
+
+    Some(state)
 }
 
 #[derive(Copy, Clone)]
 enum UiText {
-    WelcomeTitle,
     WelcomeSubtitle,
     LanguageLabel,
     LanguageHint,
@@ -429,12 +481,6 @@ enum UiText {
 
 fn ui_text(language: Language, key: UiText) -> &'static str {
     match (language, key) {
-        (Language::English, UiText::WelcomeTitle) => "Welcome to Mato",
-        (Language::SimplifiedChinese, UiText::WelcomeTitle) => "欢迎使用 Mato",
-        (Language::TraditionalChinese, UiText::WelcomeTitle) => "歡迎使用 Mato",
-        (Language::Japanese, UiText::WelcomeTitle) => "Mato へようこそ",
-        (Language::Korean, UiText::WelcomeTitle) => "Mato에 오신 것을 환영합니다",
-
         (_, UiText::WelcomeSubtitle) => "Multi-Agent Terminal Office",
 
         (Language::English, UiText::LanguageLabel) => "Language",
@@ -502,6 +548,17 @@ fn ui_text(language: Language, key: UiText) -> &'static str {
 }
 
 fn default_office_name() -> String {
+    fn capitalize_first(s: &str) -> String {
+        let mut chars = s.chars();
+        let Some(first) = chars.next() else {
+            return String::new();
+        };
+        let mut out = String::new();
+        out.extend(first.to_uppercase());
+        out.extend(chars);
+        out
+    }
+
     fn clean_token(s: &str, max_len: usize) -> Option<String> {
         let filtered: String = s
             .chars()
@@ -518,7 +575,7 @@ fn default_office_name() -> String {
     let user = std::env::var("USER")
         .ok()
         .or_else(|| std::env::var("USERNAME").ok())
-        .and_then(|u| clean_token(&u, 10));
+        .and_then(|u| clean_token(&u, 12));
 
     let host_env = std::env::var("HOSTNAME")
         .ok()
@@ -533,24 +590,15 @@ fn default_office_name() -> String {
         .to_string();
     let host = clean_token(&host_short, 12);
 
-    let base = match (user, host) {
-        (Some(u), Some(h)) => {
-            if u.eq_ignore_ascii_case(&h) {
-                h
-            } else {
-                format!("{u}@{h}")
-            }
-        }
-        (Some(u), None) => u,
-        (None, Some(h)) => h,
-        (None, None) => "My".to_string(),
-    };
+    // Choose one identity token only: username first, hostname fallback.
+    let base = user.or(host).unwrap_or_else(|| "My".to_string());
+    let base = capitalize_first(&base);
 
-    let mut name = format!("{base} Office");
+    let mut name = format!("{base} AI Office");
     if name.chars().count() > 24 {
-        let keep = 24usize.saturating_sub(" Office".chars().count());
+        let keep = 24usize.saturating_sub(" AI Office".chars().count());
         let short: String = base.chars().take(keep).collect();
-        name = format!("{short} Office");
+        name = format!("{short} AI Office");
     }
     name
 }

@@ -408,15 +408,132 @@ Observed result:
 - This made copy updates and language edits code-heavy and difficult to maintain.
 
 ### Refactor
-- Added `templates/i18n.json` as a data source for template localization:
-  - per-template localized `metadata` (name/description/details)
-  - per-template localized `names` map for desk/tab labels
+- Embedded localization directly in each template file (`templates/*.json`):
+  - `metadata.name/description/details` support per-language maps (`en`, `zh-CN`, `zh-TW`, `ja`, `ko`)
+  - `office/desk/tab` `name` fields also support per-language maps
 - Updated `src/client/onboarding_tui.rs` to:
-  - load `templates/i18n.json`
-  - render onboarding template text from JSON
-  - localize applied workspace names from JSON when creating state
+  - parse localized metadata directly from each template JSON
+  - parse localized `office/desk/tab` names directly from each template JSON
+  - localize applied workspace names from template-local data when creating state
 - Removed hardcoded template-name localization logic from Rust.
 
 ### Result
 - Language content now lives in template JSON data, not code.
-- Adding/changing translations is now a data edit under `templates/`.
+- Adding/changing translations is now a template data edit in `templates/*.json` without Rust changes.
+
+---
+
+## 20) Add 3 Role-Focused Templates (Marketing / Trading / HR)
+
+### New templates
+- Added `templates/marketing-ops.json`
+  - Campaign planning, social media ops, growth/SEO, CRM/email execution
+  - 4 desks / 12 tabs
+- Added `templates/markets-trading.json`
+  - Market watch, strategy lab, execution, risk/compliance
+  - 4 desks / 12 tabs
+- Added `templates/hr-admin.json`
+  - Recruiting, people ops, admin coordination, learning/culture
+  - 4 desks / 12 tabs
+
+### Onboarding integration
+- Updated `src/client/onboarding_tui.rs` template list:
+  - onboarding choices expanded from 6 to 9 templates
+  - new templates are available on first run and office creation flow
+
+### Template localization model
+- Each new template includes:
+  - localized `metadata` (`en`, `zh-CN`, `zh-TW`, `ja`, `ko`)
+  - localized `name` objects for office/desk/tab labels
+
+### Documentation updates
+- Updated `templates/README.md`:
+  - added 3 new template sections
+  - updated onboarding example list to `1-9`
+
+---
+
+## 21) Add `Financial Trader` Persona Template + Persona Suggestions
+
+### New template
+- Added `templates/financial-trader.json`:
+  - target: secondary-market stock analyst / discretionary trader
+  - desks:
+    - `Pre-Market`
+    - `Live Market`
+    - `Equity Research`
+    - `Risk Book`
+    - `Post-Market`
+  - total: 5 desks / 15 tabs
+  - includes localized metadata and localized office/desk/tab labels
+
+### Onboarding integration
+- Updated `src/client/onboarding_tui.rs`:
+  - added `financial-trader` to embedded template list
+  - onboarding choices expanded from `1-9` to `1-10`
+
+### Documentation
+- Updated `templates/README.md`:
+  - added `Financial Trader` section
+  - updated onboarding example count to `1-10`
+  - added a short `Suggested Personas` section for future template expansion
+
+---
+
+## 22) `Financial Trader` Expanded + Full Tab Localization
+
+### Requested adjustment
+- Rename template toward `金融股票交易`.
+- Add more desks for secondary-market analyst/trader workflow.
+- Ensure tabs are multilingual (not just desk labels).
+
+### Implemented changes
+- Reworked `templates/financial-trader.json`:
+  - template/office naming updated to `Financial Stock Trading` (`zh-CN`/`zh-TW`: `金融股票交易`)
+  - expanded from 5 desks / 15 tabs to **8 desks / 24 tabs**
+  - added desks:
+    - `Sector Rotation`
+    - `Catalyst & News`
+  - all desk names and all tab names now have localized values (`en`, `zh-CN`, `zh-TW`, `ja`, `ko`)
+
+### Documentation sync
+- Updated `templates/README.md` `Financial Trader` structure and counts to match new template.
+
+---
+
+## 23) Remove `markets-trading` Template (Consolidate into `financial-trader`)
+
+### Change
+- Removed `templates/markets-trading.json`.
+- Kept and expanded `templates/financial-trader.json` as the single finance-focused template.
+
+### Integration update
+- Updated `src/client/onboarding_tui.rs`:
+  - removed `MARKETS_TRADING` include and onboarding entry
+  - template selection list reduced from 10 to 9
+
+### Documentation update
+- Updated `templates/README.md`:
+  - removed `Markets & Trading` section
+  - re-numbered sections accordingly
+  - updated onboarding example choices to `1-9`
+
+---
+
+## 24) Fill Remaining Multilingual Gaps for Tab/Desk/Office Names
+
+### Problem
+- Some templates still had partial localization:
+  - many `tab` names only had `en`
+  - some `office`/`desk` names also missed non-English keys
+
+### Change
+- Applied normalization across all `templates/*.json`:
+  - ensure `metadata.name/description/details` are localized objects
+  - ensure every `office/desk/tab` `name` has keys:
+    - `en`, `zh-CN`, `zh-TW`, `ja`, `ko`
+  - when translation was missing, fallback copied from `en`
+
+### Result
+- No missing language keys remain for template names at office/desk/tab levels.
+- Templates are structurally ready for incremental translation polishing without further schema change.

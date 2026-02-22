@@ -5,25 +5,61 @@
 # Mato
 
 ### 🏖️ The Multi-Agent Terminal Office
-**Elevate your terminal workflow with real-time activity intelligence.**
+**Managing hundreds of AI agents from the command line.**
 
-English: MAH-toh /ˈmɑːtoʊ/, 普通话: 吗头（mǎ tóu）, 粤语: 嗎桃（maa1 tou4）, 한국어: 마토（ma-to）, 日本語: マト（mato）
+English: MAH-toh /ˈmɑːtoʊ/, 普通话: 吗头（mǎ tóu）  
+粤语: 嗎桃（maa1 tou4）, 한국어: 마토（ma-to）, 日本語: マト（mato）
 
 [![Rust](https://img.shields.io/badge/rust-stable-orange?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 [![Version](https://img.shields.io/github/v/release/mr-kelly/mato?display_name=tag&style=for-the-badge)](https://github.com/mr-kelly/mato/releases/latest)
 [![Stars](https://img.shields.io/github/stars/mr-kelly/mato?style=for-the-badge&color=gold)](https://github.com/mr-kelly/mato/stargazers)
 
-[**Why Mato?**](#-the-vision) • [**Showcase**](#-showcase) • [**Quick Start**](#-get-started-in-60s) • [**Documentation**](#-pro-resources)
+[**Quick Start**](#-get-started-in-60s) • [**Showcase**](#-showcase) • [**Why Mato?**](#-the-vision) • [**Documentation**](#-pro-resources)
 
 <img src="docs/images/screenshot-0.png" alt="Mato Screenshot" width="900" style="border-radius: 12px; border: 1px solid #1C1C2A;">
-<p align="center"><i>Desk + tab workspace with jump mode and activity-aware terminal layout.</i></p>
 
 ---
 
-**Mato** is a high-performance terminal multiplexer and workspace designed for the era of AI agents. It transforms your CLI into a powerful "Office" where you can monitor parallel tasks, manage complex agent swarms, and maintain persistent sessions—all with zero keyboard conflicts and a beautiful, modern TUI.
+**Mato** is a terminal multiplexer and workspace that brings visual intelligence to the CLI.
+
+It turns your terminal into an "Office" with Desks and Tabs, where you can monitor parallel tasks, manage complex agent swarms, and keep long-lived background sessions organized — all without keyboard conflicts.
 
 </div>
+
+---
+
+## 🚀 Get Started in 60s
+
+### 1. Installation
+```bash
+# Quick Install (Linux/macOS)
+curl -fsSL https://raw.githubusercontent.com/mr-kelly/mato/main/install.sh | bash
+```
+
+```bash
+# Homebrew (macOS/Linux)
+brew tap mr-kelly/tap
+brew install mato
+```
+
+```bash
+# Manual Installation
+tar xzf mato-*.tar.gz
+sudo mv mato /usr/local/bin/
+```
+
+### 2. Launch your first Office
+```bash
+mato
+```
+Select a template (we recommend **Full-Stack** for your first run) and start coding.
+
+### 3. Mastering the Flow
+*   **`Esc`**: Enter Jump Mode (Teleport anywhere)
+*   **`n`**: New Desk/Tab (Context-aware)
+*   **`r`**: Rename instantly
+*   **`Enter`**: Dive back into the terminal
 
 ---
 
@@ -71,43 +107,6 @@ Start with the perfect setup. Choose from 6 curated templates:
 ---
 
 ## 📽️ Showcase
-
-> [!TIP]
-> **Experience the Flow**: Watch how Mato's activity indicators eliminate the need for constant tab-switching during a complex multi-agent development session.
-
----
-
-## 🚀 Get Started in 60s
-
-### 1. Installation
-```bash
-# Quick Install (Linux/macOS)
-curl -fsSL https://raw.githubusercontent.com/mr-kelly/mato/main/install.sh | bash
-```
-
-```bash
-# Homebrew (macOS/Linux)
-brew tap mr-kelly/tap
-brew install mato
-```
-
-```bash
-# Manual Installation
-tar xzf mato-*.tar.gz
-sudo mv mato /usr/local/bin/
-```
-
-### 2. Launch your first Office
-```bash
-mato
-```
-Select a template (we recommend **Full-Stack** for your first run) and start coding.
-
-### 3. Mastering the Flow
-*   **`Esc`**: Enter Jump Mode (Teleport anywhere)
-*   **`n`**: New Desk/Tab (Context-aware)
-*   **`r`**: Rename instantly
-*   **`Enter`**: Dive back into the terminal
 
 ---
 

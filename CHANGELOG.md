@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Placeholder for upcoming changes.
 
+## [0.5.1] - 2026-02-22
+
+**Patch Release**
+
+### Added
+- Website analytics integration via `@vercel/analytics` in the Next.js root layout.
+
+### Changed
+- Onboarding default office name now uses a single identity token:
+  - prefer `username`
+  - fallback to `hostname`
+  - formatted as `XX AI Office` with leading capitalization
+
 ## [0.5.0] - 2026-02-22
 
 **Jump Mode + System Theme Polish Release**
@@ -130,7 +143,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Links
 
-[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/mr-kelly/mato/releases/tag/v0.5.1
 [0.5.0]: https://github.com/mr-kelly/mato/releases/tag/v0.5.0
 [0.4.0]: https://github.com/mr-kelly/mato/releases/tag/v0.4.0
 [0.3.0]: https://github.com/mr-kelly/mato/releases/tag/v0.3.0

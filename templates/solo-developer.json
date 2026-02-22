@@ -2,57 +2,129 @@
   "offices": [
     {
       "id": "office-default",
-      "name": "Solo Developer",
+      "name": {
+        "en": "Solo Developer",
+        "zh-CN": "Solo Developer",
+        "zh-TW": "Solo Developer",
+        "ja": "Solo Developer",
+        "ko": "Solo Developer"
+      },
       "desks": [
         {
           "id": "dev-coding",
-          "name": "\ud83d\udcbb Development",
+          "name": {
+            "en": "💻 Development",
+            "zh-CN": "💻 开发",
+            "zh-TW": "💻 開發",
+            "ja": "💻 開発",
+            "ko": "💻 개발"
+          },
           "tabs": [
             {
               "id": "tab-editor",
-              "name": "\ud83d\udcdd Editor"
+              "name": {
+                "en": "📝 Editor",
+                "zh-CN": "📝 编辑器",
+                "zh-TW": "📝 編輯器",
+                "ja": "📝 エディタ",
+                "ko": "📝 에디터"
+              }
             },
             {
               "id": "tab-server",
-              "name": "\ud83d\ude80 Dev Server"
+              "name": {
+                "en": "🚀 Dev Server",
+                "zh-CN": "🚀 开发服务",
+                "zh-TW": "🚀 開發服務",
+                "ja": "🚀 開発サーバー",
+                "ko": "🚀 개발 서버"
+              }
             },
             {
               "id": "tab-logs",
-              "name": "\ud83d\udccb Logs"
+              "name": {
+                "en": "📋 Logs",
+                "zh-CN": "📋 日志",
+                "zh-TW": "📋 日誌",
+                "ja": "📋 ログ",
+                "ko": "📋 로그"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "dev-git",
-          "name": "\ud83d\udd00 Git & Deploy",
+          "name": {
+            "en": "🔀 Git & Deploy",
+            "zh-CN": "🔀 Git 与发布",
+            "zh-TW": "🔀 Git 與發佈",
+            "ja": "🔀 Git とデプロイ",
+            "ko": "🔀 Git/배포"
+          },
           "tabs": [
             {
               "id": "tab-git",
-              "name": "\ud83c\udf3f Git"
+              "name": {
+                "en": "🌿 Git",
+                "zh-CN": "🌿 Git",
+                "zh-TW": "🌿 Git",
+                "ja": "🌿 Git",
+                "ko": "🌿 Git"
+              }
             },
             {
               "id": "tab-deploy",
-              "name": "\ud83d\udea2 Deploy"
+              "name": {
+                "en": "🚢 Deploy",
+                "zh-CN": "🚢 发布",
+                "zh-TW": "🚢 發佈",
+                "ja": "🚢 デプロイ",
+                "ko": "🚢 배포"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "dev-tools",
-          "name": "\ud83d\udee0\ufe0f Tools",
+          "name": {
+            "en": "🛠️ Tools",
+            "zh-CN": "🛠️ 工具",
+            "zh-TW": "🛠️ 工具",
+            "ja": "🛠️ ツール",
+            "ko": "🛠️ 도구"
+          },
           "tabs": [
             {
               "id": "tab-db",
-              "name": "\ud83d\uddc4\ufe0f Database"
+              "name": {
+                "en": "🗄️ Database",
+                "zh-CN": "🗄️ 数据库",
+                "zh-TW": "🗄️ 資料庫",
+                "ja": "🗄️ データベース",
+                "ko": "🗄️ 데이터베이스"
+              }
             },
             {
               "id": "tab-docker",
-              "name": "\ud83d\udc33 Docker"
+              "name": {
+                "en": "🐳 Docker",
+                "zh-CN": "🐳 Docker",
+                "zh-TW": "🐳 Docker",
+                "ja": "🐳 Docker",
+                "ko": "🐳 Docker"
+              }
             },
             {
               "id": "tab-monitor",
-              "name": "\ud83d\udcca Monitor"
+              "name": {
+                "en": "📊 Monitor",
+                "zh-CN": "📊 监控",
+                "zh-TW": "📊 監控",
+                "ja": "📊 監視",
+                "ko": "📊 모니터링"
+              }
             }
           ],
           "active_tab": 0
@@ -63,8 +135,26 @@
   ],
   "current_office": 0,
   "metadata": {
-    "name": "\ud83d\udcbb Solo Developer",
-    "description": "3 desks, 8 tabs",
-    "details": "Focused office for individual developers. Includes Development (Editor, Dev Server, Logs), Git & Deploy, and Tools (Database, Docker, Monitor)."
+    "name": {
+      "en": "💻 Solo Developer",
+      "zh-CN": "独立开发者",
+      "zh-TW": "獨立開發者",
+      "ja": "ソロ開発者",
+      "ko": "솔로 개발자"
+    },
+    "description": {
+      "en": "3 desks, 8 tabs",
+      "zh-CN": "个人开发日常的专注工作流。",
+      "zh-TW": "個人開發日常的專注工作流。",
+      "ja": "個人開発向けの集中ワークフロー。",
+      "ko": "개인 개발에 최적화된 집중 워크플로우."
+    },
+    "details": {
+      "en": "Focused office for individual developers. Includes Development (Editor, Dev Server, Logs), Git & Deploy, and Tools (Database, Docker, Monitor).",
+      "zh-CN": "适合单人开发：开发区、Git/发布区、工具区（数据库、Docker、监控）都已预设。",
+      "zh-TW": "適合單人開發：開發區、Git/發布區、工具區（資料庫、Docker、監控）都已預設。",
+      "ja": "個人開発向け。開発、Git/デプロイ、DB/Docker/監視をすぐ使える構成。",
+      "ko": "개인 개발용. 개발/배포/Git/DB/Docker/모니터링 영역을 바로 사용 가능."
+    }
   }
 }

@@ -143,6 +143,48 @@ Pre-configured office templates for different use cases.
 
 ---
 
+### 7. Marketing Ops (`marketing-ops.json`)
+**Best for**: Marketing specialists and growth teams
+
+**Structure**:
+- 🎯 Campaigns (3 tabs)
+- 📣 Social Media (3 tabs)
+- 📈 Growth & SEO (3 tabs)
+- 🤝 CRM & Email (3 tabs)
+
+**Total**: 4 desks, 12 tabs
+
+---
+
+### 8. People & Admin (`hr-admin.json`)
+**Best for**: HR and administrative operations
+
+**Structure**:
+- 👥 Recruiting (3 tabs)
+- 🧾 People Ops (3 tabs)
+- 🗂️ Admin Coordination (3 tabs)
+- 🌱 Learning & Culture (3 tabs)
+
+**Total**: 4 desks, 12 tabs
+
+---
+
+### 9. Financial Trader (`financial-trader.json`)
+**Best for**: Secondary-market stock analysts and discretionary traders
+
+**Structure**:
+- 🌅 Pre-Market (3 tabs)
+- 📈 Live Market (3 tabs)
+- 🔬 Equity Research (3 tabs)
+- 🧭 Sector Rotation (3 tabs)
+- 📰 Catalyst & News (3 tabs)
+- 🛡️ Risk Book (3 tabs)
+- 🌙 Post-Market (3 tabs)
+
+**Total**: 8 desks, 24 tabs
+
+---
+
 ## How to Use Templates
 
 ### Method 1: First-Time Setup (Automatic)
@@ -164,13 +206,25 @@ Choose a office template:
 4. Full-Stack Developer (4 desks, 11 tabs)
 5. Data Scientist (4 desks, 11 tabs)
 6. Minimal (1 task, 1 tab)
+7. Marketing Ops (4 desks, 12 tabs)
+8. People & Admin (4 desks, 12 tabs)
+9. Financial Trader (8 desks, 24 tabs)
 
-Enter your choice (1-6):
+Enter your choice (1-9):
 ```
 
 Language selection:
 - Use `←` / `→` in onboarding to switch language.
 - Supported languages: English, Simplified Chinese, Traditional Chinese, Japanese, Korean.
+
+## Suggested Personas
+
+- Secondary-market stock analyst / discretionary trader
+- Paid media performance marketer
+- HR operations and recruiting coordinator
+- Founder office / chief-of-staff
+- Customer success and support lead
+- Security operations analyst
 
 ### Method 2: Manual Setup
 

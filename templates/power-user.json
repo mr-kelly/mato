@@ -2,1136 +2,2750 @@
   "offices": [
     {
       "id": "office-default",
-      "name": "Mato Creator Office",
+      "name": {
+        "en": "Mato Creator Office",
+        "zh-CN": "Mato Creator Office",
+        "zh-TW": "Mato Creator Office",
+        "ja": "Mato Creator Office",
+        "ko": "Mato Creator Office"
+      },
       "desks": [
         {
           "id": "00000000a3b77",
-          "name": "🚀 Project X",
+          "name": {
+            "en": "🚀 Project X",
+            "zh-CN": "🚀 项目 X",
+            "zh-TW": "🚀 專案 X",
+            "ja": "🚀 プロジェクト X",
+            "ko": "🚀 프로젝트 X"
+          },
           "tabs": [
             {
               "id": "00000000a7576",
-              "name": "💻 coding"
+              "name": {
+                "en": "💻 coding",
+                "zh-CN": "💻 coding",
+                "zh-TW": "💻 coding",
+                "ja": "💻 coding",
+                "ko": "💻 coding"
+              }
             },
             {
               "id": "00000001a7b3c",
-              "name": "🐛 debug"
+              "name": {
+                "en": "🐛 debug",
+                "zh-CN": "🐛 debug",
+                "zh-TW": "🐛 debug",
+                "ja": "🐛 debug",
+                "ko": "🐛 debug"
+              }
             },
             {
               "id": "00000002abd1e",
-              "name": "▶️ pnpm-dev"
+              "name": {
+                "en": "▶️ pnpm-dev",
+                "zh-CN": "▶️ pnpm-dev",
+                "zh-TW": "▶️ pnpm-dev",
+                "ja": "▶️ pnpm-dev",
+                "ko": "▶️ pnpm-dev"
+              }
             },
             {
               "id": "00000003ab3f5",
-              "name": "🤖 gemini-cli"
+              "name": {
+                "en": "🤖 gemini-cli",
+                "zh-CN": "🤖 gemini-cli",
+                "zh-TW": "🤖 gemini-cli",
+                "ja": "🤖 gemini-cli",
+                "ko": "🤖 gemini-cli"
+              }
             },
             {
               "id": "00000004a0eda",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "00000005a7b70",
-              "name": "⚡ codex"
+              "name": {
+                "en": "⚡ codex",
+                "zh-CN": "⚡ codex",
+                "zh-TW": "⚡ codex",
+                "ja": "⚡ codex",
+                "ko": "⚡ codex"
+              }
             },
             {
               "id": "00000006ac57f",
-              "name": "🔮 copilot"
+              "name": {
+                "en": "🔮 copilot",
+                "zh-CN": "🔮 copilot",
+                "zh-TW": "🔮 copilot",
+                "ja": "🔮 copilot",
+                "ko": "🔮 copilot"
+              }
             },
             {
               "id": "00000007ad870",
-              "name": "🎯 cursor"
+              "name": {
+                "en": "🎯 cursor",
+                "zh-CN": "🎯 cursor",
+                "zh-TW": "🎯 cursor",
+                "ja": "🎯 cursor",
+                "ko": "🎯 cursor"
+              }
             },
             {
               "id": "00000008a615d",
-              "name": "🛠️ aider"
+              "name": {
+                "en": "🛠️ aider",
+                "zh-CN": "🛠️ aider",
+                "zh-TW": "🛠️ aider",
+                "ja": "🛠️ aider",
+                "ko": "🛠️ aider"
+              }
             },
             {
               "id": "00000009af30d",
-              "name": "🔄 continue"
+              "name": {
+                "en": "🔄 continue",
+                "zh-CN": "🔄 continue",
+                "zh-TW": "🔄 continue",
+                "ja": "🔄 continue",
+                "ko": "🔄 continue"
+              }
             },
             {
               "id": "0000000aa7d49",
-              "name": "🌊 cline"
+              "name": {
+                "en": "🌊 cline",
+                "zh-CN": "🌊 cline",
+                "zh-TW": "🌊 cline",
+                "ja": "🌊 cline",
+                "ko": "🌊 cline"
+              }
             },
             {
               "id": "0000000ba19cb",
-              "name": "⚡ windsurf"
+              "name": {
+                "en": "⚡ windsurf",
+                "zh-CN": "⚡ windsurf",
+                "zh-TW": "⚡ windsurf",
+                "ja": "⚡ windsurf",
+                "ko": "⚡ windsurf"
+              }
             },
             {
               "id": "0000000ca044c",
-              "name": "🔥 bolt"
+              "name": {
+                "en": "🔥 bolt",
+                "zh-CN": "🔥 bolt",
+                "zh-TW": "🔥 bolt",
+                "ja": "🔥 bolt",
+                "ko": "🔥 bolt"
+              }
             },
             {
               "id": "0000000da9e90",
-              "name": "📦 build"
+              "name": {
+                "en": "📦 build",
+                "zh-CN": "📦 build",
+                "zh-TW": "📦 build",
+                "ja": "📦 build",
+                "ko": "📦 build"
+              }
             },
             {
               "id": "0000000eaba78",
-              "name": "🚀 deploy"
+              "name": {
+                "en": "🚀 deploy",
+                "zh-CN": "🚀 deploy",
+                "zh-TW": "🚀 deploy",
+                "ja": "🚀 deploy",
+                "ko": "🚀 deploy"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000001a9e7a",
-          "name": "📱 Mobile App",
+          "name": {
+            "en": "📱 Mobile App",
+            "zh-CN": "📱 移动应用",
+            "zh-TW": "📱 行動應用",
+            "ja": "📱 モバイルアプリ",
+            "ko": "📱 모바일 앱"
+          },
           "tabs": [
             {
               "id": "00000064a2165",
-              "name": "📲 expo"
+              "name": {
+                "en": "📲 expo",
+                "zh-CN": "📲 expo",
+                "zh-TW": "📲 expo",
+                "ja": "📲 expo",
+                "ko": "📲 expo"
+              }
             },
             {
               "id": "00000065a947a",
-              "name": "🍎 ios-sim"
+              "name": {
+                "en": "🍎 ios-sim",
+                "zh-CN": "🍎 ios-sim",
+                "zh-TW": "🍎 ios-sim",
+                "ja": "🍎 ios-sim",
+                "ko": "🍎 ios-sim"
+              }
             },
             {
               "id": "00000066ac53b",
-              "name": "🤖 android"
+              "name": {
+                "en": "🤖 android",
+                "zh-CN": "🤖 android",
+                "zh-TW": "🤖 android",
+                "ja": "🤖 android",
+                "ko": "🤖 android"
+              }
             },
             {
               "id": "00000067af5f6",
-              "name": "🧪 test"
+              "name": {
+                "en": "🧪 test",
+                "zh-CN": "🧪 test",
+                "zh-TW": "🧪 test",
+                "ja": "🧪 test",
+                "ko": "🧪 test"
+              }
             },
             {
               "id": "00000068a8933",
-              "name": "🤖 gemini-cli"
+              "name": {
+                "en": "🤖 gemini-cli",
+                "zh-CN": "🤖 gemini-cli",
+                "zh-TW": "🤖 gemini-cli",
+                "ja": "🤖 gemini-cli",
+                "ko": "🤖 gemini-cli"
+              }
             },
             {
               "id": "00000069a9835",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "0000006aa8030",
-              "name": "⚡ codex"
+              "name": {
+                "en": "⚡ codex",
+                "zh-CN": "⚡ codex",
+                "zh-TW": "⚡ codex",
+                "ja": "⚡ codex",
+                "ko": "⚡ codex"
+              }
             },
             {
               "id": "0000006ba7702",
-              "name": "🔮 copilot"
+              "name": {
+                "en": "🔮 copilot",
+                "zh-CN": "🔮 copilot",
+                "zh-TW": "🔮 copilot",
+                "ja": "🔮 copilot",
+                "ko": "🔮 copilot"
+              }
             },
             {
               "id": "0000006ca4160",
-              "name": "🎯 cursor"
+              "name": {
+                "en": "🎯 cursor",
+                "zh-CN": "🎯 cursor",
+                "zh-TW": "🎯 cursor",
+                "ja": "🎯 cursor",
+                "ko": "🎯 cursor"
+              }
             },
             {
               "id": "0000006dac0be",
-              "name": "🔥 fastlane"
+              "name": {
+                "en": "🔥 fastlane",
+                "zh-CN": "🔥 fastlane",
+                "zh-TW": "🔥 fastlane",
+                "ja": "🔥 fastlane",
+                "ko": "🔥 fastlane"
+              }
             },
             {
               "id": "0000006eaff16",
-              "name": "📊 analytics"
+              "name": {
+                "en": "📊 analytics",
+                "zh-CN": "📊 analytics",
+                "zh-TW": "📊 analytics",
+                "ja": "📊 analytics",
+                "ko": "📊 analytics"
+              }
             },
             {
               "id": "0000006fadef3",
-              "name": "🚀 deploy"
+              "name": {
+                "en": "🚀 deploy",
+                "zh-CN": "🚀 deploy",
+                "zh-TW": "🚀 deploy",
+                "ja": "🚀 deploy",
+                "ko": "🚀 deploy"
+              }
             },
             {
               "id": "00000070a6597",
-              "name": "📝 logs"
+              "name": {
+                "en": "📝 logs",
+                "zh-CN": "📝 logs",
+                "zh-TW": "📝 logs",
+                "ja": "📝 logs",
+                "ko": "📝 logs"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000002afc46",
-          "name": "🌐 Web Platform",
+          "name": {
+            "en": "🌐 Web Platform",
+            "zh-CN": "🌐 Web 平台",
+            "zh-TW": "🌐 Web 平台",
+            "ja": "🌐 Web プラットフォーム",
+            "ko": "🌐 웹 플랫폼"
+          },
           "tabs": [
             {
               "id": "000000c8ad308",
-              "name": "⚡ vite"
+              "name": {
+                "en": "⚡ vite",
+                "zh-CN": "⚡ vite",
+                "zh-TW": "⚡ vite",
+                "ja": "⚡ vite",
+                "ko": "⚡ vite"
+              }
             },
             {
               "id": "000000c9a5560",
-              "name": "🎨 storybook"
+              "name": {
+                "en": "🎨 storybook",
+                "zh-CN": "🎨 storybook",
+                "zh-TW": "🎨 storybook",
+                "ja": "🎨 storybook",
+                "ko": "🎨 storybook"
+              }
             },
             {
               "id": "000000caa2b71",
-              "name": "🧪 test"
+              "name": {
+                "en": "🧪 test",
+                "zh-CN": "🧪 test",
+                "zh-TW": "🧪 test",
+                "ja": "🧪 test",
+                "ko": "🧪 test"
+              }
             },
             {
               "id": "000000cba60da",
-              "name": "🤖 gemini-cli"
+              "name": {
+                "en": "🤖 gemini-cli",
+                "zh-CN": "🤖 gemini-cli",
+                "zh-TW": "🤖 gemini-cli",
+                "ja": "🤖 gemini-cli",
+                "ko": "🤖 gemini-cli"
+              }
             },
             {
               "id": "000000ccafff6",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "000000cdaea7f",
-              "name": "⚡ codex"
+              "name": {
+                "en": "⚡ codex",
+                "zh-CN": "⚡ codex",
+                "zh-TW": "⚡ codex",
+                "ja": "⚡ codex",
+                "ko": "⚡ codex"
+              }
             },
             {
               "id": "000000ceacf69",
-              "name": "🔮 copilot"
+              "name": {
+                "en": "🔮 copilot",
+                "zh-CN": "🔮 copilot",
+                "zh-TW": "🔮 copilot",
+                "ja": "🔮 copilot",
+                "ko": "🔮 copilot"
+              }
             },
             {
               "id": "000000cfafffc",
-              "name": "🎯 cursor"
+              "name": {
+                "en": "🎯 cursor",
+                "zh-CN": "🎯 cursor",
+                "zh-TW": "🎯 cursor",
+                "ja": "🎯 cursor",
+                "ko": "🎯 cursor"
+              }
             },
             {
               "id": "000000d0a9a34",
-              "name": "🛠️ aider"
+              "name": {
+                "en": "🛠️ aider",
+                "zh-CN": "🛠️ aider",
+                "zh-TW": "🛠️ aider",
+                "ja": "🛠️ aider",
+                "ko": "🛠️ aider"
+              }
             },
             {
               "id": "000000d1a96d9",
-              "name": "🔄 continue"
+              "name": {
+                "en": "🔄 continue",
+                "zh-CN": "🔄 continue",
+                "zh-TW": "🔄 continue",
+                "ja": "🔄 continue",
+                "ko": "🔄 continue"
+              }
             },
             {
               "id": "000000d2add9e",
-              "name": "📦 webpack"
+              "name": {
+                "en": "📦 webpack",
+                "zh-CN": "📦 webpack",
+                "zh-TW": "📦 webpack",
+                "ja": "📦 webpack",
+                "ko": "📦 webpack"
+              }
             },
             {
               "id": "000000d3a7287",
-              "name": "🚀 vercel"
+              "name": {
+                "en": "🚀 vercel",
+                "zh-CN": "🚀 vercel",
+                "zh-TW": "🚀 vercel",
+                "ja": "🚀 vercel",
+                "ko": "🚀 vercel"
+              }
             },
             {
               "id": "000000d4a3a9b",
-              "name": "📊 sentry"
+              "name": {
+                "en": "📊 sentry",
+                "zh-CN": "📊 sentry",
+                "zh-TW": "📊 sentry",
+                "ja": "📊 sentry",
+                "ko": "📊 sentry"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000003a5f47",
-          "name": "💼 Marketing Hub",
+          "name": {
+            "en": "💼 Marketing Hub",
+            "zh-CN": "💼 营销中心",
+            "zh-TW": "💼 行銷中心",
+            "ja": "💼 マーケティング",
+            "ko": "💼 마케팅 허브"
+          },
           "tabs": [
             {
               "id": "0000012ca71b2",
-              "name": "📝 seo-agent"
+              "name": {
+                "en": "📝 seo-agent",
+                "zh-CN": "📝 seo-agent",
+                "zh-TW": "📝 seo-agent",
+                "ja": "📝 seo-agent",
+                "ko": "📝 seo-agent"
+              }
             },
             {
               "id": "0000012da9e33",
-              "name": "✍️ content-writer"
+              "name": {
+                "en": "✍️ content-writer",
+                "zh-CN": "✍️ content-writer",
+                "zh-TW": "✍️ content-writer",
+                "ja": "✍️ content-writer",
+                "ko": "✍️ content-writer"
+              }
             },
             {
               "id": "0000012ea0c78",
-              "name": "📱 social-media"
+              "name": {
+                "en": "📱 social-media",
+                "zh-CN": "📱 social-media",
+                "zh-TW": "📱 social-media",
+                "ja": "📱 social-media",
+                "ko": "📱 social-media"
+              }
             },
             {
               "id": "0000012fa9941",
-              "name": "📧 email-campaign"
+              "name": {
+                "en": "📧 email-campaign",
+                "zh-CN": "📧 email-campaign",
+                "zh-TW": "📧 email-campaign",
+                "ja": "📧 email-campaign",
+                "ko": "📧 email-campaign"
+              }
             },
             {
               "id": "00000130a336c",
-              "name": "🎯 ads-optimizer"
+              "name": {
+                "en": "🎯 ads-optimizer",
+                "zh-CN": "🎯 ads-optimizer",
+                "zh-TW": "🎯 ads-optimizer",
+                "ja": "🎯 ads-optimizer",
+                "ko": "🎯 ads-optimizer"
+              }
             },
             {
               "id": "00000131a143e",
-              "name": "📊 analytics"
+              "name": {
+                "en": "📊 analytics",
+                "zh-CN": "📊 analytics",
+                "zh-TW": "📊 analytics",
+                "ja": "📊 analytics",
+                "ko": "📊 analytics"
+              }
             },
             {
               "id": "00000132ad422",
-              "name": "🔍 competitor"
+              "name": {
+                "en": "🔍 competitor",
+                "zh-CN": "🔍 competitor",
+                "zh-TW": "🔍 competitor",
+                "ja": "🔍 competitor",
+                "ko": "🔍 competitor"
+              }
             },
             {
               "id": "00000133a728d",
-              "name": "🤖 gemini-cli"
+              "name": {
+                "en": "🤖 gemini-cli",
+                "zh-CN": "🤖 gemini-cli",
+                "zh-TW": "🤖 gemini-cli",
+                "ja": "🤖 gemini-cli",
+                "ko": "🤖 gemini-cli"
+              }
             },
             {
               "id": "00000134acb90",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "00000135a9a7d",
-              "name": "🎨 canva"
+              "name": {
+                "en": "🎨 canva",
+                "zh-CN": "🎨 canva",
+                "zh-TW": "🎨 canva",
+                "ja": "🎨 canva",
+                "ko": "🎨 canva"
+              }
             },
             {
               "id": "00000136ae4d5",
-              "name": "📈 growth"
+              "name": {
+                "en": "📈 growth",
+                "zh-CN": "📈 growth",
+                "zh-TW": "📈 growth",
+                "ja": "📈 growth",
+                "ko": "📈 growth"
+              }
             },
             {
               "id": "00000137a8395",
-              "name": "💰 roi-tracker"
+              "name": {
+                "en": "💰 roi-tracker",
+                "zh-CN": "💰 roi-tracker",
+                "zh-TW": "💰 roi-tracker",
+                "ja": "💰 roi-tracker",
+                "ko": "💰 roi-tracker"
+              }
             },
             {
               "id": "25550b2b0",
-              "name": "Terminal 13"
+              "name": {
+                "en": "Terminal 13",
+                "zh-CN": "Terminal 13",
+                "zh-TW": "Terminal 13",
+                "ja": "Terminal 13",
+                "ko": "Terminal 13"
+              }
             },
             {
               "id": "3665150c1",
-              "name": "Terminal 14"
+              "name": {
+                "en": "Terminal 14",
+                "zh-CN": "Terminal 14",
+                "zh-TW": "Terminal 14",
+                "ja": "Terminal 14",
+                "ko": "Terminal 14"
+              }
             }
           ],
           "active_tab": 2
         },
         {
           "id": "00000004af8b7",
-          "name": "📊 Analytics Center",
+          "name": {
+            "en": "📊 Analytics Center",
+            "zh-CN": "📊 分析中心",
+            "zh-TW": "📊 分析中心",
+            "ja": "📊 分析センター",
+            "ko": "📊 분석 센터"
+          },
           "tabs": [
             {
               "id": "00000190a84fb",
-              "name": "📈 metabase"
+              "name": {
+                "en": "📈 metabase",
+                "zh-CN": "📈 metabase",
+                "zh-TW": "📈 metabase",
+                "ja": "📈 metabase",
+                "ko": "📈 metabase"
+              }
             },
             {
               "id": "00000191a2c7e",
-              "name": "🔍 looker"
+              "name": {
+                "en": "🔍 looker",
+                "zh-CN": "🔍 looker",
+                "zh-TW": "🔍 looker",
+                "ja": "🔍 looker",
+                "ko": "🔍 looker"
+              }
             },
             {
               "id": "00000192a21fb",
-              "name": "📊 tableau"
+              "name": {
+                "en": "📊 tableau",
+                "zh-CN": "📊 tableau",
+                "zh-TW": "📊 tableau",
+                "ja": "📊 tableau",
+                "ko": "📊 tableau"
+              }
             },
             {
               "id": "00000193aeb6f",
-              "name": "🐍 jupyter"
+              "name": {
+                "en": "🐍 jupyter",
+                "zh-CN": "🐍 jupyter",
+                "zh-TW": "🐍 jupyter",
+                "ja": "🐍 jupyter",
+                "ko": "🐍 jupyter"
+              }
             },
             {
               "id": "00000194a79db",
-              "name": "⚡ spark"
+              "name": {
+                "en": "⚡ spark",
+                "zh-CN": "⚡ spark",
+                "zh-TW": "⚡ spark",
+                "ja": "⚡ spark",
+                "ko": "⚡ spark"
+              }
             },
             {
               "id": "00000195acbf6",
-              "name": "🗄️ presto"
+              "name": {
+                "en": "🗄️ presto",
+                "zh-CN": "🗄️ presto",
+                "zh-TW": "🗄️ presto",
+                "ja": "🗄️ presto",
+                "ko": "🗄️ presto"
+              }
             },
             {
               "id": "00000196a924d",
-              "name": "🤖 data-agent"
+              "name": {
+                "en": "🤖 data-agent",
+                "zh-CN": "🤖 data-agent",
+                "zh-TW": "🤖 data-agent",
+                "ja": "🤖 data-agent",
+                "ko": "🤖 data-agent"
+              }
             },
             {
               "id": "00000197a9148",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "00000198ad452",
-              "name": "📉 trends"
+              "name": {
+                "en": "📉 trends",
+                "zh-CN": "📉 trends",
+                "zh-TW": "📉 trends",
+                "ja": "📉 trends",
+                "ko": "📉 trends"
+              }
             },
             {
               "id": "00000199abb3e",
-              "name": "🎯 insights"
+              "name": {
+                "en": "🎯 insights",
+                "zh-CN": "🎯 insights",
+                "zh-TW": "🎯 insights",
+                "ja": "🎯 insights",
+                "ko": "🎯 insights"
+              }
             },
             {
               "id": "0000019aae8f8",
-              "name": "📋 reports"
+              "name": {
+                "en": "📋 reports",
+                "zh-CN": "📋 reports",
+                "zh-TW": "📋 reports",
+                "ja": "📋 reports",
+                "ko": "📋 reports"
+              }
             },
             {
               "id": "0000019ba684c",
-              "name": "🚨 alerts"
+              "name": {
+                "en": "🚨 alerts",
+                "zh-CN": "🚨 alerts",
+                "zh-TW": "🚨 alerts",
+                "ja": "🚨 alerts",
+                "ko": "🚨 alerts"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000005a7fa6",
-          "name": "💰 Revenue Ops",
+          "name": {
+            "en": "💰 Revenue Ops",
+            "zh-CN": "💰 收益运营",
+            "zh-TW": "💰 收益營運",
+            "ja": "💰 収益運用",
+            "ko": "💰 매출 운영"
+          },
           "tabs": [
             {
               "id": "000001f4a4945",
-              "name": "💳 stripe"
+              "name": {
+                "en": "💳 stripe",
+                "zh-CN": "💳 stripe",
+                "zh-TW": "💳 stripe",
+                "ja": "💳 stripe",
+                "ko": "💳 stripe"
+              }
             },
             {
               "id": "000001f5ab31c",
-              "name": "📊 revenue"
+              "name": {
+                "en": "📊 revenue",
+                "zh-CN": "📊 revenue",
+                "zh-TW": "📊 revenue",
+                "ja": "📊 revenue",
+                "ko": "📊 revenue"
+              }
             },
             {
               "id": "000001f6a4682",
-              "name": "💰 billing"
+              "name": {
+                "en": "💰 billing",
+                "zh-CN": "💰 billing",
+                "zh-TW": "💰 billing",
+                "ja": "💰 billing",
+                "ko": "💰 billing"
+              }
             },
             {
               "id": "000001f7a0e25",
-              "name": "📈 mrr"
+              "name": {
+                "en": "📈 mrr",
+                "zh-CN": "📈 mrr",
+                "zh-TW": "📈 mrr",
+                "ja": "📈 mrr",
+                "ko": "📈 mrr"
+              }
             },
             {
               "id": "000001f8a46fb",
-              "name": "🎯 churn"
+              "name": {
+                "en": "🎯 churn",
+                "zh-CN": "🎯 churn",
+                "zh-TW": "🎯 churn",
+                "ja": "🎯 churn",
+                "ko": "🎯 churn"
+              }
             },
             {
               "id": "000001f9aafb6",
-              "name": "📧 dunning"
+              "name": {
+                "en": "📧 dunning",
+                "zh-CN": "📧 dunning",
+                "zh-TW": "📧 dunning",
+                "ja": "📧 dunning",
+                "ko": "📧 dunning"
+              }
             },
             {
               "id": "000001faa9d57",
-              "name": "🤖 finance-agent"
+              "name": {
+                "en": "🤖 finance-agent",
+                "zh-CN": "🤖 finance-agent",
+                "zh-TW": "🤖 finance-agent",
+                "ja": "🤖 finance-agent",
+                "ko": "🤖 finance-agent"
+              }
             },
             {
               "id": "000001fbaa571",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "000001fcaf029",
-              "name": "📊 forecast"
+              "name": {
+                "en": "📊 forecast",
+                "zh-CN": "📊 forecast",
+                "zh-TW": "📊 forecast",
+                "ja": "📊 forecast",
+                "ko": "📊 forecast"
+              }
             },
             {
               "id": "000001fda43ff",
-              "name": "💼 crm"
+              "name": {
+                "en": "💼 crm",
+                "zh-CN": "💼 crm",
+                "zh-TW": "💼 crm",
+                "ja": "💼 crm",
+                "ko": "💼 crm"
+              }
             },
             {
               "id": "000001fea0b07",
-              "name": "📋 invoices"
+              "name": {
+                "en": "📋 invoices",
+                "zh-CN": "📋 invoices",
+                "zh-TW": "📋 invoices",
+                "ja": "📋 invoices",
+                "ko": "📋 invoices"
+              }
             },
             {
               "id": "000001ffab5ce",
-              "name": "🔔 alerts"
+              "name": {
+                "en": "🔔 alerts",
+                "zh-CN": "🔔 alerts",
+                "zh-TW": "🔔 alerts",
+                "ja": "🔔 alerts",
+                "ko": "🔔 alerts"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000006aa35f",
-          "name": "📝 Content Studio",
+          "name": {
+            "en": "📝 Content Studio",
+            "zh-CN": "📝 内容工作室",
+            "zh-TW": "📝 內容工作室",
+            "ja": "📝 コンテンツ",
+            "ko": "📝 콘텐츠 스튜디오"
+          },
           "tabs": [
             {
               "id": "00000258a88fc",
-              "name": "✍️ blog-writer"
+              "name": {
+                "en": "✍️ blog-writer",
+                "zh-CN": "✍️ blog-writer",
+                "zh-TW": "✍️ blog-writer",
+                "ja": "✍️ blog-writer",
+                "ko": "✍️ blog-writer"
+              }
             },
             {
               "id": "00000259a8934",
-              "name": "📄 docs-gen"
+              "name": {
+                "en": "📄 docs-gen",
+                "zh-CN": "📄 docs-gen",
+                "zh-TW": "📄 docs-gen",
+                "ja": "📄 docs-gen",
+                "ko": "📄 docs-gen"
+              }
             },
             {
               "id": "0000025aa3296",
-              "name": "🎬 script-writer"
+              "name": {
+                "en": "🎬 script-writer",
+                "zh-CN": "🎬 script-writer",
+                "zh-TW": "🎬 script-writer",
+                "ja": "🎬 script-writer",
+                "ko": "🎬 script-writer"
+              }
             },
             {
               "id": "0000025bab7a3",
-              "name": "🎙️ podcast"
+              "name": {
+                "en": "🎙️ podcast",
+                "zh-CN": "🎙️ podcast",
+                "zh-TW": "🎙️ podcast",
+                "ja": "🎙️ podcast",
+                "ko": "🎙️ podcast"
+              }
             },
             {
               "id": "0000025cad76b",
-              "name": "📚 ebook"
+              "name": {
+                "en": "📚 ebook",
+                "zh-CN": "📚 ebook",
+                "zh-TW": "📚 ebook",
+                "ja": "📚 ebook",
+                "ko": "📚 ebook"
+              }
             },
             {
               "id": "0000025daaf3b",
-              "name": "🤖 gemini-cli"
+              "name": {
+                "en": "🤖 gemini-cli",
+                "zh-CN": "🤖 gemini-cli",
+                "zh-TW": "🤖 gemini-cli",
+                "ja": "🤖 gemini-cli",
+                "ko": "🤖 gemini-cli"
+              }
             },
             {
               "id": "0000025ea48dc",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "0000025fab33a",
-              "name": "⚡ codex"
+              "name": {
+                "en": "⚡ codex",
+                "zh-CN": "⚡ codex",
+                "zh-TW": "⚡ codex",
+                "ja": "⚡ codex",
+                "ko": "⚡ codex"
+              }
             },
             {
               "id": "00000260a9b0f",
-              "name": "🎨 midjourney"
+              "name": {
+                "en": "🎨 midjourney",
+                "zh-CN": "🎨 midjourney",
+                "zh-TW": "🎨 midjourney",
+                "ja": "🎨 midjourney",
+                "ko": "🎨 midjourney"
+              }
             },
             {
               "id": "00000261adf7d",
-              "name": "📸 dalle"
+              "name": {
+                "en": "📸 dalle",
+                "zh-CN": "📸 dalle",
+                "zh-TW": "📸 dalle",
+                "ja": "📸 dalle",
+                "ko": "📸 dalle"
+              }
             },
             {
               "id": "00000262a2689",
-              "name": "🔍 seo"
+              "name": {
+                "en": "🔍 seo",
+                "zh-CN": "🔍 seo",
+                "zh-TW": "🔍 seo",
+                "ja": "🔍 seo",
+                "ko": "🔍 seo"
+              }
             },
             {
               "id": "00000263ab1c7",
-              "name": "📊 analytics"
+              "name": {
+                "en": "📊 analytics",
+                "zh-CN": "📊 analytics",
+                "zh-TW": "📊 analytics",
+                "ja": "📊 analytics",
+                "ko": "📊 analytics"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000007ab1d2",
-          "name": "🎨 Design Lab",
+          "name": {
+            "en": "🎨 Design Lab",
+            "zh-CN": "🎨 设计实验室",
+            "zh-TW": "🎨 設計實驗室",
+            "ja": "🎨 デザインラボ",
+            "ko": "🎨 디자인 랩"
+          },
           "tabs": [
             {
               "id": "000002bca85f3",
-              "name": "🎨 figma"
+              "name": {
+                "en": "🎨 figma",
+                "zh-CN": "🎨 figma",
+                "zh-TW": "🎨 figma",
+                "ja": "🎨 figma",
+                "ko": "🎨 figma"
+              }
             },
             {
               "id": "000002bdad5fd",
-              "name": "🖼️ photoshop"
+              "name": {
+                "en": "🖼️ photoshop",
+                "zh-CN": "🖼️ photoshop",
+                "zh-TW": "🖼️ photoshop",
+                "ja": "🖼️ photoshop",
+                "ko": "🖼️ photoshop"
+              }
             },
             {
               "id": "000002bea1f6a",
-              "name": "🎬 after-effects"
+              "name": {
+                "en": "🎬 after-effects",
+                "zh-CN": "🎬 after-effects",
+                "zh-TW": "🎬 after-effects",
+                "ja": "🎬 after-effects",
+                "ko": "🎬 after-effects"
+              }
             },
             {
               "id": "000002bfaa588",
-              "name": "🤖 design-agent"
+              "name": {
+                "en": "🤖 design-agent",
+                "zh-CN": "🤖 design-agent",
+                "zh-TW": "🤖 design-agent",
+                "ja": "🤖 design-agent",
+                "ko": "🤖 design-agent"
+              }
             },
             {
               "id": "000002c0a9860",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "000002c1a206f",
-              "name": "🎯 midjourney"
+              "name": {
+                "en": "🎯 midjourney",
+                "zh-CN": "🎯 midjourney",
+                "zh-TW": "🎯 midjourney",
+                "ja": "🎯 midjourney",
+                "ko": "🎯 midjourney"
+              }
             },
             {
               "id": "000002c2af7b5",
-              "name": "📸 dalle"
+              "name": {
+                "en": "📸 dalle",
+                "zh-CN": "📸 dalle",
+                "zh-TW": "📸 dalle",
+                "ja": "📸 dalle",
+                "ko": "📸 dalle"
+              }
             },
             {
               "id": "000002c3a45c2",
-              "name": "🌈 stable-diffusion"
+              "name": {
+                "en": "🌈 stable-diffusion",
+                "zh-CN": "🌈 stable-diffusion",
+                "zh-TW": "🌈 stable-diffusion",
+                "ja": "🌈 stable-diffusion",
+                "ko": "🌈 stable-diffusion"
+              }
             },
             {
               "id": "000002c4a7629",
-              "name": "🎭 runway"
+              "name": {
+                "en": "🎭 runway",
+                "zh-CN": "🎭 runway",
+                "zh-TW": "🎭 runway",
+                "ja": "🎭 runway",
+                "ko": "🎭 runway"
+              }
             },
             {
               "id": "000002c5a800b",
-              "name": "✨ canva"
+              "name": {
+                "en": "✨ canva",
+                "zh-CN": "✨ canva",
+                "zh-TW": "✨ canva",
+                "ja": "✨ canva",
+                "ko": "✨ canva"
+              }
             },
             {
               "id": "000002c6a6ab3",
-              "name": "📐 sketch"
+              "name": {
+                "en": "📐 sketch",
+                "zh-CN": "📐 sketch",
+                "zh-TW": "📐 sketch",
+                "ja": "📐 sketch",
+                "ko": "📐 sketch"
+              }
             },
             {
               "id": "000002c7a1b0a",
-              "name": "🚀 export"
+              "name": {
+                "en": "🚀 export",
+                "zh-CN": "🚀 export",
+                "zh-TW": "🚀 export",
+                "ja": "🚀 export",
+                "ko": "🚀 export"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000008abe4e",
-          "name": "🎬 Video Production",
+          "name": {
+            "en": "🎬 Video Production",
+            "zh-CN": "🎬 视频制作",
+            "zh-TW": "🎬 影片製作",
+            "ja": "🎬 動画制作",
+            "ko": "🎬 영상 제작"
+          },
           "tabs": [
             {
               "id": "00000320a0d65",
-              "name": "🎥 premiere"
+              "name": {
+                "en": "🎥 premiere",
+                "zh-CN": "🎥 premiere",
+                "zh-TW": "🎥 premiere",
+                "ja": "🎥 premiere",
+                "ko": "🎥 premiere"
+              }
             },
             {
               "id": "00000321abc27",
-              "name": "🎞️ davinci"
+              "name": {
+                "en": "🎞️ davinci",
+                "zh-CN": "🎞️ davinci",
+                "zh-TW": "🎞️ davinci",
+                "ja": "🎞️ davinci",
+                "ko": "🎞️ davinci"
+              }
             },
             {
               "id": "00000322a7b1d",
-              "name": "🎙️ audition"
+              "name": {
+                "en": "🎙️ audition",
+                "zh-CN": "🎙️ audition",
+                "zh-TW": "🎙️ audition",
+                "ja": "🎙️ audition",
+                "ko": "🎙️ audition"
+              }
             },
             {
               "id": "00000323a2045",
-              "name": "🤖 video-agent"
+              "name": {
+                "en": "🤖 video-agent",
+                "zh-CN": "🤖 video-agent",
+                "zh-TW": "🤖 video-agent",
+                "ja": "🤖 video-agent",
+                "ko": "🤖 video-agent"
+              }
             },
             {
               "id": "00000324a6c2f",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "00000325a5140",
-              "name": "🎬 runway"
+              "name": {
+                "en": "🎬 runway",
+                "zh-CN": "🎬 runway",
+                "zh-TW": "🎬 runway",
+                "ja": "🎬 runway",
+                "ko": "🎬 runway"
+              }
             },
             {
               "id": "00000326ad914",
-              "name": "🎭 synthesia"
+              "name": {
+                "en": "🎭 synthesia",
+                "zh-CN": "🎭 synthesia",
+                "zh-TW": "🎭 synthesia",
+                "ja": "🎭 synthesia",
+                "ko": "🎭 synthesia"
+              }
             },
             {
               "id": "00000327a096f",
-              "name": "📹 descript"
+              "name": {
+                "en": "📹 descript",
+                "zh-CN": "📹 descript",
+                "zh-TW": "📹 descript",
+                "ja": "📹 descript",
+                "ko": "📹 descript"
+              }
             },
             {
               "id": "00000328a702c",
-              "name": "🎵 music"
+              "name": {
+                "en": "🎵 music",
+                "zh-CN": "🎵 music",
+                "zh-TW": "🎵 music",
+                "ja": "🎵 music",
+                "ko": "🎵 music"
+              }
             },
             {
               "id": "00000329accd2",
-              "name": "📊 analytics"
+              "name": {
+                "en": "📊 analytics",
+                "zh-CN": "📊 analytics",
+                "zh-TW": "📊 analytics",
+                "ja": "📊 analytics",
+                "ko": "📊 analytics"
+              }
             },
             {
               "id": "0000032aac4bf",
-              "name": "🚀 youtube"
+              "name": {
+                "en": "🚀 youtube",
+                "zh-CN": "🚀 youtube",
+                "zh-TW": "🚀 youtube",
+                "ja": "🚀 youtube",
+                "ko": "🚀 youtube"
+              }
             },
             {
               "id": "0000032ba8c91",
-              "name": "📱 tiktok"
+              "name": {
+                "en": "📱 tiktok",
+                "zh-CN": "📱 tiktok",
+                "zh-TW": "📱 tiktok",
+                "ja": "📱 tiktok",
+                "ko": "📱 tiktok"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000009aaa17",
-          "name": "🛠️ DevOps Control",
+          "name": {
+            "en": "🛠️ DevOps Control",
+            "zh-CN": "🛠️ DevOps 控制台",
+            "zh-TW": "🛠️ DevOps 控制台",
+            "ja": "🛠️ DevOps 管制",
+            "ko": "🛠️ DevOps 컨트롤"
+          },
           "tabs": [
             {
               "id": "00000384a5936",
-              "name": "🐳 docker"
+              "name": {
+                "en": "🐳 docker",
+                "zh-CN": "🐳 docker",
+                "zh-TW": "🐳 docker",
+                "ja": "🐳 docker",
+                "ko": "🐳 docker"
+              }
             },
             {
               "id": "00000385aa0fa",
-              "name": "☸️ k8s"
+              "name": {
+                "en": "☸️ k8s",
+                "zh-CN": "☸️ k8s",
+                "zh-TW": "☸️ k8s",
+                "ja": "☸️ k8s",
+                "ko": "☸️ k8s"
+              }
             },
             {
               "id": "00000386aac84",
-              "name": "🔧 terraform"
+              "name": {
+                "en": "🔧 terraform",
+                "zh-CN": "🔧 terraform",
+                "zh-TW": "🔧 terraform",
+                "ja": "🔧 terraform",
+                "ko": "🔧 terraform"
+              }
             },
             {
               "id": "00000387aa028",
-              "name": "📦 helm"
+              "name": {
+                "en": "📦 helm",
+                "zh-CN": "📦 helm",
+                "zh-TW": "📦 helm",
+                "ja": "📦 helm",
+                "ko": "📦 helm"
+              }
             },
             {
               "id": "00000388a6b4e",
-              "name": "🤖 ops-agent"
+              "name": {
+                "en": "🤖 ops-agent",
+                "zh-CN": "🤖 ops-agent",
+                "zh-TW": "🤖 ops-agent",
+                "ja": "🤖 ops-agent",
+                "ko": "🤖 ops-agent"
+              }
             },
             {
               "id": "00000389ac3f6",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "0000038aa6323",
-              "name": "⚡ ansible"
+              "name": {
+                "en": "⚡ ansible",
+                "zh-CN": "⚡ ansible",
+                "zh-TW": "⚡ ansible",
+                "ja": "⚡ ansible",
+                "ko": "⚡ ansible"
+              }
             },
             {
               "id": "0000038ba1621",
-              "name": "🔐 vault"
+              "name": {
+                "en": "🔐 vault",
+                "zh-CN": "🔐 vault",
+                "zh-TW": "🔐 vault",
+                "ja": "🔐 vault",
+                "ko": "🔐 vault"
+              }
             },
             {
               "id": "0000038ca07e0",
-              "name": "📊 prometheus"
+              "name": {
+                "en": "📊 prometheus",
+                "zh-CN": "📊 prometheus",
+                "zh-TW": "📊 prometheus",
+                "ja": "📊 prometheus",
+                "ko": "📊 prometheus"
+              }
             },
             {
               "id": "0000038da2583",
-              "name": "📈 grafana"
+              "name": {
+                "en": "📈 grafana",
+                "zh-CN": "📈 grafana",
+                "zh-TW": "📈 grafana",
+                "ja": "📈 grafana",
+                "ko": "📈 grafana"
+              }
             },
             {
               "id": "0000038ea18b9",
-              "name": "🚨 pagerduty"
+              "name": {
+                "en": "🚨 pagerduty",
+                "zh-CN": "🚨 pagerduty",
+                "zh-TW": "🚨 pagerduty",
+                "ja": "🚨 pagerduty",
+                "ko": "🚨 pagerduty"
+              }
             },
             {
               "id": "0000038fac5a1",
-              "name": "📋 logs"
+              "name": {
+                "en": "📋 logs",
+                "zh-CN": "📋 logs",
+                "zh-TW": "📋 logs",
+                "ja": "📋 logs",
+                "ko": "📋 logs"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "0000000aa2f8b",
-          "name": "🔒 Security Center",
+          "name": {
+            "en": "🔒 Security Center",
+            "zh-CN": "🔒 安全中心",
+            "zh-TW": "🔒 安全中心",
+            "ja": "🔒 セキュリティ",
+            "ko": "🔒 보안 센터"
+          },
           "tabs": [
             {
               "id": "000003e8a25f8",
-              "name": "🔐 vault"
+              "name": {
+                "en": "🔐 vault",
+                "zh-CN": "🔐 vault",
+                "zh-TW": "🔐 vault",
+                "ja": "🔐 vault",
+                "ko": "🔐 vault"
+              }
             },
             {
               "id": "000003e9aeb3c",
-              "name": "🛡️ waf"
+              "name": {
+                "en": "🛡️ waf",
+                "zh-CN": "🛡️ waf",
+                "zh-TW": "🛡️ waf",
+                "ja": "🛡️ waf",
+                "ko": "🛡️ waf"
+              }
             },
             {
               "id": "000003eaa1266",
-              "name": "🔍 scan"
+              "name": {
+                "en": "🔍 scan",
+                "zh-CN": "🔍 scan",
+                "zh-TW": "🔍 scan",
+                "ja": "🔍 scan",
+                "ko": "🔍 scan"
+              }
             },
             {
               "id": "000003ebabcf4",
-              "name": "🕵️ pentest"
+              "name": {
+                "en": "🕵️ pentest",
+                "zh-CN": "🕵️ pentest",
+                "zh-TW": "🕵️ pentest",
+                "ja": "🕵️ pentest",
+                "ko": "🕵️ pentest"
+              }
             },
             {
               "id": "000003eca8989",
-              "name": "🤖 security-agent"
+              "name": {
+                "en": "🤖 security-agent",
+                "zh-CN": "🤖 security-agent",
+                "zh-TW": "🤖 security-agent",
+                "ja": "🤖 security-agent",
+                "ko": "🤖 security-agent"
+              }
             },
             {
               "id": "000003edad199",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "000003eeaacc5",
-              "name": "🚨 siem"
+              "name": {
+                "en": "🚨 siem",
+                "zh-CN": "🚨 siem",
+                "zh-TW": "🚨 siem",
+                "ja": "🚨 siem",
+                "ko": "🚨 siem"
+              }
             },
             {
               "id": "000003efa886b",
-              "name": "📋 audit"
+              "name": {
+                "en": "📋 audit",
+                "zh-CN": "📋 audit",
+                "zh-TW": "📋 audit",
+                "ja": "📋 audit",
+                "ko": "📋 audit"
+              }
             },
             {
               "id": "000003f0a0b0a",
-              "name": "🔑 sso"
+              "name": {
+                "en": "🔑 sso",
+                "zh-CN": "🔑 sso",
+                "zh-TW": "🔑 sso",
+                "ja": "🔑 sso",
+                "ko": "🔑 sso"
+              }
             },
             {
               "id": "000003f1ae8f0",
-              "name": "🎫 certs"
+              "name": {
+                "en": "🎫 certs",
+                "zh-CN": "🎫 certs",
+                "zh-TW": "🎫 certs",
+                "ja": "🎫 certs",
+                "ko": "🎫 certs"
+              }
             },
             {
               "id": "000003f2a52ac",
-              "name": "🔥 firewall"
+              "name": {
+                "en": "🔥 firewall",
+                "zh-CN": "🔥 firewall",
+                "zh-TW": "🔥 firewall",
+                "ja": "🔥 firewall",
+                "ko": "🔥 firewall"
+              }
             },
             {
               "id": "000003f3a41d9",
-              "name": "📊 compliance"
+              "name": {
+                "en": "📊 compliance",
+                "zh-CN": "📊 compliance",
+                "zh-TW": "📊 compliance",
+                "ja": "📊 compliance",
+                "ko": "📊 compliance"
+              }
             }
           ],
           "active_tab": 7
         },
         {
           "id": "0000000ba8a06",
-          "name": "☁️ Cloud Infra",
+          "name": {
+            "en": "☁️ Cloud Infra",
+            "zh-CN": "☁️ 云基础设施",
+            "zh-TW": "☁️ 雲端基礎設施",
+            "ja": "☁️ クラウド基盤",
+            "ko": "☁️ 클라우드 인프라"
+          },
           "tabs": [
             {
               "id": "0000044ca3b64",
-              "name": "☁️ aws"
+              "name": {
+                "en": "☁️ aws",
+                "zh-CN": "☁️ aws",
+                "zh-TW": "☁️ aws",
+                "ja": "☁️ aws",
+                "ko": "☁️ aws"
+              }
             },
             {
               "id": "0000044da69f0",
-              "name": "🌐 gcp"
+              "name": {
+                "en": "🌐 gcp",
+                "zh-CN": "🌐 gcp",
+                "zh-TW": "🌐 gcp",
+                "ja": "🌐 gcp",
+                "ko": "🌐 gcp"
+              }
             },
             {
               "id": "0000044eaf234",
-              "name": "🔷 azure"
+              "name": {
+                "en": "🔷 azure",
+                "zh-CN": "🔷 azure",
+                "zh-TW": "🔷 azure",
+                "ja": "🔷 azure",
+                "ko": "🔷 azure"
+              }
             },
             {
               "id": "0000044fac921",
-              "name": "🤖 cloud-agent"
+              "name": {
+                "en": "🤖 cloud-agent",
+                "zh-CN": "🤖 cloud-agent",
+                "zh-TW": "🤖 cloud-agent",
+                "ja": "🤖 cloud-agent",
+                "ko": "🤖 cloud-agent"
+              }
             },
             {
               "id": "00000450ab7d4",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "00000451a5803",
-              "name": "💰 cost"
+              "name": {
+                "en": "💰 cost",
+                "zh-CN": "💰 cost",
+                "zh-TW": "💰 cost",
+                "ja": "💰 cost",
+                "ko": "💰 cost"
+              }
             },
             {
               "id": "00000452ad911",
-              "name": "📊 monitor"
+              "name": {
+                "en": "📊 monitor",
+                "zh-CN": "📊 monitor",
+                "zh-TW": "📊 monitor",
+                "ja": "📊 monitor",
+                "ko": "📊 monitor"
+              }
             },
             {
               "id": "00000453a7165",
-              "name": "🚀 cdn"
+              "name": {
+                "en": "🚀 cdn",
+                "zh-CN": "🚀 cdn",
+                "zh-TW": "🚀 cdn",
+                "ja": "🚀 cdn",
+                "ko": "🚀 cdn"
+              }
             },
             {
               "id": "00000454a2b9d",
-              "name": "🗄️ s3"
+              "name": {
+                "en": "🗄️ s3",
+                "zh-CN": "🗄️ s3",
+                "zh-TW": "🗄️ s3",
+                "ja": "🗄️ s3",
+                "ko": "🗄️ s3"
+              }
             },
             {
               "id": "00000455a496b",
-              "name": "🔥 lambda"
+              "name": {
+                "en": "🔥 lambda",
+                "zh-CN": "🔥 lambda",
+                "zh-TW": "🔥 lambda",
+                "ja": "🔥 lambda",
+                "ko": "🔥 lambda"
+              }
             },
             {
               "id": "00000456abae0",
-              "name": "📡 api-gateway"
+              "name": {
+                "en": "📡 api-gateway",
+                "zh-CN": "📡 api-gateway",
+                "zh-TW": "📡 api-gateway",
+                "ja": "📡 api-gateway",
+                "ko": "📡 api-gateway"
+              }
             },
             {
               "id": "00000457ac8a5",
-              "name": "🔔 alerts"
+              "name": {
+                "en": "🔔 alerts",
+                "zh-CN": "🔔 alerts",
+                "zh-TW": "🔔 alerts",
+                "ja": "🔔 alerts",
+                "ko": "🔔 alerts"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "0000000ca069d",
-          "name": "🤖 AI Research",
+          "name": {
+            "en": "🤖 AI Research",
+            "zh-CN": "🤖 AI 研究",
+            "zh-TW": "🤖 AI 研究",
+            "ja": "🤖 AI 研究",
+            "ko": "🤖 AI 연구"
+          },
           "tabs": [
             {
               "id": "000004b0a9006",
-              "name": "🧪 jupyter"
+              "name": {
+                "en": "🧪 jupyter",
+                "zh-CN": "🧪 jupyter",
+                "zh-TW": "🧪 jupyter",
+                "ja": "🧪 jupyter",
+                "ko": "🧪 jupyter"
+              }
             },
             {
               "id": "000004b1a9bd7",
-              "name": "🔬 colab"
+              "name": {
+                "en": "🔬 colab",
+                "zh-CN": "🔬 colab",
+                "zh-TW": "🔬 colab",
+                "ja": "🔬 colab",
+                "ko": "🔬 colab"
+              }
             },
             {
               "id": "000004b2a6058",
-              "name": "📊 wandb"
+              "name": {
+                "en": "📊 wandb",
+                "zh-CN": "📊 wandb",
+                "zh-TW": "📊 wandb",
+                "ja": "📊 wandb",
+                "ko": "📊 wandb"
+              }
             },
             {
               "id": "000004b3a686a",
-              "name": "🤖 gemini-cli"
+              "name": {
+                "en": "🤖 gemini-cli",
+                "zh-CN": "🤖 gemini-cli",
+                "zh-TW": "🤖 gemini-cli",
+                "ja": "🤖 gemini-cli",
+                "ko": "🤖 gemini-cli"
+              }
             },
             {
               "id": "000004b4ac4fa",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "000004b5a55eb",
-              "name": "⚡ codex"
+              "name": {
+                "en": "⚡ codex",
+                "zh-CN": "⚡ codex",
+                "zh-TW": "⚡ codex",
+                "ja": "⚡ codex",
+                "ko": "⚡ codex"
+              }
             },
             {
               "id": "000004b6abcd7",
-              "name": "🔮 copilot"
+              "name": {
+                "en": "🔮 copilot",
+                "zh-CN": "🔮 copilot",
+                "zh-TW": "🔮 copilot",
+                "ja": "🔮 copilot",
+                "ko": "🔮 copilot"
+              }
             },
             {
               "id": "000004b7a97fe",
-              "name": "🎯 cursor"
+              "name": {
+                "en": "🎯 cursor",
+                "zh-CN": "🎯 cursor",
+                "zh-TW": "🎯 cursor",
+                "ja": "🎯 cursor",
+                "ko": "🎯 cursor"
+              }
             },
             {
               "id": "000004b8a0d53",
-              "name": "🧠 llama"
+              "name": {
+                "en": "🧠 llama",
+                "zh-CN": "🧠 llama",
+                "zh-TW": "🧠 llama",
+                "ja": "🧠 llama",
+                "ko": "🧠 llama"
+              }
             },
             {
               "id": "000004b9a1d20",
-              "name": "🌊 mistral"
+              "name": {
+                "en": "🌊 mistral",
+                "zh-CN": "🌊 mistral",
+                "zh-TW": "🌊 mistral",
+                "ja": "🌊 mistral",
+                "ko": "🌊 mistral"
+              }
             },
             {
               "id": "000004baa5ff5",
-              "name": "🔥 gpt4"
+              "name": {
+                "en": "🔥 gpt4",
+                "zh-CN": "🔥 gpt4",
+                "zh-TW": "🔥 gpt4",
+                "ja": "🔥 gpt4",
+                "ko": "🔥 gpt4"
+              }
             },
             {
               "id": "000004bbab8f8",
-              "name": "📈 eval"
+              "name": {
+                "en": "📈 eval",
+                "zh-CN": "📈 eval",
+                "zh-TW": "📈 eval",
+                "ja": "📈 eval",
+                "ko": "📈 eval"
+              }
             },
             {
               "id": "000004bca476e",
-              "name": "📚 papers"
+              "name": {
+                "en": "📚 papers",
+                "zh-CN": "📚 papers",
+                "zh-TW": "📚 papers",
+                "ja": "📚 papers",
+                "ko": "📚 papers"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "0000000daaa44",
-          "name": "🧠 ML Pipeline",
+          "name": {
+            "en": "🧠 ML Pipeline",
+            "zh-CN": "🧠 ML 流水线",
+            "zh-TW": "🧠 ML 流程線",
+            "ja": "🧠 ML パイプライン",
+            "ko": "🧠 ML 파이프라인"
+          },
           "tabs": [
             {
               "id": "00000514a34f6",
-              "name": "⚙️ airflow"
+              "name": {
+                "en": "⚙️ airflow",
+                "zh-CN": "⚙️ airflow",
+                "zh-TW": "⚙️ airflow",
+                "ja": "⚙️ airflow",
+                "ko": "⚙️ airflow"
+              }
             },
             {
               "id": "00000515abd81",
-              "name": "⚡ spark"
+              "name": {
+                "en": "⚡ spark",
+                "zh-CN": "⚡ spark",
+                "zh-TW": "⚡ spark",
+                "ja": "⚡ spark",
+                "ko": "⚡ spark"
+              }
             },
             {
               "id": "00000516aa07b",
-              "name": "🐍 dbt"
+              "name": {
+                "en": "🐍 dbt",
+                "zh-CN": "🐍 dbt",
+                "zh-TW": "🐍 dbt",
+                "ja": "🐍 dbt",
+                "ko": "🐍 dbt"
+              }
             },
             {
               "id": "00000517a55a8",
-              "name": "🤖 ml-agent"
+              "name": {
+                "en": "🤖 ml-agent",
+                "zh-CN": "🤖 ml-agent",
+                "zh-TW": "🤖 ml-agent",
+                "ja": "🤖 ml-agent",
+                "ko": "🤖 ml-agent"
+              }
             },
             {
               "id": "00000518a4220",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "00000519a58be",
-              "name": "📊 mlflow"
+              "name": {
+                "en": "📊 mlflow",
+                "zh-CN": "📊 mlflow",
+                "zh-TW": "📊 mlflow",
+                "ja": "📊 mlflow",
+                "ko": "📊 mlflow"
+              }
             },
             {
               "id": "0000051aa9277",
-              "name": "🎯 optuna"
+              "name": {
+                "en": "🎯 optuna",
+                "zh-CN": "🎯 optuna",
+                "zh-TW": "🎯 optuna",
+                "ja": "🎯 optuna",
+                "ko": "🎯 optuna"
+              }
             },
             {
               "id": "0000051ba2a4a",
-              "name": "🔥 ray"
+              "name": {
+                "en": "🔥 ray",
+                "zh-CN": "🔥 ray",
+                "zh-TW": "🔥 ray",
+                "ja": "🔥 ray",
+                "ko": "🔥 ray"
+              }
             },
             {
               "id": "0000051ca462e",
-              "name": "📈 tensorboard"
+              "name": {
+                "en": "📈 tensorboard",
+                "zh-CN": "📈 tensorboard",
+                "zh-TW": "📈 tensorboard",
+                "ja": "📈 tensorboard",
+                "ko": "📈 tensorboard"
+              }
             },
             {
               "id": "0000051dad6e5",
-              "name": "🗄️ feature-store"
+              "name": {
+                "en": "🗄️ feature-store",
+                "zh-CN": "🗄️ feature-store",
+                "zh-TW": "🗄️ feature-store",
+                "ja": "🗄️ feature-store",
+                "ko": "🗄️ feature-store"
+              }
             },
             {
               "id": "0000051ea1223",
-              "name": "🚀 deploy"
+              "name": {
+                "en": "🚀 deploy",
+                "zh-CN": "🚀 deploy",
+                "zh-TW": "🚀 deploy",
+                "ja": "🚀 deploy",
+                "ko": "🚀 deploy"
+              }
             },
             {
               "id": "0000051faa76c",
-              "name": "📊 monitor"
+              "name": {
+                "en": "📊 monitor",
+                "zh-CN": "📊 monitor",
+                "zh-TW": "📊 monitor",
+                "ja": "📊 monitor",
+                "ko": "📊 monitor"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "0000000eae778",
-          "name": "🔬 Prompt Lab",
+          "name": {
+            "en": "🔬 Prompt Lab",
+            "zh-CN": "🔬 Prompt 实验室",
+            "zh-TW": "🔬 Prompt 實驗室",
+            "ja": "🔬 Prompt ラボ",
+            "ko": "🔬 프롬프트 랩"
+          },
           "tabs": [
             {
               "id": "00000578a7cb3",
-              "name": "✍️ prompt-eng"
+              "name": {
+                "en": "✍️ prompt-eng",
+                "zh-CN": "✍️ prompt-eng",
+                "zh-TW": "✍️ prompt-eng",
+                "ja": "✍️ prompt-eng",
+                "ko": "✍️ prompt-eng"
+              }
             },
             {
               "id": "00000579aff13",
-              "name": "🧪 test"
+              "name": {
+                "en": "🧪 test",
+                "zh-CN": "🧪 test",
+                "zh-TW": "🧪 test",
+                "ja": "🧪 test",
+                "ko": "🧪 test"
+              }
             },
             {
               "id": "0000057aac993",
-              "name": "📊 eval"
+              "name": {
+                "en": "📊 eval",
+                "zh-CN": "📊 eval",
+                "zh-TW": "📊 eval",
+                "ja": "📊 eval",
+                "ko": "📊 eval"
+              }
             },
             {
               "id": "0000057ba414e",
-              "name": "🤖 gemini-cli"
+              "name": {
+                "en": "🤖 gemini-cli",
+                "zh-CN": "🤖 gemini-cli",
+                "zh-TW": "🤖 gemini-cli",
+                "ja": "🤖 gemini-cli",
+                "ko": "🤖 gemini-cli"
+              }
             },
             {
               "id": "0000057ca6c77",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "0000057da2047",
-              "name": "⚡ codex"
+              "name": {
+                "en": "⚡ codex",
+                "zh-CN": "⚡ codex",
+                "zh-TW": "⚡ codex",
+                "ja": "⚡ codex",
+                "ko": "⚡ codex"
+              }
             },
             {
               "id": "0000057ead0ca",
-              "name": "🔮 copilot"
+              "name": {
+                "en": "🔮 copilot",
+                "zh-CN": "🔮 copilot",
+                "zh-TW": "🔮 copilot",
+                "ja": "🔮 copilot",
+                "ko": "🔮 copilot"
+              }
             },
             {
               "id": "0000057faafac",
-              "name": "🎯 cursor"
+              "name": {
+                "en": "🎯 cursor",
+                "zh-CN": "🎯 cursor",
+                "zh-TW": "🎯 cursor",
+                "ja": "🎯 cursor",
+                "ko": "🎯 cursor"
+              }
             },
             {
               "id": "00000580a9160",
-              "name": "📚 library"
+              "name": {
+                "en": "📚 library",
+                "zh-CN": "📚 library",
+                "zh-TW": "📚 library",
+                "ja": "📚 library",
+                "ko": "📚 library"
+              }
             },
             {
               "id": "00000581a079e",
-              "name": "🔍 search"
+              "name": {
+                "en": "🔍 search",
+                "zh-CN": "🔍 search",
+                "zh-TW": "🔍 search",
+                "ja": "🔍 search",
+                "ko": "🔍 search"
+              }
             },
             {
               "id": "00000582accb3",
-              "name": "💾 save"
+              "name": {
+                "en": "💾 save",
+                "zh-CN": "💾 save",
+                "zh-TW": "💾 save",
+                "ja": "💾 save",
+                "ko": "💾 save"
+              }
             },
             {
               "id": "00000583a1773",
-              "name": "📈 analytics"
+              "name": {
+                "en": "📈 analytics",
+                "zh-CN": "📈 analytics",
+                "zh-TW": "📈 analytics",
+                "ja": "📈 analytics",
+                "ko": "📈 analytics"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "0000000fa415d",
-          "name": "📞 Customer Support",
+          "name": {
+            "en": "📞 Customer Support",
+            "zh-CN": "📞 客户支持",
+            "zh-TW": "📞 客戶支援",
+            "ja": "📞 カスタマーサポート",
+            "ko": "📞 고객 지원"
+          },
           "tabs": [
             {
               "id": "000005dcafa71",
-              "name": "💬 chat"
+              "name": {
+                "en": "💬 chat",
+                "zh-CN": "💬 chat",
+                "zh-TW": "💬 chat",
+                "ja": "💬 chat",
+                "ko": "💬 chat"
+              }
             },
             {
               "id": "000005dda5a8c",
-              "name": "📧 email"
+              "name": {
+                "en": "📧 email",
+                "zh-CN": "📧 email",
+                "zh-TW": "📧 email",
+                "ja": "📧 email",
+                "ko": "📧 email"
+              }
             },
             {
               "id": "000005dea6f77",
-              "name": "🎫 tickets"
+              "name": {
+                "en": "🎫 tickets",
+                "zh-CN": "🎫 tickets",
+                "zh-TW": "🎫 tickets",
+                "ja": "🎫 tickets",
+                "ko": "🎫 tickets"
+              }
             },
             {
               "id": "000005dfac5ca",
-              "name": "🤖 support-agent"
+              "name": {
+                "en": "🤖 support-agent",
+                "zh-CN": "🤖 support-agent",
+                "zh-TW": "🤖 support-agent",
+                "ja": "🤖 support-agent",
+                "ko": "🤖 support-agent"
+              }
             },
             {
               "id": "000005e0a46d7",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "000005e1aa158",
-              "name": "📊 zendesk"
+              "name": {
+                "en": "📊 zendesk",
+                "zh-CN": "📊 zendesk",
+                "zh-TW": "📊 zendesk",
+                "ja": "📊 zendesk",
+                "ko": "📊 zendesk"
+              }
             },
             {
               "id": "000005e2adcb0",
-              "name": "💬 intercom"
+              "name": {
+                "en": "💬 intercom",
+                "zh-CN": "💬 intercom",
+                "zh-TW": "💬 intercom",
+                "ja": "💬 intercom",
+                "ko": "💬 intercom"
+              }
             },
             {
               "id": "000005e3aca7f",
-              "name": "📞 twilio"
+              "name": {
+                "en": "📞 twilio",
+                "zh-CN": "📞 twilio",
+                "zh-TW": "📞 twilio",
+                "ja": "📞 twilio",
+                "ko": "📞 twilio"
+              }
             },
             {
               "id": "000005e4a7230",
-              "name": "📋 kb"
+              "name": {
+                "en": "📋 kb",
+                "zh-CN": "📋 kb",
+                "zh-TW": "📋 kb",
+                "ja": "📋 kb",
+                "ko": "📋 kb"
+              }
             },
             {
               "id": "000005e5a9e0e",
-              "name": "📈 satisfaction"
+              "name": {
+                "en": "📈 satisfaction",
+                "zh-CN": "📈 satisfaction",
+                "zh-TW": "📈 satisfaction",
+                "ja": "📈 satisfaction",
+                "ko": "📈 satisfaction"
+              }
             },
             {
               "id": "000005e6a9446",
-              "name": "🚨 escalation"
+              "name": {
+                "en": "🚨 escalation",
+                "zh-CN": "🚨 escalation",
+                "zh-TW": "🚨 escalation",
+                "ja": "🚨 escalation",
+                "ko": "🚨 escalation"
+              }
             },
             {
               "id": "000005e7a76c5",
-              "name": "📊 reports"
+              "name": {
+                "en": "📊 reports",
+                "zh-CN": "📊 reports",
+                "zh-TW": "📊 reports",
+                "ja": "📊 reports",
+                "ko": "📊 reports"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000010a61a7",
-          "name": "🎓 Knowledge Base",
+          "name": {
+            "en": "🎓 Knowledge Base",
+            "zh-CN": "🎓 知识库",
+            "zh-TW": "🎓 知識庫",
+            "ja": "🎓 ナレッジベース",
+            "ko": "🎓 지식 베이스"
+          },
           "tabs": [
             {
               "id": "00000640a2f72",
-              "name": "📚 docs"
+              "name": {
+                "en": "📚 docs",
+                "zh-CN": "📚 docs",
+                "zh-TW": "📚 docs",
+                "ja": "📚 docs",
+                "ko": "📚 docs"
+              }
             },
             {
               "id": "00000641ad53d",
-              "name": "❓ faq"
+              "name": {
+                "en": "❓ faq",
+                "zh-CN": "❓ faq",
+                "zh-TW": "❓ faq",
+                "ja": "❓ faq",
+                "ko": "❓ faq"
+              }
             },
             {
               "id": "00000642ac93e",
-              "name": "🎥 tutorials"
+              "name": {
+                "en": "🎥 tutorials",
+                "zh-CN": "🎥 tutorials",
+                "zh-TW": "🎥 tutorials",
+                "ja": "🎥 tutorials",
+                "ko": "🎥 tutorials"
+              }
             },
             {
               "id": "00000643a2e3d",
-              "name": "🤖 docs-agent"
+              "name": {
+                "en": "🤖 docs-agent",
+                "zh-CN": "🤖 docs-agent",
+                "zh-TW": "🤖 docs-agent",
+                "ja": "🤖 docs-agent",
+                "ko": "🤖 docs-agent"
+              }
             },
             {
               "id": "00000644ab651",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "00000645a5148",
-              "name": "🔍 search"
+              "name": {
+                "en": "🔍 search",
+                "zh-CN": "🔍 search",
+                "zh-TW": "🔍 search",
+                "ja": "🔍 search",
+                "ko": "🔍 search"
+              }
             },
             {
               "id": "00000646a7248",
-              "name": "✍️ writer"
+              "name": {
+                "en": "✍️ writer",
+                "zh-CN": "✍️ writer",
+                "zh-TW": "✍️ writer",
+                "ja": "✍️ writer",
+                "ko": "✍️ writer"
+              }
             },
             {
               "id": "00000647a9582",
-              "name": "🎨 design"
+              "name": {
+                "en": "🎨 design",
+                "zh-CN": "🎨 design",
+                "zh-TW": "🎨 design",
+                "ja": "🎨 design",
+                "ko": "🎨 design"
+              }
             },
             {
               "id": "00000648aa73b",
-              "name": "📊 analytics"
+              "name": {
+                "en": "📊 analytics",
+                "zh-CN": "📊 analytics",
+                "zh-TW": "📊 analytics",
+                "ja": "📊 analytics",
+                "ko": "📊 analytics"
+              }
             },
             {
               "id": "00000649ad74c",
-              "name": "🔄 update"
+              "name": {
+                "en": "🔄 update",
+                "zh-CN": "🔄 update",
+                "zh-TW": "🔄 update",
+                "ja": "🔄 update",
+                "ko": "🔄 update"
+              }
             },
             {
               "id": "0000064aaba17",
-              "name": "🌐 translate"
+              "name": {
+                "en": "🌐 translate",
+                "zh-CN": "🌐 translate",
+                "zh-TW": "🌐 translate",
+                "ja": "🌐 translate",
+                "ko": "🌐 translate"
+              }
             },
             {
               "id": "0000064ba7aae",
-              "name": "🚀 publish"
+              "name": {
+                "en": "🚀 publish",
+                "zh-CN": "🚀 publish",
+                "zh-TW": "🚀 publish",
+                "ja": "🚀 publish",
+                "ko": "🚀 publish"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000011a331c",
-          "name": "🎯 Strategy",
+          "name": {
+            "en": "🎯 Strategy",
+            "zh-CN": "🎯 战略",
+            "zh-TW": "🎯 戰略",
+            "ja": "🎯 戦略",
+            "ko": "🎯 전략"
+          },
           "tabs": [
             {
               "id": "000006a4ae6dc",
-              "name": "📊 okr"
+              "name": {
+                "en": "📊 okr",
+                "zh-CN": "📊 okr",
+                "zh-TW": "📊 okr",
+                "ja": "📊 okr",
+                "ko": "📊 okr"
+              }
             },
             {
               "id": "000006a5a78e5",
-              "name": "🗺️ roadmap"
+              "name": {
+                "en": "🗺️ roadmap",
+                "zh-CN": "🗺️ roadmap",
+                "zh-TW": "🗺️ roadmap",
+                "ja": "🗺️ roadmap",
+                "ko": "🗺️ roadmap"
+              }
             },
             {
               "id": "000006a6aae0f",
-              "name": "💡 ideas"
+              "name": {
+                "en": "💡 ideas",
+                "zh-CN": "💡 ideas",
+                "zh-TW": "💡 ideas",
+                "ja": "💡 ideas",
+                "ko": "💡 ideas"
+              }
             },
             {
               "id": "000006a7a3466",
-              "name": "🤖 strategy-agent"
+              "name": {
+                "en": "🤖 strategy-agent",
+                "zh-CN": "🤖 strategy-agent",
+                "zh-TW": "🤖 strategy-agent",
+                "ja": "🤖 strategy-agent",
+                "ko": "🤖 strategy-agent"
+              }
             },
             {
               "id": "000006a8ad34f",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "000006a9ad0f1",
-              "name": "📈 metrics"
+              "name": {
+                "en": "📈 metrics",
+                "zh-CN": "📈 metrics",
+                "zh-TW": "📈 metrics",
+                "ja": "📈 metrics",
+                "ko": "📈 metrics"
+              }
             },
             {
               "id": "000006aaae9b7",
-              "name": "🔍 research"
+              "name": {
+                "en": "🔍 research",
+                "zh-CN": "🔍 research",
+                "zh-TW": "🔍 research",
+                "ja": "🔍 research",
+                "ko": "🔍 research"
+              }
             },
             {
               "id": "000006abafbeb",
-              "name": "💼 competitors"
+              "name": {
+                "en": "💼 competitors",
+                "zh-CN": "💼 competitors",
+                "zh-TW": "💼 competitors",
+                "ja": "💼 competitors",
+                "ko": "💼 competitors"
+              }
             },
             {
               "id": "000006aca729b",
-              "name": "📋 swot"
+              "name": {
+                "en": "📋 swot",
+                "zh-CN": "📋 swot",
+                "zh-TW": "📋 swot",
+                "ja": "📋 swot",
+                "ko": "📋 swot"
+              }
             },
             {
               "id": "000006ada6fc0",
-              "name": "🎯 goals"
+              "name": {
+                "en": "🎯 goals",
+                "zh-CN": "🎯 goals",
+                "zh-TW": "🎯 goals",
+                "ja": "🎯 goals",
+                "ko": "🎯 goals"
+              }
             },
             {
               "id": "000006aea9ed6",
-              "name": "📊 dashboard"
+              "name": {
+                "en": "📊 dashboard",
+                "zh-CN": "📊 dashboard",
+                "zh-TW": "📊 dashboard",
+                "ja": "📊 dashboard",
+                "ko": "📊 dashboard"
+              }
             },
             {
               "id": "000006afa9c27",
-              "name": "🚀 execution"
+              "name": {
+                "en": "🚀 execution",
+                "zh-CN": "🚀 execution",
+                "zh-TW": "🚀 execution",
+                "ja": "🚀 execution",
+                "ko": "🚀 execution"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000012a61e3",
-          "name": "🔬 Research2",
+          "name": {
+            "en": "🔬 Research2",
+            "zh-CN": "🔬 研究2",
+            "zh-TW": "🔬 研究2",
+            "ja": "🔬 リサーチ2",
+            "ko": "🔬 리서치2"
+          },
           "tabs": [
             {
               "id": "00000708add88",
-              "name": "📚 papers"
+              "name": {
+                "en": "📚 papers",
+                "zh-CN": "📚 papers",
+                "zh-TW": "📚 papers",
+                "ja": "📚 papers",
+                "ko": "📚 papers"
+              }
             },
             {
               "id": "00000709a554b",
-              "name": "🔍 trends"
+              "name": {
+                "en": "🔍 trends",
+                "zh-CN": "🔍 trends",
+                "zh-TW": "🔍 trends",
+                "ja": "🔍 trends",
+                "ko": "🔍 trends"
+              }
             },
             {
               "id": "0000070aa085f",
-              "name": "💡 insights"
+              "name": {
+                "en": "💡 insights",
+                "zh-CN": "💡 insights",
+                "zh-TW": "💡 insights",
+                "ja": "💡 insights",
+                "ko": "💡 insights"
+              }
             },
             {
               "id": "0000070bab42a",
-              "name": "🤖 research-agent"
+              "name": {
+                "en": "🤖 research-agent",
+                "zh-CN": "🤖 research-agent",
+                "zh-TW": "🤖 research-agent",
+                "ja": "🤖 research-agent",
+                "ko": "🤖 research-agent"
+              }
             },
             {
               "id": "0000070ca47ff",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "0000070dac244",
-              "name": "📊 data"
+              "name": {
+                "en": "📊 data",
+                "zh-CN": "📊 data",
+                "zh-TW": "📊 data",
+                "ja": "📊 data",
+                "ko": "📊 data"
+              }
             },
             {
               "id": "0000070ea78b1",
-              "name": "🧪 experiments"
+              "name": {
+                "en": "🧪 experiments",
+                "zh-CN": "🧪 experiments",
+                "zh-TW": "🧪 experiments",
+                "ja": "🧪 experiments",
+                "ko": "🧪 experiments"
+              }
             },
             {
               "id": "0000070faf197",
-              "name": "📈 analysis"
+              "name": {
+                "en": "📈 analysis",
+                "zh-CN": "📈 analysis",
+                "zh-TW": "📈 analysis",
+                "ja": "📈 analysis",
+                "ko": "📈 analysis"
+              }
             },
             {
               "id": "00000710a27c9",
-              "name": "📝 reports"
+              "name": {
+                "en": "📝 reports",
+                "zh-CN": "📝 reports",
+                "zh-TW": "📝 reports",
+                "ja": "📝 reports",
+                "ko": "📝 reports"
+              }
             },
             {
               "id": "00000711ad04c",
-              "name": "🎯 findings"
+              "name": {
+                "en": "🎯 findings",
+                "zh-CN": "🎯 findings",
+                "zh-TW": "🎯 findings",
+                "ja": "🎯 findings",
+                "ko": "🎯 findings"
+              }
             },
             {
               "id": "00000712a37e5",
-              "name": "🚀 publish"
+              "name": {
+                "en": "🚀 publish",
+                "zh-CN": "🚀 publish",
+                "zh-TW": "🚀 publish",
+                "ja": "🚀 publish",
+                "ko": "🚀 publish"
+              }
             },
             {
               "id": "00000713a2810",
-              "name": "📢 share"
+              "name": {
+                "en": "📢 share",
+                "zh-CN": "📢 share",
+                "zh-TW": "📢 share",
+                "ja": "📢 share",
+                "ko": "📢 share"
+              }
             }
           ],
           "active_tab": 0
         },
         {
           "id": "00000013aaf14",
-          "name": "💼 Business Ops",
+          "name": {
+            "en": "💼 Business Ops",
+            "zh-CN": "💼 商业运营",
+            "zh-TW": "💼 商務營運",
+            "ja": "💼 事業運用",
+            "ko": "💼 비즈니스 운영"
+          },
           "tabs": [
             {
               "id": "0000076ca1b96",
-              "name": "📊 metrics"
+              "name": {
+                "en": "📊 metrics",
+                "zh-CN": "📊 metrics",
+                "zh-TW": "📊 metrics",
+                "ja": "📊 metrics",
+                "ko": "📊 metrics"
+              }
             },
             {
               "id": "0000076da6c60",
-              "name": "💰 finance"
+              "name": {
+                "en": "💰 finance",
+                "zh-CN": "💰 finance",
+                "zh-TW": "💰 finance",
+                "ja": "💰 finance",
+                "ko": "💰 finance"
+              }
             },
             {
               "id": "0000076ead486",
-              "name": "📈 growth"
+              "name": {
+                "en": "📈 growth",
+                "zh-CN": "📈 growth",
+                "zh-TW": "📈 growth",
+                "ja": "📈 growth",
+                "ko": "📈 growth"
+              }
             },
             {
               "id": "0000076fa08bf",
-              "name": "🤖 ops-agent"
+              "name": {
+                "en": "🤖 ops-agent",
+                "zh-CN": "🤖 ops-agent",
+                "zh-TW": "🤖 ops-agent",
+                "ja": "🤖 ops-agent",
+                "ko": "🤖 ops-agent"
+              }
             },
             {
               "id": "00000770ad062",
-              "name": "🧠 claude-code"
+              "name": {
+                "en": "🧠 claude-code",
+                "zh-CN": "🧠 claude-code",
+                "zh-TW": "🧠 claude-code",
+                "ja": "🧠 claude-code",
+                "ko": "🧠 claude-code"
+              }
             },
             {
               "id": "00000771a098d",
-              "name": "📋 reports"
+              "name": {
+                "en": "📋 reports",
+                "zh-CN": "📋 reports",
+                "zh-TW": "📋 reports",
+                "ja": "📋 reports",
+                "ko": "📋 reports"
+              }
             },
             {
               "id": "00000772a66f3",
-              "name": "🎯 kpi"
+              "name": {
+                "en": "🎯 kpi",
+                "zh-CN": "🎯 kpi",
+                "zh-TW": "🎯 kpi",
+                "ja": "🎯 kpi",
+                "ko": "🎯 kpi"
+              }
             },
             {
               "id": "00000773a97f2",
-              "name": "💼 crm"
+              "name": {
+                "en": "💼 crm",
+                "zh-CN": "💼 crm",
+                "zh-TW": "💼 crm",
+                "ja": "💼 crm",
+                "ko": "💼 crm"
+              }
             },
             {
               "id": "00000774abc03",
-              "name": "📧 email"
+              "name": {
+                "en": "📧 email",
+                "zh-CN": "📧 email",
+                "zh-TW": "📧 email",
+                "ja": "📧 email",
+                "ko": "📧 email"
+              }
             },
             {
               "id": "00000775a1999",
-              "name": "📞 calls"
+              "name": {
+                "en": "📞 calls",
+                "zh-CN": "📞 calls",
+                "zh-TW": "📞 calls",
+                "ja": "📞 calls",
+                "ko": "📞 calls"
+              }
             },
             {
               "id": "00000776a6797",
-              "name": "🚀 automation"
+              "name": {
+                "en": "🚀 automation",
+                "zh-CN": "🚀 automation",
+                "zh-TW": "🚀 automation",
+                "ja": "🚀 automation",
+                "ko": "🚀 automation"
+              }
             },
             {
               "id": "00000777a6a81",
-              "name": "📊 dashboard"
+              "name": {
+                "en": "📊 dashboard",
+                "zh-CN": "📊 dashboard",
+                "zh-TW": "📊 dashboard",
+                "ja": "📊 dashboard",
+                "ko": "📊 dashboard"
+              }
             }
           ],
           "active_tab": 0
@@ -1142,8 +2756,26 @@
   ],
   "current_office": 0,
   "metadata": {
-    "name": "✨ Mato Creator Office",
-    "description": "20 desks, 248 tabs (Mato builder setup)",
-    "details": "The exact office used by Mato creators and builders. Includes the full AI toolchain (Claude, Gemini, Codex, Copilot, Cursor, Aider, Continue, Cline, Windsurf, Bolt) plus engineering, ops, and business desks for high-context multi-project workflows."
+    "name": {
+      "en": "✨ Mato Creator Office",
+      "zh-CN": "Mato 创作者工作台",
+      "zh-TW": "Mato 創作者工作台",
+      "ja": "Mato クリエイターオフィス",
+      "ko": "Mato 크리에이터 오피스"
+    },
+    "description": {
+      "en": "20 desks, 248 tabs (Mato builder setup)",
+      "zh-CN": "20 个 desk / 248 个 tab（Mato builder 预设）",
+      "zh-TW": "20 個 desk / 248 個 tab（Mato builder 預設）",
+      "ja": "20 desks / 248 tabs（Mato builder セットアップ）",
+      "ko": "20 desks / 248 tabs (Mato builder setup)"
+    },
+    "details": {
+      "en": "The exact office used by Mato creators and builders. Includes the full AI toolchain (Claude, Gemini, Codex, Copilot, Cursor, Aider, Continue, Cline, Windsurf, Bolt) plus engineering, ops, and business desks for high-context multi-project workflows.",
+      "zh-CN": "Mato creator/builder 的重度使用模板：AI 工具链与工程/运营 desk 高密度协作。",
+      "zh-TW": "Mato creator/builder 的重度使用模板：AI 工具鏈與工程/營運 desk 高密度協作。",
+      "ja": "Mato の creator/builder が使う高密度テンプレート。AI ツールと開発運用を統合。",
+      "ko": "Mato creator/builder용 고밀도 템플릿. AI 도구 체인과 개발/운영 desk 통합."
+    }
   }
 }

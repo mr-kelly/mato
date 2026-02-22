@@ -5,6 +5,7 @@ This directory contains historical development documentation for Mato.
 ## 📚 Documents
 
 ### Recent Changes (2026-02-22)
+- **[2026-02-22_onboarding-office-name-simplification.md](2026-02-22_onboarding-office-name-simplification.md)** - Onboarding default office naming simplified to `username`/`hostname` fallback and `XX AI Office` format
 - **[2026-02-22_shell-experience-jump-mode-and-system-theme-polish.md](2026-02-22_shell-experience-jump-mode-and-system-theme-polish.md)** - Shell flicker fixes, system theme polish, Jump Mode consistency and 52-key labels
 - **[2026-02-22_desk-terminology.md](2026-02-22_desk-terminology.md)** - Task → Desk terminology refactor
 - **[2026-02-22_activity-indicators.md](2026-02-22_activity-indicators.md)** - Activity indicators, PTY cleanup, UI improvements
