@@ -1,10 +1,12 @@
 #!/bin/bash
 set -e
+set -o pipefail
 
 # MATO Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/mato/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/mr-kelly/mato/main/install.sh | bash
 
-REPO="YOUR_USERNAME/mato"
+# Override with: MATO_REPO=owner/repo
+REPO="${MATO_REPO:-mr-kelly/mato}"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 
 # Detect OS and architecture
@@ -41,18 +43,38 @@ BINARY_NAME="mato-${OS_TYPE}-${ARCH_TYPE}"
 
 echo "Installing MATO for ${OS_TYPE}-${ARCH_TYPE}..."
 
-# Get latest release
-LATEST_RELEASE=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+# Get latest release metadata
+RELEASE_JSON=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest")
+LATEST_RELEASE=$(printf '%s' "$RELEASE_JSON" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 
 if [ -z "$LATEST_RELEASE" ]; then
-    echo "Failed to get latest release"
+    echo "Failed to get latest release for ${REPO}"
     exit 1
 fi
 
 echo "Latest version: $LATEST_RELEASE"
 
-# Download URL
-DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${LATEST_RELEASE}/${BINARY_NAME}.tar.gz"
+# Resolve download URL from release assets.
+# Supports both:
+#   mato-<os>-<arch>.tar.gz
+#   mato-<os>-<arch>-<tag>.tar.gz
+DOWNLOAD_URL=$(
+    printf '%s' "$RELEASE_JSON" \
+    | grep '"browser_download_url":' \
+    | sed -E 's/.*"([^"]+)".*/\1/' \
+    | grep -E "/${BINARY_NAME}(-[^/]+)?\\.tar\\.gz$" \
+    | head -n1
+)
+
+if [ -z "$DOWNLOAD_URL" ]; then
+    echo "No matching binary asset found for ${BINARY_NAME} in release ${LATEST_RELEASE}"
+    echo "Available assets:"
+    printf '%s' "$RELEASE_JSON" \
+      | grep '"name":' \
+      | sed -E 's/.*"name": "([^"]+)".*/  - \1/' \
+      || true
+    exit 1
+fi
 
 echo "Downloading from: $DOWNLOAD_URL"
 
