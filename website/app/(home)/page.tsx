@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { 
   Terminal, 
   Activity, 
@@ -15,11 +16,63 @@ import { InstallTabs } from '@/components/home/install-tabs';
 import { VersionBadge } from '@/components/home/version-badge';
 import { cn } from '@/lib/cn';
 
+export const metadata: Metadata = {
+  title: 'Multi-Agent Terminal Office',
+  description:
+    'Manage hundreds of AI agent sessions with live activity signals, daemon-backed persistence, and a developer-friendly terminal workflow.',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'Mato - Multi-Agent Terminal Office',
+    description:
+      'Manage hundreds of AI agent sessions with live activity signals, daemon-backed persistence, and a developer-friendly terminal workflow.',
+    url: '/',
+    images: [
+      {
+        url: '/screenshot-coding.png',
+        width: 2338,
+        height: 1480,
+        alt: 'Mato terminal workspace with multiple AI sessions',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Mato - Multi-Agent Terminal Office',
+    description:
+      'Manage hundreds of AI agent sessions with live activity signals, daemon-backed persistence, and a developer-friendly terminal workflow.',
+    images: ['/screenshot-coding.png'],
+  },
+};
+
 export default function HomePage() {
   const GITHUB_URL = "https://github.com/mr-kelly/mato";
+  const softwareLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Mato',
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Linux, macOS',
+    description:
+      'A terminal multiplexer and workspace for managing hundreds of AI agent sessions with live activity signals and daemon-backed persistence.',
+    url: 'https://mato.sh',
+    downloadUrl: 'https://mato.sh/install.sh',
+    softwareVersion: '0.9.3',
+    author: {
+      '@type': 'Person',
+      name: 'Kelly',
+      url: 'https://x.com/kellypeilinchan',
+    },
+    sameAs: ['https://github.com/mr-kelly/mato'],
+  };
 
   return (
     <main className="relative flex flex-col items-center overflow-x-hidden">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareLd) }}
+      />
       {/* Hero Section */}
       <section className="relative z-10 flex flex-col items-center px-4 pt-12 pb-24 text-center sm:px-6 md:pt-20 md:pb-32">
         <div className="mb-6 flex items-center gap-2 rounded-full border border-fd-border bg-fd-secondary/30 px-4 py-1.5 text-sm font-medium backdrop-blur-md">
