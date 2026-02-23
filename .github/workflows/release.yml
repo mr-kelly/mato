@@ -203,7 +203,7 @@ jobs:
 
             ### Quick Install (Linux/macOS)
             ```bash
-            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/install.sh | bash
+            curl -fsSL http://mato.sh/install.sh | bash
             ```
 
             ### Homebrew (macOS/Linux)

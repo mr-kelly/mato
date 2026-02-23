@@ -5,7 +5,7 @@
 # Mato
 
 ### 🏖️ The Multi-Agent Terminal Office
-**Managing hundreds of AI agents from the command line.**
+**Managing hundreds of AI agents from your terminal.**
 
 English: MAH-toh /ˈmɑːtoʊ/, 普通话: 吗头（mǎ tóu）  
 粤语: 嗎桃（maa1 tou4）, 한국어: 마토（ma-to）, 日本語: マト（mato）
@@ -15,7 +15,7 @@ English: MAH-toh /ˈmɑːtoʊ/, 普通话: 吗头（mǎ tóu）
 [![Version](https://img.shields.io/github/v/release/mr-kelly/mato?display_name=tag&style=for-the-badge)](https://github.com/mr-kelly/mato/releases/latest)
 [![Stars](https://img.shields.io/github/stars/mr-kelly/mato?style=for-the-badge&color=gold)](https://github.com/mr-kelly/mato/stargazers)
 
-[**Quick Start**](#-get-started-in-60s) • [**Showcase**](#-showcase) • [**Why Mato?**](#-the-vision) • [**Documentation**](#-pro-resources)
+[**Quick Start**](#-get-started-in-60s) • [**Showcase**](#-showcase) • [**Why Mato?**](#-the-vision) • [**Development**](#-development-with-coding-agents) • [**Documentation**](#-pro-resources)
 
 <img src="docs/images/screenshot-0.png" alt="Mato Screenshot" width="900" style="border-radius: 12px; border: 1px solid #1C1C2A;">
 
@@ -31,14 +31,14 @@ It turns your terminal into an "Office" with Desks and Tabs, where you can monit
 
 ## 🚀 Get Started in 60s
 
-### 1. Installation
+### 1. Install Manually
 ```bash
 # Quick Install (Linux/macOS)
-curl -fsSL https://raw.githubusercontent.com/mr-kelly/mato/main/install.sh | bash
+curl -fsSL http://mato.sh/install.sh | bash
 ```
 
 ```bash
-# Homebrew (macOS/Linux)
+# Homebrew (Linux/macOS)
 brew tap mr-kelly/tap
 brew install mato
 ```
@@ -49,13 +49,42 @@ tar xzf mato-*.tar.gz
 sudo mv mato /usr/local/bin/
 ```
 
-### 2. Launch your first Office
+### 2. Install with an AI Agent
+
+Copy this prompt into **Claude Code / Codex / Warp / Cursor / Antigravity / OpenClaw / GitHub Copilot (VS Code) / Gemini CLI / Windsurf**:
+
+```text
+Install Mato on this machine and verify it works.
+
+Steps:
+1) Primary install path (official install script):
+   - Download and run:
+     curl -fsSL http://mato.sh/install.sh | bash
+2) If that fails, fallback A (Homebrew):
+   - brew tap mr-kelly/tap
+   - brew install mato
+3) If Homebrew is unavailable/fails, fallback B (GitHub release binary):
+   - Download the latest release asset from:
+     https://github.com/mr-kelly/mato/releases/latest
+   - Extract and install `mato` into /usr/local/bin (or ~/.local/bin without sudo).
+4) If binary install also fails, fallback C (build from source):
+   - git clone https://github.com/mr-kelly/mato.git
+   - cd mato
+   - cargo build --release
+   - install target/release/mato to /usr/local/bin (or ~/.local/bin)
+5) Verification:
+   - Run `mato --version` and show output
+   - Launch `mato` once, confirm startup works, then exit
+6) If any step fails, explain the exact failure and continue with the next fallback automatically.
+```
+
+### 3. Launch your first Office
 ```bash
 mato
 ```
 Select a template (we recommend **Full-Stack** for your first run) and start coding.
 
-### 3. Mastering the Flow
+### 4. Mastering the Flow
 *   **`Esc`**: Enter Jump Mode (Teleport anywhere)
 *   **`n`**: New Desk/Tab (Context-aware)
 *   **`r`**: Rename instantly
@@ -188,6 +217,41 @@ Mato follows the **"Rule of One"**: you don't need to memorize shortcuts. `Esc` 
 
 ---
 
+## 👩‍💻 Development with Coding Agents
+
+If you want to improve a feature, fix a bug, or change behavior you are not satisfied with, paste the prompt below into your coding agent and let it implement the change for you.
+
+Recommended agents: **Claude Code / Codex / Warp / Cursor / Antigravity / OpenClaw / GitHub Copilot (VS Code) / Gemini CLI / Windsurf**.
+
+```text
+GitHub project: https://github.com/mr-kelly/mato
+
+I want to contribute a change to Mato:
+[Describe your bug report or feature request in detail]
+
+Please do the following:
+1) Clone the repository and create a feature branch from latest develop (use the project’s current contribution flow).
+2) Read AGENTS.md and CHANGELOG-related docs first, then reproduce the issue (or clarify expected behavior for the feature).
+3) Implement a minimal, production-safe fix.
+4) Run checks and tests:
+   - cargo build
+   - cargo test
+5) Update docs affected by this change, following AGENTS.md documentation standards (including changelog/release-notes conventions where applicable).
+6) Create commit(s) using Conventional Commits format (e.g., fix:, feat:, docs:, refactor:).
+7) Push the branch and open a Pull Request to the original Mato repository.
+8) In the PR description, clearly explain:
+   - root cause summary
+   - files changed
+   - test/check results
+   - what changed and why
+   - changelog/docs updates completed
+9) Do NOT create a GitHub Issue for this task.
+```
+
+Tip: the better your `[Describe ...]` section (expected behavior, actual behavior, logs, screenshots), the better and faster the result.
+
+---
+
 ## 🛠️ Pro Resources
 
 <table border="0">
@@ -219,7 +283,7 @@ Mato follows the **"Rule of One"**: you don't need to memorize shortcuts. `Esc` 
 ### Built for the future of development.
 Join the **Mato** community and stop hunting for active terminals.
 
-[**Star this project**](https://github.com/mr-kelly/mato) • [**Report a Bug**](https://github.com/mr-kelly/mato/issues) • [**Follow Roadmap**](docs/todos/TODO.md)
+[**Star this project**](https://github.com/mr-kelly/mato) • [**Report a Bug**](https://github.com/mr-kelly/mato/issues) • [**Follow Roadmap**](docs/todos/roadmap.md)
 
 **Made with 🏖️ for developers who value clarity.**
 

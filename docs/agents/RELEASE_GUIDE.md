@@ -63,7 +63,7 @@ After the release is created:
 
 ```bash
 # Test install script
-curl -fsSL https://raw.githubusercontent.com/mr-kelly/mato/main/install.sh | bash
+curl -fsSL http://mato.sh/install.sh | bash
 
 # Test Homebrew
 brew tap mr-kelly/tap
