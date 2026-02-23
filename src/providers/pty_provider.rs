@@ -5,7 +5,10 @@ use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use std::{
     env,
     io::{Read, Write},
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, Mutex,
+    },
     thread,
     time::Instant,
 };
@@ -20,6 +23,9 @@ pub struct PtyProvider {
     spawn_env: Option<Vec<(String, String)>>,
     /// Notified whenever the PTY reader thread processes new output.
     pub output_notify: Arc<tokio::sync::Notify>,
+    /// Number of active push-mode subscribers for this tab.
+    /// Used to prevent multiple clients from fighting over PTY size.
+    pub subscriber_count: Arc<AtomicUsize>,
 }
 
 struct PtyState {
@@ -39,6 +45,7 @@ impl PtyProvider {
             spawn_shell: None,
             spawn_env: None,
             output_notify: Arc::new(tokio::sync::Notify::new()),
+            subscriber_count: Arc::new(AtomicUsize::new(0)),
         }
     }
 

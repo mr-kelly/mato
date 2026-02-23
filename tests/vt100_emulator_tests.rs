@@ -77,14 +77,21 @@ fn vt100_empty_emulator_all_cells_are_blank() {
 
 #[test]
 fn vt100_get_screen_smaller_than_parser_returns_correct_size() {
-    // Parser is 24x80 but we ask for 5x10 — should not panic, returns 5 lines of 10 cells
+    // Parser is 24x80 but we ask for 5x10.
+    // get_screen shows the BOTTOM render_rows rows so that multi-client scenarios
+    // (phone + PC) see the same region where the shell/cursor lives.
+    // Write at the bottom of the terminal (row 24, 1-based = \x1b[24;1H).
     let mut emu = Vt100Emulator::new(24, 80);
-    emu.process(b"Hello");
+    emu.process(b"\x1b[24;1HHello"); // move to last row, then write
     let screen = emu.get_screen(5, 10);
     assert_eq!(screen.lines.len(), 5);
     assert_eq!(screen.lines[0].cells.len(), 10);
-    let row: String = screen.lines[0].cells.iter().map(|c| c.ch).collect();
-    assert!(row.starts_with("Hello"), "got: {row:?}");
+    // Bottom 5 rows of a 24-row terminal = PTY rows 19..23 (0-based).
+    // "Hello" is at PTY row 23 → display row 4 (last row of the 5-row window).
+    let last_row: String = screen.lines[4].cells.iter().map(|c| c.ch).collect();
+    assert!(last_row.starts_with("Hello"), "expected Hello on last display row, got: {last_row:?}");
+    // Cursor should be at display row 4 (PTY row 23 - row_offset 19 = display row 4)
+    assert_eq!(screen.cursor.0, 4, "cursor should be on last display row");
 }
 
 // ── Text attributes ───────────────────────────────────────────────────────────

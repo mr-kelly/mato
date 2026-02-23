@@ -204,23 +204,37 @@ By default, Mato does not intercept your normal `Ctrl-*` and `Alt-*` shell/edito
 
 If you want to improve a feature, fix a bug, or change behavior you are not satisfied with, paste the prompt below into your coding agent and let it implement the change for you.
 
-Recommended agents: **Claude Code / Codex / Warp / Cursor / Antigravity / OpenClaw / GitHub Copilot (VS Code) / Gemini CLI / Windsurf**.
+Recommended CLI coding agents:
+
+- [Claude Code](https://www.anthropic.com/claude-code)
+- [Codex CLI](https://github.com/openai/codex)
+- [Gemini CLI](https://github.com/google-gemini/gemini-cli)
+- [GitHub Copilot CLI](https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli)
+- [Cursor CLI](https://docs.cursor.com/en/cli)
+- [Kiro CLI](https://kiro.dev/cli)
+- [Kimi CLI](https://moonshotai.github.io/kimi-cli/)
+- [Goose](https://block.github.io/goose/)
+- [aider](https://aider.chat/)
+- [pi-mono coding-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)
 
 ### 🧪 Test Suite
 
-Mato has **101 passing tests** across 14 test suites:
+Mato has **264 passing tests** across 14 test suites:
 
 | Suite | Tests | What it covers |
 |---|---|---|
+| `app_tests` | 58 | Desk/tab lifecycle, nav, rename (unicode/cursor), office switch, toast, jump labels/selection, ESC timing, tab switch measurement |
+| `daemon_tests` | 31 | Alacritty emulator (bell, focus tracking, wide chars, resize), PID/lock files, persistence |
 | `screen_diff_tests` | 16 | ScreenDiff protocol, bell/focus propagation, msgpack roundtrip |
-| `input_tests` | 24 | Key bindings, jump mode, rename, copy mode, alt/ctrl encoding |
-| `app_tests` | 29 | Desk/tab lifecycle, nav, rename, `from_saved` clamping, focus events, mouse cache, spinner |
-| `daemon_tests` | 20 | Alacritty emulator (bell, focus tracking, wide chars, resize), PID/lock files, persistence |
+| `input_tests` | 25 | Key bindings, jump mode, rename, copy mode, alt/ctrl encoding |
+| `theme_tests` | 32 | All 12 builtin themes valid, theme merge/override, TOML roundtrip, color palette accuracy |
+| `protocol_tests` | 19 | ClientMsg/ServerMsg JSON + msgpack serde, `ScreenContent` roundtrips, all message variants |
+| `vt100_emulator_tests` | 20 | vt100 emulator correctness |
+| `daemon_provider` (unit) | 11 | Screen cache integrity, resize race-condition guard, size mismatch rejection |
 | `ui_snapshot_tests` | 6 | TUI layout regressions (ratatui `TestBackend` + insta snapshots) |
-| `protocol_tests` | 11 | ClientMsg/ServerMsg JSON + msgpack serde, `ScreenContent` roundtrips |
 | `terminal_persistence_tests` | 5 | PTY content survives reconnect, resize, multi-write |
 | `utils_tests` | 5 | ID uniqueness under load, path layout |
-| others | 5 | Config, compat, integration |
+| others | ~24 | Config, compat, integration |
 
 ```bash
 cargo test                     # run all tests

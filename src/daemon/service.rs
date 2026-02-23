@@ -481,14 +481,16 @@ pub async fn handle_client(
             ClientMsg::Subscribe { tab_id, rows, cols } => {
                 // Enter push mode: continuously push screen updates on PTY output.
                 // This takes over the connection — no more request/response.
-                let notify = if let Some(entry) = tabs.get(&tab_id) {
+                let (notify, sub_count) = if let Some(entry) = tabs.get(&tab_id) {
                     let mut tab = entry.lock();
                     tab.spawn(rows.max(1), cols.max(1));
                     let n = tab.output_notify.clone();
+                    let sc = tab.subscriber_count.clone();
+                    sc.fetch_add(1, Ordering::Relaxed);
                     drop(tab);
-                    Some(n)
+                    (Some(n), Some(sc))
                 } else {
-                    None
+                    (None, None)
                 };
                 let Some(notify) = notify else {
                     tracing::debug!("[daemon] Subscribe tab={} not found", tab_id);
@@ -573,7 +575,15 @@ pub async fn handle_client(
                                                 let config = _config.lock();
                                                 if matches!(config.resize_strategy, crate::config::ResizeStrategy::Sync) {
                                                     let mut tab = entry.lock();
-                                                    tab.resize(r, c);
+                                                    // Only resize the PTY when this is the sole subscriber.
+                                                    // With multiple clients (e.g., phone + PC), each client
+                                                    // may have a different window size. Allowing any client to
+                                                    // resize the PTY causes the other clients' TUI apps to
+                                                    // reflow/shrink unexpectedly. Instead, the smaller client
+                                                    // sees the bottom rows of the larger PTY (row_offset logic).
+                                                    if tab.subscriber_count.load(Ordering::Relaxed) <= 1 {
+                                                        tab.resize(r, c);
+                                                    }
                                                 }
                                             }
                                         }
@@ -699,6 +709,9 @@ pub async fn handle_client(
                     }
                 }
                 tracing::debug!("Client #{} push loop ended for tab {}", client_id, tab_id);
+                if let Some(sc) = sub_count {
+                    sc.fetch_sub(1, Ordering::Relaxed);
+                }
                 break; // Exit handle_client after push loop ends
             }
         };

@@ -26,11 +26,93 @@ pub enum JumpMode {
 pub const JUMP_LABELS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 pub const CONTENT_ESC_DOUBLE_PRESS_WINDOW_MS: u64 = 300;
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum RenameTarget {
     Desk(usize),
     Tab(usize, usize),
     Office(usize),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RenameState {
+    pub target: RenameTarget,
+    pub buffer: String,
+    pub cursor: usize, // char index
+}
+
+impl RenameState {
+    pub fn new(target: RenameTarget, buffer: String) -> Self {
+        let cursor = buffer.chars().count();
+        Self {
+            target,
+            buffer,
+            cursor,
+        }
+    }
+
+    pub fn char_len(&self) -> usize {
+        self.buffer.chars().count()
+    }
+
+    pub fn move_left(&mut self) {
+        self.cursor = self.cursor.saturating_sub(1);
+    }
+
+    pub fn move_right(&mut self) {
+        self.cursor = (self.cursor + 1).min(self.char_len());
+    }
+
+    pub fn move_home(&mut self) {
+        self.cursor = 0;
+    }
+
+    pub fn move_end(&mut self) {
+        self.cursor = self.char_len();
+    }
+
+    pub fn insert_char(&mut self, c: char) {
+        let idx = self.byte_index(self.cursor);
+        self.buffer.insert(idx, c);
+        self.cursor += 1;
+    }
+
+    pub fn backspace(&mut self) {
+        if self.cursor == 0 {
+            return;
+        }
+        let end = self.byte_index(self.cursor);
+        let start = self.byte_index(self.cursor - 1);
+        self.buffer.replace_range(start..end, "");
+        self.cursor -= 1;
+    }
+
+    pub fn delete(&mut self) {
+        if self.cursor >= self.char_len() {
+            return;
+        }
+        let start = self.byte_index(self.cursor);
+        let end = self.byte_index(self.cursor + 1);
+        self.buffer.replace_range(start..end, "");
+    }
+
+    pub fn cursor_byte_index(&self) -> usize {
+        self.byte_index(self.cursor)
+    }
+
+    fn byte_index(&self, char_idx: usize) -> usize {
+        if char_idx == 0 {
+            return 0;
+        }
+        let total = self.char_len();
+        if char_idx >= total {
+            return self.buffer.len();
+        }
+        self.buffer
+            .char_indices()
+            .nth(char_idx)
+            .map(|(i, _)| i)
+            .unwrap_or(self.buffer.len())
+    }
 }
 
 pub struct OfficeSelectorState {
@@ -154,7 +236,7 @@ pub struct App {
     pub focus: Focus,
     pub prev_focus: Focus,
     pub jump_mode: JumpMode,
-    pub rename: Option<(RenameTarget, String)>,
+    pub rename: Option<RenameState>,
     pub office_selector: OfficeSelectorState,
     pub term_rows: u16,
     pub term_cols: u16,
@@ -312,11 +394,19 @@ impl App {
             last_content_esc: None,
             last_rendered_screen_gen: 0,
             startup_instant: Instant::now(),
-            toast: None,
+            toast: if !crate::theme::supports_truecolor()
+                && crate::theme::selected_name() != "system"
+            {
+                Some((
+                    "Theme disabled: terminal lacks truecolor (set COLORTERM=truecolor)".into(),
+                    Instant::now(),
+                ))
+            } else {
+                None
+            },
         }
     }
 
-    #[allow(dead_code)]
     pub fn from_saved(state: SavedState) -> Self {
         let mut list_state = ListState::default();
         let mut offices = state
@@ -405,7 +495,16 @@ impl App {
             last_content_esc: None,
             last_rendered_screen_gen: 0,
             startup_instant: Instant::now(),
-            toast: None,
+            toast: if !crate::theme::supports_truecolor()
+                && crate::theme::selected_name() != "system"
+            {
+                Some((
+                    "Theme disabled: terminal lacks truecolor (set COLORTERM=truecolor)".into(),
+                    Instant::now(),
+                ))
+            } else {
+                None
+            },
         }
     }
 
@@ -680,10 +779,29 @@ impl App {
         }
         self.prev_focus = self.focus;
     }
-    /// Start renaming task at sidebar index
+
+    /// Send FocusIn (`\x1b[I`) or FocusOut (`\x1b[O`) to the currently active
+    /// PTY. Only fires when in Content focus and the terminal has opted in via
+    /// `\x1b[?1004h`. Call this before and after any desk/tab switch that
+    /// happens while remaining in Content focus, so inner TUI apps (vim, helix,
+    /// etc.) are notified even when mato's focus mode doesn't change.
+    pub fn pty_send_focus_event(&mut self, focus_in: bool) {
+        if self.focus != Focus::Content {
+            return;
+        }
+        let i = self.selected();
+        let desk = &self.offices[self.current_office].desks[i];
+        if desk.tabs.is_empty() {
+            return;
+        }
+        if desk.tabs[desk.active_tab].provider.focus_events_enabled() {
+            self.pty_write(if focus_in { b"\x1b[I" } else { b"\x1b[O" });
+        }
+    }
+
     pub fn begin_rename_desk(&mut self, idx: usize) {
         let name = self.offices[self.current_office].desks[idx].name.clone();
-        self.rename = Some((RenameTarget::Desk(idx), name));
+        self.rename = Some(RenameState::new(RenameTarget::Desk(idx), name));
     }
 
     /// Start renaming active tab of current task
@@ -693,16 +811,16 @@ impl App {
         let name = self.offices[self.current_office].desks[ti].tabs[at]
             .name
             .clone();
-        self.rename = Some((RenameTarget::Tab(ti, at), name));
+        self.rename = Some(RenameState::new(RenameTarget::Tab(ti, at), name));
     }
 
     pub fn commit_rename(&mut self) {
-        if let Some((target, buf)) = self.rename.take() {
-            let name = buf.trim().to_string();
+        if let Some(rename) = self.rename.take() {
+            let name = rename.buffer.trim().to_string();
             if name.is_empty() {
                 return;
             }
-            match target {
+            match rename.target {
                 RenameTarget::Desk(i) => {
                     self.offices[self.current_office].desks[i].name = name.clone();
                     self.show_toast(format!("Desk renamed to \"{}\"", name));
@@ -737,6 +855,7 @@ impl App {
                 match kind {
                     't' => {
                         // Jump to desk target.
+                        self.pty_send_focus_event(false); // FocusOut to current tab
                         self.select_desk(task_idx);
                         self.focus = match origin_focus {
                             Focus::Content => Focus::Content,
@@ -745,9 +864,11 @@ impl App {
                         };
                         self.mark_tab_switch();
                         self.spawn_active_pty();
+                        self.pty_send_focus_event(true); // FocusIn to new tab
                     }
                     'b' => {
                         // Jump to tab target.
+                        self.pty_send_focus_event(false); // FocusOut to current tab
                         self.offices[self.current_office].desks[task_idx].active_tab = tab_idx;
                         self.focus = match origin_focus {
                             Focus::Content => Focus::Content,
@@ -756,6 +877,7 @@ impl App {
                         };
                         self.mark_tab_switch();
                         self.spawn_active_pty();
+                        self.pty_send_focus_event(true); // FocusIn to new tab
                     }
                     _ => {}
                 }

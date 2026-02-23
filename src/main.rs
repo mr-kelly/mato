@@ -280,7 +280,7 @@ fn run_client() -> Result<()> {
     // Pre-compute content area size from real terminal dimensions before first spawn.
     // Layout: sidebar(24) + border(2) on left, topbar(3) + border(2) on top.
     if let Ok(ts) = terminal.size() {
-        app.term_rows = ts.height.saturating_sub(5); // topbar(3) + 2 borders
+        app.term_rows = ts.height.saturating_sub(6); // topbar(3) + 2 borders + 1 statusbar
         app.term_cols = ts.width.saturating_sub(26); // sidebar(24) + 2 borders
     }
     app.spawn_active_pty();

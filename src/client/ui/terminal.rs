@@ -47,14 +47,16 @@ pub(super) fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeC
     };
     let screen = tab.provider.get_screen(ih, iw);
     let screen_rows = (screen.lines.len() as u16).min(ih);
-    // Copy mode prefers bottom-aligned viewport for scrollback reading.
-    // Normal mode should stay top-aligned to avoid startup offset when
-    // PTY rows temporarily lag behind UI rows.
-    let row_base = if app.copy_mode {
-        ih.saturating_sub(screen_rows)
-    } else {
-        0
-    };
+    // Copy mode: bottom-align so scrollback content is viewable from bottom.
+    // Normal mode: also bottom-align when content is shorter than the display area.
+    // This handles the Android keyboard resize race: `resize_all_ptys` fires
+    // a fire-and-forget Resize while the sync GetScreen fallback may still see
+    // the old (smaller) PTY size, returning fewer lines than `ih`. Without
+    // bottom-alignment those lines render top-aligned with empty rows below,
+    // leaving the cursor visually "stuck in the middle" until the push loop
+    // delivers a correctly-sized full screen. Bottom-aligning keeps the cursor
+    // pinned near the visual bottom regardless of transient size mismatches.
+    let row_base = ih.saturating_sub(screen_rows);
 
     if screen.bell {
         app.pending_bell = true;

@@ -1,6 +1,48 @@
 use ratatui::style::Color;
 use serde::{Deserialize, Serialize};
 
+/// Map an RGB value to the nearest xterm-256 indexed color.
+///
+/// Uses the 6×6×6 color cube (indices 16–231) for chromatic values and the
+/// 24-step grayscale ramp (232–255) for near-neutral tones, so mosh sessions
+/// without COLORTERM=truecolor still get a reasonable approximation.
+pub fn rgb_to_256(r: u8, g: u8, b: u8) -> u8 {
+    // Near-gray: pick from the 24-step ramp (indices 232-255, steps of ~10).
+    if r.abs_diff(g) < 24 && g.abs_diff(b) < 24 && r.abs_diff(b) < 24 {
+        let avg = (r as u16 + g as u16 + b as u16) / 3;
+        return if avg < 8 {
+            16 // cube black
+        } else if avg > 238 {
+            231 // cube white
+        } else {
+            232 + ((avg - 8) / 10).min(23) as u8
+        };
+    }
+    // 6×6×6 cube: each component 0-255 → 0-5.
+    let r6 = (r as u16 * 5 / 255) as u8;
+    let g6 = (g as u16 * 5 / 255) as u8;
+    let b6 = (b as u16 * 5 / 255) as u8;
+    16 + 36 * r6 + 6 * g6 + b6
+}
+
+/// Whether the current terminal advertises 24-bit color support.
+/// Result is cached after first call (environment doesn't change at runtime).
+fn use_truecolor() -> bool {
+    static CACHE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *CACHE.get_or_init(supports_truecolor)
+}
+
+/// Emit the best `Color` variant for the given RGB values.
+/// Returns `Color::Rgb` when the terminal supports truecolor, otherwise
+/// maps to the nearest xterm-256 indexed color.
+fn best_color(r: u8, g: u8, b: u8) -> Color {
+    if use_truecolor() {
+        Color::Rgb(r, g, b)
+    } else {
+        Color::Indexed(rgb_to_256(r, g, b))
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThemeColors {
     pub follow_terminal: bool,
@@ -16,60 +58,28 @@ pub struct ThemeColors {
 
 impl ThemeColors {
     pub fn bg(&self) -> Color {
-        if self.follow_terminal {
-            Color::Reset
-        } else {
-            Color::Rgb(self.bg[0], self.bg[1], self.bg[2])
-        }
+        if self.follow_terminal { Color::Reset } else { best_color(self.bg[0], self.bg[1], self.bg[2]) }
     }
     pub fn surface(&self) -> Color {
-        if self.follow_terminal {
-            Color::Reset
-        } else {
-            Color::Rgb(self.surface[0], self.surface[1], self.surface[2])
-        }
+        if self.follow_terminal { Color::Reset } else { best_color(self.surface[0], self.surface[1], self.surface[2]) }
     }
     pub fn border(&self) -> Color {
-        if self.follow_terminal {
-            Color::Reset
-        } else {
-            Color::Rgb(self.border[0], self.border[1], self.border[2])
-        }
+        if self.follow_terminal { Color::Reset } else { best_color(self.border[0], self.border[1], self.border[2]) }
     }
     pub fn accent(&self) -> Color {
-        if self.follow_terminal {
-            Color::Reset
-        } else {
-            Color::Rgb(self.accent[0], self.accent[1], self.accent[2])
-        }
+        if self.follow_terminal { Color::Reset } else { best_color(self.accent[0], self.accent[1], self.accent[2]) }
     }
     pub fn accent2(&self) -> Color {
-        if self.follow_terminal {
-            Color::Reset
-        } else {
-            Color::Rgb(self.accent2[0], self.accent2[1], self.accent2[2])
-        }
+        if self.follow_terminal { Color::Reset } else { best_color(self.accent2[0], self.accent2[1], self.accent2[2]) }
     }
     pub fn fg(&self) -> Color {
-        if self.follow_terminal {
-            Color::Reset
-        } else {
-            Color::Rgb(self.fg[0], self.fg[1], self.fg[2])
-        }
+        if self.follow_terminal { Color::Reset } else { best_color(self.fg[0], self.fg[1], self.fg[2]) }
     }
     pub fn fg_dim(&self) -> Color {
-        if self.follow_terminal {
-            Color::Reset
-        } else {
-            Color::Rgb(self.fg_dim[0], self.fg_dim[1], self.fg_dim[2])
-        }
+        if self.follow_terminal { Color::Reset } else { best_color(self.fg_dim[0], self.fg_dim[1], self.fg_dim[2]) }
     }
     pub fn sel_bg(&self) -> Color {
-        if self.follow_terminal {
-            Color::Reset
-        } else {
-            Color::Rgb(self.sel_bg[0], self.sel_bg[1], self.sel_bg[2])
-        }
+        if self.follow_terminal { Color::Reset } else { best_color(self.sel_bg[0], self.sel_bg[1], self.sel_bg[2]) }
     }
     pub fn rgb_bg(&self) -> [u8; 3] {
         self.bg
@@ -306,7 +316,22 @@ pub fn load() -> ThemeColors {
     if let Some(v) = o.sel_bg {
         base.sel_bg = v;
     }
+
     base
+}
+
+/// Returns true when the terminal advertises 24-bit (true) color support.
+/// Checks the standard `COLORTERM` environment variable; a value of
+/// "truecolor" or "24bit" is the de-facto indicator used by terminal
+/// emulators (iTerm2, Kitty, Alacritty, recent mosh, etc.).
+pub fn supports_truecolor() -> bool {
+    matches!(
+        std::env::var("COLORTERM")
+            .unwrap_or_default()
+            .to_lowercase()
+            .as_str(),
+        "truecolor" | "24bit"
+    )
 }
 
 pub fn save_name(name: &str) -> std::io::Result<()> {

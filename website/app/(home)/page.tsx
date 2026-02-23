@@ -125,49 +125,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* The Vision Section */}
-      <section className="container relative z-10 px-4 py-32 sm:px-6 md:py-48">
-        <div className="mb-20 text-center">
-          <h2 className="mb-6 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Why Mato?</h2>
-          <p className="mx-auto max-w-2xl text-lg text-fd-muted-foreground">
-            Traditional terminal multiplexers are "blind." You never know what's happening in another tab until you switch to it.
-          </p>
-        </div>
-
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-          {[
-            {
-              title: "Lost in Tabs",
-              solution: "See active agents instantly with live activity signals across desks/tabs.",
-              icon: <Eye className="h-6 w-6 text-[#D63C3C]" />
-            },
-            {
-              title: "Arrow-Key Grind",
-              solution: "Jump to what you need in one move, instead of stepping tab-by-tab.",
-              icon: <Activity className="h-6 w-6 text-[#D63C3C]" />
-            },
-            {
-              title: "Shortcut Hell",
-              solution: "Only Esc is special, so your shell/editor shortcuts keep working as usual.",
-              icon: <Keyboard className="h-6 w-6 text-[#D63C3C]" />
-            },
-            {
-              title: "Session Loss",
-              solution: "Agents keep running in the background; reconnect and continue where you left off.",
-              icon: <RefreshCw className="h-6 w-6 text-[#D63C3C]" />
-            }
-          ].map((item, i) => (
-            <div key={i} className="flex flex-col gap-4 rounded-2xl border border-fd-border bg-fd-card/50 p-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#D63C3C]/10">
-                {item.icon}
-              </div>
-              <h3 className="text-xl font-bold">{item.title}</h3>
-              <p className="text-sm leading-relaxed text-fd-muted-foreground">{item.solution}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Features Grid */}
       <section className="container relative z-10 px-4 py-32 sm:px-6 md:py-48 bg-fd-secondary/10">
         <div className="mb-20 text-center">
@@ -228,6 +185,49 @@ export default function HomePage() {
                 <h3 className="mb-2 text-xl font-bold">{i + 1}. {item.title}</h3>
                 <p className="text-sm text-fd-muted-foreground">{item.description}</p>
               </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* The Vision Section */}
+      <section className="container relative z-10 px-4 py-32 sm:px-6 md:py-48">
+        <div className="mb-20 text-center">
+          <h2 className="mb-6 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Why Mato?</h2>
+          <p className="mx-auto max-w-2xl text-lg text-fd-muted-foreground">
+            Traditional terminal multiplexers are "blind." You never know what's happening in another tab until you switch to it.
+          </p>
+        </div>
+
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              title: "Lost in Tabs",
+              solution: "See active agents instantly with live activity signals across desks/tabs.",
+              icon: <Eye className="h-6 w-6 text-[#D63C3C]" />
+            },
+            {
+              title: "Arrow-Key Grind",
+              solution: "Jump to what you need in one move, instead of stepping tab-by-tab.",
+              icon: <Activity className="h-6 w-6 text-[#D63C3C]" />
+            },
+            {
+              title: "Shortcut Hell",
+              solution: "Only Esc is special, so your shell/editor shortcuts keep working as usual.",
+              icon: <Keyboard className="h-6 w-6 text-[#D63C3C]" />
+            },
+            {
+              title: "Session Loss",
+              solution: "Agents keep running in the background; reconnect and continue where you left off.",
+              icon: <RefreshCw className="h-6 w-6 text-[#D63C3C]" />
+            }
+          ].map((item, i) => (
+            <div key={i} className="flex flex-col gap-4 rounded-2xl border border-fd-border bg-fd-card/50 p-6">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#D63C3C]/10">
+                {item.icon}
+              </div>
+              <h3 className="text-xl font-bold">{item.title}</h3>
+              <p className="text-sm leading-relaxed text-fd-muted-foreground">{item.solution}</p>
             </div>
           ))}
         </div>

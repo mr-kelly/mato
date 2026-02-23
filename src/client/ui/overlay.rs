@@ -118,14 +118,20 @@ pub(super) fn draw_jump_mode(f: &mut Frame, app: &App, t: &ThemeColors) {
 }
 
 pub(super) fn draw_rename_popup(f: &mut Frame, app: &App, t: &ThemeColors) {
-    let Some((target, buf)) = &app.rename else {
+    let Some(rename) = &app.rename else {
         return;
     };
-    let label = match target {
+    let label = match rename.target {
         RenameTarget::Desk(_) => " Rename Desk ",
         RenameTarget::Tab(_, _) => " Rename Tab ",
         RenameTarget::Office(_) => " Rename Office ",
     };
+    let cursor_byte = rename.cursor_byte_index();
+    let before = &rename.buffer[..cursor_byte];
+    let after = &rename.buffer[cursor_byte..];
+    let current_char_len = after.chars().next().map(|c| c.len_utf8()).unwrap_or(0);
+    let current = &after[..current_char_len];
+    let tail = &after[current_char_len..];
     let area = f.area();
     let w = 40u16.min(area.width);
     let popup = Rect {
@@ -138,8 +144,12 @@ pub(super) fn draw_rename_popup(f: &mut Frame, app: &App, t: &ThemeColors) {
     f.render_widget(
         Paragraph::new(Line::from(vec![
             Span::raw("  "),
-            Span::styled(buf.clone(), Style::default().fg(t.fg())),
-            Span::styled("█", Style::default().fg(t.accent())),
+            Span::styled(before, Style::default().fg(t.fg())),
+            Span::styled(
+                if current.is_empty() { "█" } else { current },
+                Style::default().fg(t.bg()).bg(t.accent()),
+            ),
+            Span::styled(tail, Style::default().fg(t.fg())),
         ]))
         .block(
             Block::default()
@@ -379,10 +389,11 @@ pub(super) fn draw_toast(f: &mut Frame, app: &App, t: &ThemeColors) {
 
         let area = f.area();
         let msg_len = (msg.len() + 4) as u16;
+        let width = msg_len.min(area.width);
         let toast_area = Rect {
-            x: area.width.saturating_sub(msg_len + 2),
+            x: area.width.saturating_sub(width),
             y: area.height.saturating_sub(3),
-            width: msg_len,
+            width,
             height: 1,
         };
 

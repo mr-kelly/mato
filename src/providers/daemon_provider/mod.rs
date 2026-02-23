@@ -214,7 +214,14 @@ impl DaemonProvider {
     fn cached_screen(&self, rows: u16, cols: u16) -> Option<ScreenContent> {
         if let Ok(cache) = self.screen_cache.lock() {
             if let Some(entry) = cache.as_ref() {
-                if entry.rows == rows && entry.cols == cols {
+                // Also validate that the cached content actually has the right number of
+                // lines. After a resize, the sync GetScreen fallback can race with the
+                // PTY resize and return fewer lines than requested; those stale entries
+                // must not be served as the canonical screen for the new size.
+                if entry.rows == rows
+                    && entry.cols == cols
+                    && entry.content.lines.len() == rows as usize
+                {
                     return Some(entry.content.clone());
                 }
             }
@@ -369,7 +376,15 @@ impl TerminalProvider for DaemonProvider {
         }) {
             Some(ServerMsg::Screen { content, .. }) => {
                 self.screen_generation.fetch_add(1, Ordering::Relaxed);
-                self.cache_screen(content.clone(), rows, cols);
+                // Only cache when the returned line count matches what was requested.
+                // If the PTY hasn't been resized yet (race with fire-and-forget Resize),
+                // the daemon may return fewer lines than requested. Caching that mismatch
+                // would leave the bottom rows permanently blank until the next push.
+                // Skip caching here; the worker's subscribe-loop push (triggered by the
+                // resize path) will deliver the correctly-sized full screen shortly.
+                if content.lines.len() == rows as usize {
+                    self.cache_screen(content.clone(), rows, cols);
+                }
                 content
             }
             Some(ServerMsg::Error { message }) => {
@@ -435,5 +450,67 @@ impl TerminalProvider for DaemonProvider {
             }
         }
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::terminal_provider::{ScreenContent, ScreenLine};
+
+    fn make_screen(rows: usize) -> ScreenContent {
+        ScreenContent {
+            lines: vec![ScreenLine { cells: vec![] }; rows],
+            ..Default::default()
+        }
+    }
+
+    fn provider() -> DaemonProvider {
+        DaemonProvider::new("tab".to_string(), "/tmp/mato-test.sock".to_string())
+    }
+
+    /// cached_screen must reject an entry whose line count doesn't match the
+    /// declared row key — this is the post-resize race-condition guard.
+    #[test]
+    fn cached_screen_rejects_mismatched_line_count() {
+        let p = provider();
+        // Manually inject a bad cache entry: key says 25 rows but content has 24.
+        let content24 = make_screen(24);
+        if let Ok(mut c) = p.screen_cache.lock() {
+            *c = Some(ScreenCacheEntry {
+                content: content24,
+                rows: 25, // mismatch
+                cols: 80,
+            });
+        }
+        // Should be rejected — returns None, not the stale 24-line content.
+        assert!(p.cached_screen(25, 80).is_none());
+    }
+
+    /// cached_screen must accept an entry whose line count exactly matches.
+    #[test]
+    fn cached_screen_accepts_consistent_entry() {
+        let p = provider();
+        let content = make_screen(25);
+        p.cache_screen(content, 25, 80);
+        assert!(p.cached_screen(25, 80).is_some());
+        assert_eq!(p.cached_screen(25, 80).unwrap().lines.len(), 25);
+    }
+
+    /// cache_screen stores the entry correctly.
+    #[test]
+    fn cache_screen_stores_correct_size() {
+        let p = provider();
+        p.cache_screen(make_screen(10), 10, 80);
+        let cached = p.cached_screen(10, 80).unwrap();
+        assert_eq!(cached.lines.len(), 10);
+    }
+
+    /// Verifying that a row/col mismatch (different cols) also returns None.
+    #[test]
+    fn cached_screen_rejects_col_mismatch() {
+        let p = provider();
+        p.cache_screen(make_screen(24), 24, 80);
+        assert!(p.cached_screen(24, 100).is_none());
     }
 }

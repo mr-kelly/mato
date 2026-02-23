@@ -1,5 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use mato::client::app::{App, Desk, Focus, JumpMode, RenameTarget, TabEntry};
+use mato::client::app::{App, Desk, Focus, JumpMode, RenameState, RenameTarget, TabEntry};
 use mato::client::input::handle_key;
 /// Tests for handle_key input logic.
 /// Uses NullProvider + make_app helper (same pattern as app_tests).
@@ -198,23 +198,35 @@ fn jump_mode_content_c_enters_copy_mode_not_jump() {
 #[test]
 fn rename_mode_char_appends_to_buffer() {
     let mut app = make_app(vec![make_task("T")]);
-    app.rename = Some((RenameTarget::Desk(0), "ab".into()));
+    app.rename = Some(RenameState::new(RenameTarget::Desk(0), "ab".into()));
     handle_key(&mut app, key(KeyCode::Char('c')));
-    assert_eq!(app.rename.as_ref().unwrap().1, "abc");
+    assert_eq!(app.rename.as_ref().unwrap().buffer, "abc");
 }
 
 #[test]
 fn rename_mode_backspace_removes_last_char() {
     let mut app = make_app(vec![make_task("T")]);
-    app.rename = Some((RenameTarget::Desk(0), "abc".into()));
+    app.rename = Some(RenameState::new(RenameTarget::Desk(0), "abc".into()));
     handle_key(&mut app, key(KeyCode::Backspace));
-    assert_eq!(app.rename.as_ref().unwrap().1, "ab");
+    assert_eq!(app.rename.as_ref().unwrap().buffer, "ab");
+}
+
+#[test]
+fn rename_mode_cursor_and_delete_work_in_middle() {
+    let mut app = make_app(vec![make_task("T")]);
+    let mut rename = RenameState::new(RenameTarget::Desk(0), "abcd".into());
+    rename.move_left();
+    rename.move_left(); // cursor before 'c'
+    app.rename = Some(rename);
+    handle_key(&mut app, key(KeyCode::Delete)); // delete 'c'
+    assert_eq!(app.rename.as_ref().unwrap().buffer, "abd");
+    assert_eq!(app.rename.as_ref().unwrap().cursor, 2);
 }
 
 #[test]
 fn rename_mode_enter_commits() {
     let mut app = make_app(vec![make_task("Old")]);
-    app.rename = Some((RenameTarget::Desk(0), "New".into()));
+    app.rename = Some(RenameState::new(RenameTarget::Desk(0), "New".into()));
     handle_key(&mut app, key(KeyCode::Enter));
     assert!(app.rename.is_none());
     assert_eq!(app.offices[0].desks[0].name, "New");
@@ -223,7 +235,7 @@ fn rename_mode_enter_commits() {
 #[test]
 fn rename_mode_esc_cancels() {
     let mut app = make_app(vec![make_task("Old")]);
-    app.rename = Some((RenameTarget::Desk(0), "typing".into()));
+    app.rename = Some(RenameState::new(RenameTarget::Desk(0), "typing".into()));
     handle_key(&mut app, key(KeyCode::Esc));
     assert!(app.rename.is_none());
     assert_eq!(app.offices[0].desks[0].name, "Old");

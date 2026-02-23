@@ -125,7 +125,7 @@ fn test_input_modes_server_msg() {
     }
 }
 
-use mato::terminal_provider::{CursorShape, ScreenContent};
+use mato::terminal_provider::{CursorShape, ScreenContent, ScreenLine};
 
 #[test]
 fn screen_content_json_roundtrip_preserves_bell_and_focus_events() {
@@ -189,5 +189,193 @@ fn screen_diff_msgpack_roundtrip_preserves_focus_events_enabled() {
             assert!(focus_events_enabled, "focus_events_enabled must survive msgpack roundtrip");
         }
         _ => panic!("Expected ScreenDiff"),
+    }
+}
+
+// ── Additional protocol tests ─────────────────────────────────────────────────
+
+/// Scroll message serializes and deserializes correctly with positive and negative deltas.
+#[test]
+fn scroll_message_roundtrip() {
+    for delta in [-3i32, 0, 5, i32::MAX, i32::MIN] {
+        let msg = ClientMsg::Scroll {
+            tab_id: "t1".into(),
+            delta,
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        let back: ClientMsg = serde_json::from_str(&json).unwrap();
+        match back {
+            ClientMsg::Scroll { tab_id, delta: d } => {
+                assert_eq!(tab_id, "t1");
+                assert_eq!(d, delta);
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+}
+
+/// Subscribe message carries rows/cols correctly.
+#[test]
+fn subscribe_message_roundtrip() {
+    let msg = ClientMsg::Subscribe {
+        tab_id: "tab-abc".into(),
+        rows: 40,
+        cols: 160,
+    };
+    let bin = rmp_serde::to_vec(&msg).unwrap();
+    let back: ClientMsg = rmp_serde::from_slice(&bin).unwrap();
+    match back {
+        ClientMsg::Subscribe { tab_id, rows, cols } => {
+            assert_eq!(tab_id, "tab-abc");
+            assert_eq!(rows, 40);
+            assert_eq!(cols, 160);
+        }
+        _ => panic!("wrong variant"),
+    }
+}
+
+/// ScreenDiff with both bell=true and focus_events_enabled=true survives roundtrip.
+#[test]
+fn screen_diff_bell_and_focus_events_both_true() {
+    use mato::protocol::ServerMsg;
+    let msg = ServerMsg::ScreenDiff {
+        changed_lines: vec![],
+        cursor: (5, 10),
+        cursor_shape: CursorShape::Beam,
+        title: Some("mytitle".into()),
+        bell: true,
+        focus_events_enabled: true,
+    };
+    let bin = rmp_serde::to_vec(&msg).unwrap();
+    let back: ServerMsg = rmp_serde::from_slice(&bin).unwrap();
+    match back {
+        ServerMsg::ScreenDiff { bell, focus_events_enabled, cursor, title, cursor_shape, .. } => {
+            assert!(bell);
+            assert!(focus_events_enabled);
+            assert_eq!(cursor, (5, 10));
+            assert_eq!(title.as_deref(), Some("mytitle"));
+            assert!(matches!(cursor_shape, CursorShape::Beam));
+        }
+        _ => panic!("wrong variant"),
+    }
+}
+
+/// InputModes with all combinations roundtrips correctly.
+#[test]
+fn input_modes_roundtrip_all_combinations() {
+    use mato::protocol::ServerMsg;
+    for (mouse, paste) in [(false, false), (true, false), (false, true), (true, true)] {
+        let msg = ServerMsg::InputModes { mouse, bracketed_paste: paste };
+        let json = serde_json::to_string(&msg).unwrap();
+        let back: ServerMsg = serde_json::from_str(&json).unwrap();
+        match back {
+            ServerMsg::InputModes { mouse: m, bracketed_paste: p } => {
+                assert_eq!(m, mouse);
+                assert_eq!(p, paste);
+            }
+            _ => panic!("expected InputModes"),
+        }
+    }
+}
+
+/// Screen full message with changed lines roundtrips via msgpack.
+#[test]
+fn screen_full_with_changed_lines_msgpack_roundtrip() {
+    use mato::protocol::ServerMsg;
+    use mato::terminal_provider::ScreenCell;
+    let cell = ScreenCell {
+        ch: 'A',
+        display_width: 1,
+        fg: None, bg: None,
+        bold: true, italic: false, underline: false,
+        dim: false, reverse: false, strikethrough: false, hidden: false,
+        underline_color: None, zerowidth: None,
+    };
+    let line = ScreenLine { cells: vec![cell] };
+    let content = ScreenContent {
+        lines: vec![line],
+        cursor: (0, 0),
+        title: Some("test".into()),
+        cursor_shape: CursorShape::Block,
+        bell: false,
+        focus_events_enabled: false,
+    };
+    let msg = ServerMsg::Screen { tab_id: "t".into(), content };
+    let bin = rmp_serde::to_vec(&msg).unwrap();
+    let back: ServerMsg = rmp_serde::from_slice(&bin).unwrap();
+    match back {
+        ServerMsg::Screen { tab_id, content: c } => {
+            assert_eq!(tab_id, "t");
+            assert_eq!(c.lines.len(), 1);
+            assert_eq!(c.lines[0].cells[0].ch, 'A');
+            assert!(c.lines[0].cells[0].bold);
+        }
+        _ => panic!("expected Screen"),
+    }
+}
+
+/// Error message roundtrip.
+#[test]
+fn error_message_roundtrip() {
+    use mato::protocol::ServerMsg;
+    let msg = ServerMsg::Error { message: "tab not found".into() };
+    let json = serde_json::to_string(&msg).unwrap();
+    let back: ServerMsg = serde_json::from_str(&json).unwrap();
+    match back {
+        ServerMsg::Error { message } => assert_eq!(message, "tab not found"),
+        _ => panic!("expected Error"),
+    }
+}
+
+/// GetInputModes request roundtrip.
+#[test]
+fn get_input_modes_request_roundtrip() {
+    let msg = ClientMsg::GetInputModes { tab_id: "abc".into() };
+    let json = serde_json::to_string(&msg).unwrap();
+    let back: ClientMsg = serde_json::from_str(&json).unwrap();
+    match back {
+        ClientMsg::GetInputModes { tab_id } => assert_eq!(tab_id, "abc"),
+        _ => panic!("expected GetInputModes"),
+    }
+}
+
+/// ScreenDiff with changed lines preserves line content.
+#[test]
+fn screen_diff_changed_lines_preserve_cell_attributes() {
+    use mato::protocol::ServerMsg;
+    use mato::terminal_provider::ScreenCell;
+    let cell = ScreenCell {
+        ch: '✓',
+        display_width: 1,
+        fg: None, bg: None,
+        bold: false, italic: true, underline: true,
+        dim: false, reverse: true, strikethrough: false, hidden: false,
+        underline_color: None, zerowidth: None,
+    };
+    let line = ScreenLine { cells: vec![cell] };
+    let msg = ServerMsg::ScreenDiff {
+        changed_lines: vec![(3u16, line)],
+        cursor: (3, 1),
+        cursor_shape: CursorShape::Underline,
+        title: None,
+        bell: false,
+        focus_events_enabled: false,
+    };
+    let bin = rmp_serde::to_vec(&msg).unwrap();
+    let back: ServerMsg = rmp_serde::from_slice(&bin).unwrap();
+    match back {
+        ServerMsg::ScreenDiff { changed_lines, cursor, cursor_shape, .. } => {
+            assert_eq!(cursor, (3, 1));
+            assert!(matches!(cursor_shape, CursorShape::Underline));
+            assert_eq!(changed_lines.len(), 1);
+            let (idx, restored_line) = &changed_lines[0];
+            assert_eq!(*idx, 3);
+            let c = &restored_line.cells[0];
+            assert_eq!(c.ch, '✓');
+            assert!(c.italic);
+            assert!(c.underline);
+            assert!(c.reverse);
+        }
+        _ => panic!("expected ScreenDiff"),
     }
 }

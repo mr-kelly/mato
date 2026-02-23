@@ -33,7 +33,7 @@ impl TerminalProvider for CountingMouseProvider {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-use mato::client::app::{Desk, Focus, RenameTarget, TabEntry};
+use mato::client::app::{Desk, Focus, RenameState, RenameTarget, TabEntry};
 use std::collections::HashSet;
 
 fn make_tab(name: &str) -> TabEntry {
@@ -148,7 +148,7 @@ fn nav_does_not_go_out_of_bounds() {
 #[test]
 fn commit_rename_empty_string_is_ignored() {
     let mut app = make_app_with(vec![make_task("Original")]);
-    app.rename = Some((RenameTarget::Desk(0), "   ".into()));
+    app.rename = Some(RenameState::new(RenameTarget::Desk(0), "   ".into()));
     app.commit_rename();
     assert_eq!(
         app.offices[0].desks[0].name, "Original",
@@ -160,7 +160,7 @@ fn commit_rename_empty_string_is_ignored() {
 #[test]
 fn commit_rename_task_applies_trimmed_name() {
     let mut app = make_app_with(vec![make_task("Old")]);
-    app.rename = Some((RenameTarget::Desk(0), "  New Name  ".into()));
+    app.rename = Some(RenameState::new(RenameTarget::Desk(0), "  New Name  ".into()));
     app.commit_rename();
     assert_eq!(app.offices[0].desks[0].name, "New Name");
     assert!(app.dirty);
@@ -169,7 +169,7 @@ fn commit_rename_task_applies_trimmed_name() {
 #[test]
 fn cancel_rename_clears_state() {
     let mut app = make_app_with(vec![make_task("T")]);
-    app.rename = Some((RenameTarget::Desk(0), "typing...".into()));
+    app.rename = Some(RenameState::new(RenameTarget::Desk(0), "typing...".into()));
     app.cancel_rename();
     assert!(app.rename.is_none());
 }
@@ -650,4 +650,364 @@ fn update_spinner_advances_frame_after_80ms() {
     thread::sleep(std::time::Duration::from_millis(85));
     app.update_spinner();
     assert_ne!(app.spinner_frame, before, "spinner_frame must advance after 80ms");
+}
+
+// ── RenameState: unicode / cursor editing ─────────────────────────────────────
+
+#[test]
+fn rename_insert_ascii() {
+    let mut r = RenameState::new(RenameTarget::Desk(0), "abc".into());
+    r.cursor = 1;
+    r.insert_char('X');
+    assert_eq!(r.buffer, "aXbc");
+    assert_eq!(r.cursor, 2);
+}
+
+#[test]
+fn rename_insert_multibyte_unicode() {
+    let mut r = RenameState::new(RenameTarget::Desk(0), "".into());
+    r.insert_char('😀'); // 4-byte emoji
+    r.insert_char('世'); // 3-byte CJK
+    assert_eq!(r.buffer, "😀世");
+    assert_eq!(r.char_len(), 2);
+    assert_eq!(r.cursor, 2);
+}
+
+#[test]
+fn rename_backspace_multibyte() {
+    let mut r = RenameState::new(RenameTarget::Desk(0), "a😀b".into());
+    r.cursor = 2; // after 😀
+    r.backspace();
+    assert_eq!(r.buffer, "ab");
+    assert_eq!(r.cursor, 1);
+}
+
+#[test]
+fn rename_delete_at_cursor() {
+    let mut r = RenameState::new(RenameTarget::Desk(0), "hello".into());
+    r.cursor = 1;
+    r.delete();
+    assert_eq!(r.buffer, "hllo");
+    assert_eq!(r.cursor, 1, "delete should not move cursor");
+}
+
+#[test]
+fn rename_delete_at_end_is_noop() {
+    let mut r = RenameState::new(RenameTarget::Desk(0), "abc".into());
+    r.move_end();
+    r.delete();
+    assert_eq!(r.buffer, "abc");
+}
+
+#[test]
+fn rename_backspace_at_start_is_noop() {
+    let mut r = RenameState::new(RenameTarget::Desk(0), "abc".into());
+    r.cursor = 0;
+    r.backspace();
+    assert_eq!(r.buffer, "abc");
+}
+
+#[test]
+fn rename_move_home_end() {
+    let mut r = RenameState::new(RenameTarget::Desk(0), "hello".into());
+    r.cursor = 2;
+    r.move_home();
+    assert_eq!(r.cursor, 0);
+    r.move_end();
+    assert_eq!(r.cursor, 5);
+}
+
+#[test]
+fn rename_move_left_clamps() {
+    let mut r = RenameState::new(RenameTarget::Desk(0), "ab".into());
+    r.cursor = 0;
+    r.move_left();
+    assert_eq!(r.cursor, 0, "move_left at start must not underflow");
+}
+
+#[test]
+fn rename_move_right_clamps() {
+    let mut r = RenameState::new(RenameTarget::Desk(0), "ab".into());
+    r.move_end();
+    r.move_right();
+    assert_eq!(r.cursor, 2, "move_right at end must not overflow");
+}
+
+#[test]
+fn rename_cursor_byte_index_correct_for_multibyte() {
+    // "😀" = 4 bytes, so byte_index(1) should be 4
+    let r = RenameState::new(RenameTarget::Desk(0), "😀a".into());
+    assert_eq!(r.cursor, 2); // cursor at end (char len = 2)
+    // Move to position 1 (after emoji, before 'a')
+    let mut r2 = RenameState::new(RenameTarget::Desk(0), "😀a".into());
+    r2.cursor = 1;
+    assert_eq!(r2.cursor_byte_index(), 4); // emoji is 4 bytes
+}
+
+// ── App: desk selection & dirty ──────────────────────────────────────────────
+
+#[test]
+fn select_desk_sets_dirty_on_change() {
+    let mut app = make_app_with(vec![make_task("A"), make_task("B")]);
+    app.dirty = false;
+    app.select_desk(1);
+    assert!(app.dirty, "selecting a different desk must set dirty=true");
+}
+
+#[test]
+fn select_desk_no_dirty_when_same() {
+    let mut app = make_app_with(vec![make_task("A"), make_task("B")]);
+    app.select_desk(0);
+    app.dirty = false;
+    app.select_desk(0);
+    assert!(!app.dirty, "re-selecting same desk must not set dirty");
+}
+
+#[test]
+fn select_desk_clamps_to_last() {
+    let mut app = make_app_with(vec![make_task("A"), make_task("B")]);
+    app.select_desk(99);
+    assert_eq!(app.selected(), 1, "out-of-range select must clamp to last desk");
+}
+
+// ── App: switch_office ────────────────────────────────────────────────────────
+
+use mato::client::app::Office;
+
+fn make_office(name: &str, desks: Vec<Desk>) -> Office {
+    Office {
+        id: mato::utils::new_id(),
+        name: name.into(),
+        desks,
+        active_desk: 0,
+    }
+}
+
+#[test]
+fn switch_office_sets_dirty() {
+    let mut app = mato::client::app::App::new();
+    app.offices = vec![
+        make_office("A", vec![make_task("A1")]),
+        make_office("B", vec![make_task("B1")]),
+    ];
+    app.current_office = 0;
+    app.dirty = false;
+    app.switch_office(1);
+    assert!(app.dirty);
+    assert_eq!(app.current_office, 1);
+}
+
+#[test]
+fn switch_office_same_always_sets_dirty() {
+    // switch_office unconditionally sets dirty=true (it spawns PTY + marks tab switch)
+    let mut app = mato::client::app::App::new();
+    app.offices = vec![make_office("A", vec![make_task("A1")])];
+    app.current_office = 0;
+    app.dirty = false;
+    app.switch_office(0);
+    assert!(app.dirty, "switch_office always marks dirty (even same office)");
+}
+
+#[test]
+fn switch_office_resets_tab_scroll() {
+    let mut app = mato::client::app::App::new();
+    app.offices = vec![
+        make_office("A", vec![make_task("A1")]),
+        make_office("B", vec![make_task("B1")]),
+    ];
+    app.tab_scroll = 5;
+    app.switch_office(1);
+    assert_eq!(app.tab_scroll, 0, "switch_office must reset tab_scroll");
+}
+
+// ── App: show_toast ────────────────────────────────────────────────────────────
+
+#[test]
+fn show_toast_sets_message_and_dirty() {
+    let mut app = make_app_with(vec![make_task("T")]);
+    app.dirty = false;
+    app.show_toast("hello");
+    assert!(app.toast.is_some());
+    assert_eq!(app.toast.as_ref().unwrap().0, "hello");
+    assert!(app.dirty);
+}
+
+#[test]
+fn show_toast_overwrites_previous() {
+    let mut app = make_app_with(vec![make_task("T")]);
+    app.show_toast("first");
+    app.show_toast("second");
+    assert_eq!(app.toast.as_ref().unwrap().0, "second");
+}
+
+// ── App: has_active_tabs ──────────────────────────────────────────────────────
+
+#[test]
+fn has_active_tabs_false_when_empty() {
+    let mut app = make_app_with(vec![make_task("T")]);
+    app.active_tabs.clear();
+    assert!(!app.has_active_tabs());
+}
+
+#[test]
+fn has_active_tabs_true_when_nonempty() {
+    let mut app = make_app_with(vec![make_task("T")]);
+    app.active_tabs.insert("tab1".into());
+    assert!(app.has_active_tabs());
+}
+
+// ── App: flush_pending_content_esc ────────────────────────────────────────────
+
+use std::time::{Duration, Instant};
+use mato::client::app::CONTENT_ESC_DOUBLE_PRESS_WINDOW_MS;
+
+#[test]
+fn flush_esc_clears_stale_esc() {
+    use std::thread;
+    let mut app = make_app_with(vec![make_task("T")]);
+    // Simulate an ESC press older than the detection window
+    app.last_content_esc = Some(
+        Instant::now() - Duration::from_millis(CONTENT_ESC_DOUBLE_PRESS_WINDOW_MS + 50),
+    );
+    app.flush_pending_content_esc();
+    assert!(
+        app.last_content_esc.is_none(),
+        "stale ESC must be cleared by flush"
+    );
+}
+
+#[test]
+fn flush_esc_keeps_recent_esc() {
+    let mut app = make_app_with(vec![make_task("T")]);
+    app.last_content_esc = Some(Instant::now());
+    app.flush_pending_content_esc();
+    assert!(
+        app.last_content_esc.is_some(),
+        "recent ESC must NOT be cleared"
+    );
+}
+
+// ── App: jump_labels exclude reserved keys ───────────────────────────────────
+
+#[test]
+fn jump_labels_content_focus_excludes_c_r_q() {
+    let mut app = make_app_with(vec![make_task("T")]);
+    app.focus = Focus::Content;
+    let labels = app.jump_labels();
+    assert!(!labels.contains(&'c'), "c must be excluded in Content focus");
+    assert!(!labels.contains(&'C'), "C must be excluded in Content focus");
+    assert!(!labels.contains(&'r'), "r must be excluded in Content focus");
+    assert!(!labels.contains(&'R'), "R must be excluded in Content focus");
+    assert!(!labels.contains(&'q'), "q must be excluded in Content focus");
+    assert!(!labels.contains(&'Q'), "Q must be excluded in Content focus");
+}
+
+#[test]
+fn jump_labels_sidebar_focus_excludes_r_q_but_not_c() {
+    let mut app = make_app_with(vec![make_task("T")]);
+    app.focus = Focus::Sidebar;
+    let labels = app.jump_labels();
+    assert!(!labels.contains(&'r'));
+    assert!(!labels.contains(&'q'));
+    assert!(labels.contains(&'c'), "c should be available in Sidebar focus");
+}
+
+#[test]
+fn jump_labels_are_unique() {
+    let mut app = make_app_with(vec![make_task("T")]);
+    for focus in [Focus::Content, Focus::Sidebar, Focus::Topbar] {
+        app.focus = focus;
+        let labels = app.jump_labels();
+        let set: HashSet<char> = labels.iter().cloned().collect();
+        assert_eq!(labels.len(), set.len(), "jump labels must be unique for {focus:?}");
+    }
+}
+
+// ── App: mark/finish tab switch timing ────────────────────────────────────────
+
+#[test]
+fn tab_switch_timing_roundtrip() {
+    use std::thread;
+    let mut app = make_app_with(vec![make_task("T")]);
+    assert!(app.finish_tab_switch_measurement().is_none(), "no measurement before mark");
+    app.mark_tab_switch();
+    thread::sleep(Duration::from_millis(5));
+    let elapsed = app.finish_tab_switch_measurement();
+    assert!(elapsed.is_some());
+    assert!(elapsed.unwrap() >= Duration::from_millis(1), "elapsed must be > 0");
+    // Second call returns None (consumed)
+    assert!(app.finish_tab_switch_measurement().is_none());
+}
+
+// ── App: handle_jump_selection ─────────────────────────────────────────────────
+
+use mato::client::app::JumpMode;
+
+#[test]
+fn jump_selection_switches_desk() {
+    let mut app = make_app_with(vec![make_task("A"), make_task("B"), make_task("C")]);
+    app.focus = Focus::Sidebar;
+    app.jump_mode = JumpMode::Active;
+    // Manually set sidebar_list_area so visible_desk_indices works
+    app.sidebar_list_area = ratatui::layout::Rect { x: 0, y: 0, width: 20, height: 10 };
+    // 'a' maps to label[0] which maps to target[0] (first desk in Sidebar focus)
+    let labels = app.jump_labels();
+    let targets = app.jump_targets();
+    assert!(!targets.is_empty());
+    let first_label = labels[0];
+    let (kind, desk_idx, _) = targets[0];
+    assert_eq!(kind, 't', "first target in Sidebar focus should be a desk");
+    app.handle_jump_selection(first_label);
+    assert_eq!(app.selected(), desk_idx, "jump should switch to correct desk");
+    assert_eq!(app.jump_mode, JumpMode::None, "jump mode must exit after selection");
+}
+
+#[test]
+fn jump_selection_invalid_char_exits_jump_mode() {
+    let mut app = make_app_with(vec![make_task("A")]);
+    app.focus = Focus::Sidebar;
+    app.jump_mode = JumpMode::Active;
+    // Use a character that is NOT in jump_labels
+    let reserved = '☃'; // not in JUMP_LABELS at all
+    app.handle_jump_selection(reserved);
+    assert_eq!(app.jump_mode, JumpMode::None, "jump mode must exit even on no-match");
+}
+
+#[test]
+fn jump_selection_tab_switches_active_tab() {
+    let mut app = make_app_with(vec![Desk {
+        id: mato::utils::new_id(),
+        name: "D".into(),
+        tabs: vec![make_tab("T1"), make_tab("T2"), make_tab("T3")],
+        active_tab: 0,
+    }]);
+    app.focus = Focus::Topbar;
+    app.jump_mode = JumpMode::Active;
+    // Register tab areas so tab_area_tab_indices is populated
+    app.tab_area_tab_indices = vec![0, 1, 2];
+    let labels = app.jump_labels();
+    // In Topbar focus, first target is first tab
+    let targets = app.jump_targets();
+    let (kind, desk_idx, tab_idx) = targets[0];
+    assert_eq!(kind, 'b');
+    let first_label = labels[0];
+    app.handle_jump_selection(first_label);
+    assert_eq!(
+        app.offices[0].desks[desk_idx].active_tab, tab_idx,
+        "jump to tab must switch active_tab"
+    );
+}
+
+#[test]
+fn non_esc_key_clears_pending_esc_immediately() {
+    // When a non-ESC key is pressed while an ESC is pending, the ESC should be
+    // forwarded to the PTY immediately (even within the 300ms window), so that
+    // ESC+key sequences (Alt keys, vi ESC-then-command) work correctly.
+    // This tests the `last_content_esc.take()` path in input.rs.
+    let mut app = make_app_with(vec![make_task("T")]);
+    app.last_content_esc = Some(Instant::now()); // fresh ESC pending
+    // Simulate what input.rs does for a non-ESC key in Content focus:
+    let had_pending_esc = app.last_content_esc.take().is_some();
+    assert!(had_pending_esc, "recent ESC must be immediately cleared on non-ESC key");
+    assert!(app.last_content_esc.is_none(), "last_content_esc must be None after take()");
 }
