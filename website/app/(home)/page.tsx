@@ -40,16 +40,6 @@ export default function HomePage() {
           Manage hundreds of AI agent sessions with real-time signals, daemon-backed persistence, and zero-conflict ergonomics.
         </p>
 
-        <div className="mb-10 flex flex-col items-center gap-1 text-sm font-mono text-fd-muted-foreground/60 italic">
-          <p>You say tomato, I say Mato.</p>
-          <div className="flex gap-4 opacity-50 text-[10px] sm:text-sm">
-            <span>English: MAY-to</span>
-            <span>粤语: 咩圖</span>
-            <span>普通话: 梅拓</span>
-            <span>Spanish: undefined</span>
-          </div>
-        </div>
-
         <div className="flex flex-wrap items-center justify-center gap-4 px-4">
           <Link 
             href={GITHUB_URL}
@@ -281,6 +271,16 @@ export default function HomePage() {
           </div>
           <div className="absolute -right-1/4 -top-1/4 h-[150%] w-[150%] rotate-12 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.15)_0%,transparent_70%)]" />
         </div>
+      </section>
+
+      {/* Pronunciation */}
+      <section className="container relative z-10 px-4 pb-20 text-center sm:px-6 md:pb-24">
+        <p className="text-sm font-mono italic text-fd-muted-foreground/70">
+          You say tomato, I say Mato.
+        </p>
+        <p className="mt-2 text-xs text-fd-muted-foreground/60 sm:text-sm">
+          English: MAY-to · 粤语: 咩圖 · 普通话: 梅拓 · 日本語: メイト · 한국어: 메이토
+        </p>
       </section>
 
       {/* Decorative Background Elements */}
