@@ -298,7 +298,7 @@ You say tomato, I say Mato.
 ### Built for the future of development.
 Join the **Mato** community and stop hunting for active terminals.
 
-[**Star this project**](https://github.com/mr-kelly/mato) • [**Report a Bug / Request a Feature**](https://github.com/mr-kelly/mato/issues) • [**Follow Roadmap**](docs/todos/roadmap.md)
+[**Star this project**](https://github.com/mr-kelly/mato) • [**Join Discord Community**](https://discord.gg/KFVUD7q2Zn) • [**Report a Bug / Request a Feature**](https://github.com/mr-kelly/mato/issues) • [**Follow Roadmap**](docs/todos/roadmap.md)
 
 **Made with 🏖️ for developers who value clarity.**
 
