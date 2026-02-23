@@ -95,12 +95,32 @@ fn close_tab_adjusts_active_index() {
 #[test]
 fn new_tab_selects_new_tab() {
     let mut task = make_task("T");
-    task.new_tab();
+    task.new_tab(None);
     assert_eq!(task.tabs.len(), 2);
     assert_eq!(task.active_tab, 1, "new tab should become active");
 }
 
-// ── App: task management ─────────────────────────────────────────────────────
+#[test]
+fn new_tab_with_cwd_passes_cwd_to_provider() {
+    let mut desk = make_task("T");
+    desk.new_tab(Some("/home/kelly/projects/mato".into()));
+    assert_eq!(desk.tabs.len(), 2);
+    assert_eq!(desk.active_tab, 1);
+    // The new tab's provider should have the cwd set (get_cwd returns it before spawn)
+    assert_eq!(
+        desk.tabs[1].provider.get_cwd(),
+        None, // not yet spawned — cwd is stored internally, OSC7 not yet emitted
+        "get_cwd returns None before spawn (stored as spawn_cwd)"
+    );
+}
+
+#[test]
+fn new_tab_no_cwd_defaults_to_none() {
+    let mut desk = make_task("T");
+    desk.new_tab(None);
+    assert_eq!(desk.tabs[1].provider.get_cwd(), None);
+}
+
 
 fn make_app_with(desks: Vec<Desk>) -> mato::client::app::App {
     let mut app = mato::client::app::App::new();

@@ -394,7 +394,7 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
                 }
             }
             KeyCode::Char('n') => {
-                app.cur_desk_mut().new_tab();
+                app.new_tab_inheriting_cwd();
                 app.spawn_active_pty();
                 app.dirty = true;
             }

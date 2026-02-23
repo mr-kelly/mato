@@ -185,6 +185,21 @@ impl TabEntry {
             provider: Box::new(DaemonProvider::new(id, socket_path)),
         }
     }
+
+    /// Create a new tab that will spawn with the given working directory.
+    pub fn new_with_cwd(name: impl Into<String>, cwd: Option<String>) -> Self {
+        let id = new_id();
+        let socket_path = crate::utils::get_socket_path()
+            .to_string_lossy()
+            .to_string();
+        let mut provider = DaemonProvider::new(id.clone(), socket_path);
+        provider.set_spawn_cwd(cwd);
+        Self {
+            id,
+            name: name.into(),
+            provider: Box::new(provider),
+        }
+    }
     pub fn with_id(id: String, name: impl Into<String>) -> Self {
         let socket_path = crate::utils::get_socket_path()
             .to_string_lossy()
@@ -583,6 +598,19 @@ impl App {
     pub fn cur_desk_mut(&mut self) -> &mut Desk {
         let i = self.selected();
         &mut self.offices[self.current_office].desks[i]
+    }
+
+    /// Create a new tab in the current desk, inheriting the active tab's CWD.
+    /// Falls back to no cwd if OSC 7 has not reported one yet (shell default applies).
+    pub fn new_tab_inheriting_cwd(&mut self) {
+        let i = self.selected();
+        let desk = &self.offices[self.current_office].desks[i];
+        let cwd = if !desk.tabs.is_empty() {
+            desk.tabs[desk.active_tab].provider.get_cwd()
+        } else {
+            None
+        };
+        self.offices[self.current_office].desks[i].new_tab(cwd);
     }
 
     pub fn switch_office(&mut self, office_idx: usize) {

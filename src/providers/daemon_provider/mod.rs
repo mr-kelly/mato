@@ -32,6 +32,8 @@ pub struct DaemonProvider {
     pending_graphics: Arc<Mutex<Vec<Vec<u8>>>>,
     /// Current working directory from OSC 7 (last seen in screen content).
     cached_cwd: Arc<Mutex<Option<String>>>,
+    /// Working directory to use when spawning the PTY (inherited from parent tab).
+    spawn_cwd: Option<String>,
 }
 
 impl DaemonProvider {
@@ -124,7 +126,14 @@ impl DaemonProvider {
             screen_generation: Arc::new(AtomicU64::new(0)),
             pending_graphics: Arc::new(Mutex::new(Vec::new())),
             cached_cwd: Arc::new(Mutex::new(None)),
+            spawn_cwd: None,
         }
+    }
+
+    /// Set the working directory to use when spawning the PTY.
+    /// Must be called before `spawn()`.
+    pub fn set_spawn_cwd(&mut self, cwd: Option<String>) {
+        self.spawn_cwd = cwd;
     }
 
     fn send_msg_static(socket_path: &str, msg: &ClientMsg) -> Option<ServerMsg> {
@@ -277,7 +286,7 @@ impl TerminalProvider for DaemonProvider {
             tab_id: self.tab_id.clone(),
             rows,
             cols,
-            cwd: None,
+            cwd: self.spawn_cwd.clone(),
             shell: None,
             env: None,
         });

@@ -107,3 +107,72 @@ The single-client case is unaffected by both. Multi-client is the only scenario 
 cargo test  →  264 tests, 0 failed
 cargo build →  0 errors
 ```
+
+---
+
+## Session Continuation: OSC 7 + Kitty Graphics Protocol Passthrough
+
+### Overview
+
+Implemented two major features for terminal power users:
+1. **OSC 7** — working directory tracking (`\x1b]7;file://host/path BEL/ST`)
+2. **Kitty graphics APC passthrough** — image rendering support for yazi/neovim/fzf image previews
+
+### Architecture
+
+**No third-party libraries required** — pure state machine parser in ~200 lines.
+
+```
+PTY output bytes
+    ↓
+split_passthrough() [src/passthrough.rs]
+    ├── normal bytes → TerminalEmulator.process()
+    ├── APC seqs (\x1b_...\x1b\) → PtyProvider.pending_graphics
+    └── OSC 7 paths → PtyProvider.current_cwd
+
+Daemon push loop
+    ├── ScreenDiff / Screen → as before
+    └── ServerMsg::Graphics { tab_id, cursor, payloads } → NEW
+
+Client (daemon_provider/worker.rs)
+    └── buffers payloads in DaemonProvider.pending_graphics
+
+Client (app.rs) after each render
+    └── emit_pending_graphics()
+            → translate cursor to outer terminal coords
+            → \x1b[s (save), \x1b[R;CH (move), emit APC, \x1b[u (restore)
+```
+
+### Kitty-compatible terminal detection
+
+At startup, checks env vars (no I/O needed):
+- `$KITTY_WINDOW_ID` → kitty
+- `$GHOSTTY_RESOURCES_DIR` / `$GHOSTTY_BIN_DIR` → ghostty  
+- `$TERM_PROGRAM=WezTerm` or `$WEZTERM_PANE` → wezterm
+- `$TERM_PROGRAM=iTerm.app` → iTerm2
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/passthrough.rs` | NEW: APC/OSC7 state machine parser, 10 unit tests |
+| `src/lib.rs` | Added `pub mod passthrough;` |
+| `src/providers/pty_provider.rs` | Added `pending_graphics`, `current_cwd` fields; modified reader thread to call `split_passthrough`; added `take_pending_graphics()`, `get_cwd()` |
+| `src/terminal_provider.rs` | Added `cwd: Option<String>` to `ScreenContent`; `take_pending_graphics(&self)`, `get_cwd(&self)` default trait methods |
+| `src/protocol.rs` | Added `ServerMsg::Graphics { tab_id, cursor, payloads }` |
+| `src/daemon/service.rs` | Push loop sends Graphics after each screen update |
+| `src/providers/daemon_provider/mod.rs` | Added `pending_graphics`, `cached_cwd`; `take_pending_graphics()`, `get_cwd()` impl |
+| `src/providers/daemon_provider/worker.rs` | Handle `ServerMsg::Graphics`; update `cached_cwd` from Screen |
+| `src/client/app.rs` | `detect_kitty_graphics()`, `supports_kitty_graphics` field, `emit_pending_graphics()` |
+| `src/main.rs` | Call `emit_pending_graphics()` after each render |
+| `src/emulators/alacritty_emulator.rs` | Added `cwd: None` to `ScreenContent` constructor |
+| `src/emulators/vt100_emulator.rs` | Added `cwd: None` to `ScreenContent` constructor |
+| `tests/screen_diff_tests.rs` | Added `cwd: None` to test constructors |
+| `tests/protocol_tests.rs` | Added `cwd: None` to test constructors |
+
+### Verification
+
+```
+cargo test  →  264 tests, 0 failed
+cargo build →  0 errors, 0 warnings (except pre-existing unused dead_code)
+```

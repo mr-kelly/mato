@@ -87,7 +87,7 @@ pub fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
                 app.focus = Focus::Topbar;
                 // New tab button
                 if in_rect(col, row, app.new_tab_area) {
-                    app.cur_desk_mut().new_tab();
+                    app.new_tab_inheriting_cwd();
                     app.spawn_active_pty();
                     app.dirty = true;
                     handled = true;
