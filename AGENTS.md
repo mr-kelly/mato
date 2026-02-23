@@ -484,8 +484,16 @@ We follow [SemVer](https://semver.org/):
 2. **Update Docs** - CHANGELOG, README, TODO
 3. **Bump Version** - Update Cargo.toml
 4. **Create Release Notes** - See [Documentation Standards](#documentation-standards)
-5. **Create Tag** - `git tag -a v0.2.0 -m "Release v0.2.0"`
-6. **Publish** - Push to GitHub
+5. **Push main branch** - Let CI run release workflow
+6. **CI Creates Tag + GitHub Release** - Do not create release tags manually
+
+### Release Ownership Rule (Important)
+
+- `main` branch releases are **CI-owned** via `.github/workflows/release.yml`.
+- **Do not manually run** `git tag -a vX.Y.Z` for release versions.
+- **Do not manually publish** GitHub Releases for release versions.
+- Manual prerelease tags (e.g., `-alpha.N`) are allowed only if explicitly required by workflow policy.
+- If a release tag already exists before CI runs, `Validate tag policy` will fail and block release creation.
 
 ## 📚 Documentation Standards
 
