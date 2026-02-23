@@ -268,6 +268,18 @@ export default function HomePage() {
                 <Rocket className="ml-3 h-6 w-6" />
               </Link>
             </div>
+            <p className="mt-6 text-sm font-medium text-white/85">
+              Questions? Contact the author on{' '}
+              <Link
+                href="https://x.com/kellypeilinchan"
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-4 hover:text-white"
+              >
+                X
+              </Link>
+              .
+            </p>
           </div>
           <div className="absolute -right-1/4 -top-1/4 h-[150%] w-[150%] rotate-12 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.15)_0%,transparent_70%)]" />
         </div>
