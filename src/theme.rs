@@ -160,14 +160,14 @@ pub fn builtin(name: &str) -> ThemeColors {
         },
         "one-dark" => ThemeColors {
             follow_terminal: false,
-            bg: [40, 44, 52],
-            surface: [44, 50, 60],
-            border: [70, 75, 90],
-            accent: [97, 175, 239],     // One Dark Blue
-            accent2: [152, 195, 121],   // One Dark Green
-            fg: [171, 178, 191],
-            fg_dim: [92, 99, 112],
-            sel_bg: [62, 68, 81],
+            bg: [40, 44, 52],           // #282C34 editor bg
+            surface: [33, 37, 43],      // #21252B sidebar bg (darker than editor)
+            border: [55, 60, 71],       // panel separator – mid tone, minimal blue bias
+            accent: [97, 175, 239],     // #61AFEF One Dark Blue
+            accent2: [152, 195, 121],   // #98C379 One Dark Green
+            fg: [171, 178, 191],        // #ABB2BF
+            fg_dim: [92, 99, 112],      // #5C6370
+            sel_bg: [62, 68, 81],       // #3E4451 selection
         },
         "nord" => ThemeColors {
             follow_terminal: false,
@@ -245,6 +245,17 @@ pub fn builtin(name: &str) -> ThemeColors {
             fg: [205, 214, 244],
             fg_dim: [108, 112, 134],
             sel_bg: [69, 71, 90],
+        },
+        "navy" => ThemeColors {
+            follow_terminal: false,
+            bg: [10, 15, 35],           // Deep navy black
+            surface: [16, 23, 52],      // Navy surface
+            border: [38, 58, 120],      // Navy border
+            accent: [80, 170, 255],     // Sky blue
+            accent2: [250, 210, 60],    // Gold
+            fg: [195, 215, 245],        // Cool white-blue
+            fg_dim: [90, 115, 160],     // Muted navy
+            sel_bg: [28, 48, 108],      // Selection navy
         },
         _ => ThemeColors {
             // system (default/fallback)

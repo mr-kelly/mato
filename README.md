@@ -111,31 +111,11 @@ Organize complex work into a clear hierarchy: one Office, multiple Desks, and Ta
 </td>
 <td width="50%" valign="top">
 
-<img src="docs/images/screenshot-working-spinner.gif" alt="Real-time spinner indicators showing active AI tasks in tabs and desks" width="100%" style="aspect-ratio: 16 / 10; object-fit: contain; background: #0b0f14; border-radius: 10px;">
+<img src="docs/images/screenshot-quick-jump-mode.gif" alt="Jump Mode quick navigation across sidebar and topbar targets" width="100%" style="aspect-ratio: 16 / 10; object-fit: cover; border-radius: 10px;">
 
-**2) Spinner Activity (AI is working)**
+**2) Jump Mode (Core Navigation)**
 
-See where work is happening right now: active tabs and desks show live spinners when an agent or process prints output.
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-<img src="docs/images/screenshot-multi-client-sync.gif" alt="Two SSH clients attached to the same Mato daemon showing synchronized workspace state" width="100%" style="aspect-ratio: 16 / 10; object-fit: cover; border-radius: 10px;">
-
-**3) Multi-Client Sync**
-
-Attach from multiple terminals/SSH sessions and keep everyone on the same live workspace state.
-
-</td>
-<td width="50%" valign="top">
-
-<img src="docs/images/screenshot-onboarding.png" alt="Onboarding template selector with prebuilt office templates" width="100%" style="aspect-ratio: 16 / 10; object-fit: cover; border-radius: 10px;">
-
-**4) Prebuilt Templates**
-
-Start in seconds with ready-made templates (Mato Creator Office, Full-Stack, Solo Dev) and multilingual onboarding (English, 中文, 日本語, 한국어).
+Press `Esc` to enter Jump Mode, then jump straight to visible targets without repeated arrow-key navigation.
 
 </td>
 </tr>
@@ -144,29 +124,49 @@ Start in seconds with ready-made templates (Mato Creator Office, Full-Stack, Sol
 
 <img src="docs/images/screenshot-daemon-background-run.gif" alt="AI agents continue running in the background after terminal or SSH disconnect" width="100%" style="aspect-ratio: 16 / 10; object-fit: cover; border-radius: 10px;">
 
-**5) Background Runtime Persistence**
+**3) Background Runtime Persistence**
 
 Your agents keep running even if the terminal closes or SSH drops. Reopen `mato` and you land back in the same live workspace.
 
 </td>
 <td width="50%" valign="top">
 
-<img src="docs/images/screenshot-mouse-jump.gif" alt="Mouse interaction in TUI: clicking desks and tabs directly" width="100%" style="aspect-ratio: 16 / 10; object-fit: cover; border-radius: 10px;">
+<img src="docs/images/screenshot-working-spinner.gif" alt="Real-time spinner indicators showing active AI tasks in tabs and desks" width="100%" style="aspect-ratio: 16 / 10; object-fit: contain; background: #0b0f14; border-radius: 10px;">
 
-**6) Mouse Support in a TUI**
+**4) Spinner Activity (AI is working)**
 
-Click desks and tabs directly when you want speed, while keeping a terminal-native workflow.
+See where work is happening right now: active tabs and desks show live spinners when an agent or process prints output.
 
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
 
-<img src="docs/images/screenshot-quick-jump-mode.gif" alt="Jump Mode quick navigation across sidebar and topbar targets" width="100%" style="aspect-ratio: 16 / 10; object-fit: cover; border-radius: 10px;">
+<img src="docs/images/screenshot-mouse-jump.gif" alt="Mouse interaction in TUI: clicking desks and tabs directly" width="100%" style="aspect-ratio: 16 / 10; object-fit: cover; border-radius: 10px;">
 
-**7) Jump Mode (Core Navigation)**
+**5) Mouse Support in a TUI**
 
-Press `Esc` to enter Jump Mode, then jump straight to visible targets without repeated arrow-key navigation.
+Click desks and tabs directly when you want speed, while keeping a terminal-native workflow.
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/images/screenshot-multi-client-sync.gif" alt="Two SSH clients attached to the same Mato daemon showing synchronized workspace state" width="100%" style="aspect-ratio: 16 / 10; object-fit: cover; border-radius: 10px;">
+
+**6) Multi-Client Sync**
+
+Attach from multiple terminals/SSH sessions and keep everyone on the same live workspace state.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+<img src="docs/images/screenshot-onboarding.png" alt="Onboarding template selector with prebuilt office templates" width="100%" style="aspect-ratio: 16 / 10; object-fit: cover; border-radius: 10px;">
+
+**7) Prebuilt Templates**
+
+Start in seconds with ready-made templates (Mato Creator Office, Full-Stack, Solo Dev) and multilingual onboarding (English, 中文, 日本語, 한국어).
 
 </td>
 <td width="50%" valign="top">

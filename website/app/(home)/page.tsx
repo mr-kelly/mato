@@ -132,9 +132,24 @@ export default function HomePage() {
               img: "/screenshot-office.png"
             },
             {
+              title: "Jump Mode",
+              description: "Press Esc, then jump straight to visible targets in one move.",
+              img: "/screenshot-quick-jump-mode.gif"
+            },
+            {
+              title: "Background Persistence",
+              description: "Agents keep running even if terminal closes or SSH drops.",
+              img: "/screenshot-daemon-background-run.gif"
+            },
+            {
               title: "Spinner Activity",
               description: "See where work is happening right now with live spinner signals.",
               img: "/screenshot-working-spinner.gif"
+            },
+            {
+              title: "Mouse Support",
+              description: "Click desks and tabs directly while keeping a terminal-native workflow.",
+              img: "/screenshot-mouse-jump.gif"
             },
             {
               title: "Multi-Client Sync",
@@ -145,21 +160,6 @@ export default function HomePage() {
               title: "Prebuilt Templates",
               description: "Start in seconds with ready-made templates and multilingual onboarding.",
               img: "/screenshot-onboarding.png"
-            },
-            {
-              title: "Background Persistence",
-              description: "Agents keep running even if terminal closes or SSH drops.",
-              img: "/screenshot-daemon-background-run.gif"
-            },
-            {
-              title: "Mouse Support",
-              description: "Click desks and tabs directly while keeping a terminal-native workflow.",
-              img: "/screenshot-mouse-jump.gif"
-            },
-            {
-              title: "Jump Mode",
-              description: "Press Esc, then jump straight to visible targets in one move.",
-              img: "/screenshot-quick-jump-mode.gif"
             },
             {
               title: "Customizable Themes",

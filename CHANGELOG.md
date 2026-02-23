@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`navy` theme not implemented**: `"navy"` was listed in `BUILTIN_THEMES` but had no match arm in `builtin()`, silently falling through to the `_` wildcard (system/transparent theme). Added proper deep-navy palette: bg `#0A0F23`, sky-blue + gold accents.
+- **One Dark theme surface is lighter and more blue-biased than the editor background**: `surface` was `[44,50,60]` — lighter *and* more blue than `bg` `[40,44,52]`, opposite of authentic One Dark (sidebar `#21252B` = `[33,37,43]` is darker than editor). Fixed `surface` to `[33,37,43]` and `border` to `[55,60,71]` to match the real One Dark UI palette and reduce navy appearance.
+
 ## [0.9.2] - 2026-02-23
 
 ### Added
