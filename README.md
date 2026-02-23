@@ -15,7 +15,7 @@ English: MAY-to, Spanish: undefined
 [![Version](https://img.shields.io/github/v/release/mr-kelly/mato?display_name=tag&style=for-the-badge)](https://github.com/mr-kelly/mato/releases/latest)
 [![Stars](https://img.shields.io/github/stars/mr-kelly/mato?style=for-the-badge&color=gold)](https://github.com/mr-kelly/mato/stargazers)
 
-[**Quick Start**](#-get-started-in-60s) • [**Features**](#-features) • [**Why Mato?**](#-the-vision) • [**Development**](#-development-with-coding-agents) • [**Resources**](#-resources)
+[**Quick Start**](#quick-start) • [**Features**](#features) • [**Why Mato?**](#why-mato) • [**Development**](#development) • [**Resources**](#resources)
 
 <img src="docs/images/screenshot-coding.png" alt="Mato Screenshot" width="900" style="border-radius: 12px; border: 1px solid #1C1C2A;">
 
@@ -29,6 +29,7 @@ It turns your terminal into an "Office" with Desks and Tabs, where you can monit
 
 ---
 
+<a id="quick-start"></a>
 ## 🚀 Get Started in 60s
 
 ### 1. Install Manually
@@ -80,6 +81,7 @@ Select a template (we recommend **Full-Stack** for your first run) and start cod
 
 ---
 
+<a id="why-mato"></a>
 ## 👁️ The Vision: Visual Intelligence for CLI
 
 Traditional terminal multiplexers (tmux/screen) are "blind." You never know what's happening in another tab until you switch to it. **Mato changes that.**
@@ -93,6 +95,7 @@ Traditional terminal multiplexers (tmux/screen) are "blind." You never know what
 
 ---
 
+<a id="features"></a>
 ## ✨ Features
 
 <table border="0">
@@ -199,6 +202,7 @@ By default, Mato does not intercept your normal `Ctrl-*` and `Alt-*` shell/edito
 
 ---
 
+<a id="development"></a>
 ## 👩‍💻 Development with Coding Agents
 
 If you want to improve a feature, fix a bug, or change behavior you are not satisfied with, paste the prompt below into your coding agent and let it implement the change for you.
@@ -262,6 +266,7 @@ You say tomato, I say Mato.
 
 ---
 
+<a id="resources"></a>
 ## 🛠️ Resources
 
 <table border="0">

@@ -4,3 +4,4 @@ version.txt
 logo.svg
 *.png
 *.gif
+!logo.png
