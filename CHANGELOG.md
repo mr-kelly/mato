@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-02-23
+
+### Added
+- **Jump labels include digits**: Jump Mode now supports `0-9` labels in addition to letters.
+- **ScreenDiff protocol tests**: added coverage for incremental screen update diff computation and application paths.
+
+### Changed
+- **Viewport-aware jump targeting**: Jump Mode now allocates labels from currently visible items, not off-screen entries.
+  - Sidebar uses current list offset + visible rows.
+  - Topbar stays aligned to currently visible tab indices.
+- **Keyspace conflict handling in Jump Mode**:
+  - Content reserves `c`/`r`/`q` for actions (Copy/Restart/Quit), so they are excluded from jump labels.
+  - Sidebar/Topbar reserve `r`/`q` for Rename/Quit.
+- **Daemon module naming cleanup**: `src/daemon/daemon.rs` moved to `src/daemon/service.rs`.
+
+### Performance
+- **Incremental screen updates (`ScreenDiff`)**: daemon can send changed lines + cursor metadata instead of full-screen payloads for small updates.
+
+### Fixed
+- **Jump label mismatch after scroll**: fixed cases where sidebar/topbar labels could point to non-visible targets.
+- **Terminal startup/render stability**: initial draw/spawn ordering and non-copy row alignment adjusted to avoid startup offset artifacts.
+- **Runtime log noise**: reduced high-frequency info-level connection logs to debug level in daemon/client paths.
+
 ## [0.8.0] - 2026-02-22
 
 ### Added
@@ -262,7 +285,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Links
 
-[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/mr-kelly/mato/releases/tag/v0.8.1
 [0.8.0]: https://github.com/mr-kelly/mato/releases/tag/v0.8.0
 [0.7.1]: https://github.com/mr-kelly/mato/releases/tag/v0.7.1
 [0.7.0]: https://github.com/mr-kelly/mato/releases/tag/v0.7.0

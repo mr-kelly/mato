@@ -4,7 +4,13 @@ This directory contains release notes and summaries for Mato versions.
 
 ## 📦 Releases
 
-### v0.7.1 (2026-02-22) - Latest
+### v0.8.1 (2026-02-23) - Latest
+- **[RELEASE_NOTES_v0.8.1.md](RELEASE_NOTES_v0.8.1.md)** - Jump Mode Viewport Correctness + Startup/Render Stability Polish
+- **[RELEASE_SUMMARY_v0.8.1.md](RELEASE_SUMMARY_v0.8.1.md)** - Technical summary
+
+**Highlights**: viewport-aware jump target allocation, digit jump labels, focus-reserved jump key filtering, incremental ScreenDiff path integration, and reduced daemon runtime log noise.
+
+### v0.7.1 (2026-02-22)
 - **[RELEASE_NOTES_v0.7.1.md](RELEASE_NOTES_v0.7.1.md)** - Onboarding State/Exit Semantics + Terminal Cleanup Refinement
 - **[RELEASE_SUMMARY_v0.7.1.md](RELEASE_SUMMARY_v0.7.1.md)** - Technical summary
 
@@ -60,5 +66,5 @@ Milestone-level historical overview.
 
 ---
 
-**Latest Release**: v0.7.1 (2026-02-22)  
+**Latest Release**: v0.8.1 (2026-02-23)  
 **Status**: Stable
