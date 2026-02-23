@@ -1,1 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" x="0" y="0" fill="#12121C" rx="80"/><rect width="120" height="432" x="40" y="40" fill="#1C1C2A" rx="16"/><rect width="292" height="64" x="180" y="40" fill="#1C1C2A" rx="16"/><rect width="292" height="348" x="180" y="124" fill="#1C1C2A" rx="20"/><rect width="96" height="40" x="52" y="52" fill="#64A0FF" rx="8"/><rect width="96" height="32" x="52" y="120" fill="#64A0FF" fill-opacity=".6" rx="8"/><rect width="96" height="32" x="52" y="168" fill="#64A0FF" fill-opacity=".15" rx="8"/><rect width="96" height="32" x="52" y="216" fill="#64A0FF" fill-opacity=".1" rx="8"/><rect width="76" height="40" x="192" y="52" fill="#64A0FF" rx="8"/><rect width="76" height="40" x="276" y="52" fill="#64A0FF" fill-opacity=".2" rx="8"/><rect width="76" height="40" x="360" y="52" fill="#64A0FF" fill-opacity=".2" rx="8"/><path fill="none" stroke="#50DCA0" stroke-linecap="round" stroke-linejoin="round" stroke-width="48" d="M260 230 L320 290 L260 350"/><rect width="80" height="22" x="345" y="328" fill="#50DCA0"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+    <rect width="512" height="512" fill="#D63C3C" rx="90"/>
+    <rect width="130" height="432" x="40" y="40" fill="#12121C" rx="18"/>
+    <rect width="286" height="72" x="186" y="40" fill="#12121C" rx="18"/>
+    <rect width="286" height="344" x="186" y="128" fill="#12121C" rx="22"/>
+    <rect width="106" height="48" x="52" y="52" fill="#50DCA0" rx="8"/>
+    <rect width="106" height="32" x="52" y="124" fill="#FFFFFF" fill-opacity=".2" rx="6"/>
+    <rect width="106" height="32" x="52" y="176" fill="#FFFFFF" fill-opacity=".1" rx="6"/>
+    <rect width="106" height="32" x="52" y="228" fill="#FFFFFF" fill-opacity=".05" rx="6"/>
+    <rect width="80" height="44" x="198" y="54" fill="#FFFFFF" rx="8"/>
+    <rect width="80" height="44" x="290" y="54" fill="#FFFFFF" fill-opacity=".15" rx="8"/>
+    <rect width="80" height="44" x="382" y="54" fill="#FFFFFF" fill-opacity=".15" rx="8"/>
+    <g transform="translate(4, 0)">
+        <path fill="none" stroke="#50DCA0" stroke-width="56" stroke-linecap="round" stroke-linejoin="round" d="M250 230 L320 300 L250 370"/>
+        <rect width="80" height="24" x="340" y="358" fill="#50DCA0" rx="2"/>
+    </g>
+</svg>

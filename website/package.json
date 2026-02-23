@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "sync:release-assets": "bash -lc 'set -euo pipefail; mkdir -p public; VERSION=$(sed -n \"s/^version = \\\"\\(.*\\)\\\"/\\1/p\" ../Cargo.toml | head -n1); test -n \"$VERSION\"; printf \"%s\\n\" \"${MATO_VERSION:-$VERSION}\" > public/version.txt; cp ../install.sh public/install.sh; cp ../logo.svg public/logo.svg; cp ../docs/images/screenshot-0.png public/screenshot-0.png'",
+    "sync:release-assets": "bash -lc 'set -euo pipefail; mkdir -p public; VERSION=$(sed -n \"s/^version = \\\"\\(.*\\)\\\"/\\1/p\" ../Cargo.toml | head -n1); test -n \"$VERSION\"; printf \"%s\\n\" \"${MATO_VERSION:-$VERSION}\" > public/version.txt; cp ../install.sh public/install.sh; cp ../logo.svg public/logo.svg; cp ../docs/images/screenshot-office.png public/screenshot-office.png'",
     "build": "pnpm run sync:release-assets && next build",
     "dev": "pnpm run sync:release-assets && next dev",
     "start": "pnpm run sync:release-assets && next start",

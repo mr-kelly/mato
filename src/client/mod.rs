@@ -1,5 +1,7 @@
 pub mod app;
+pub mod desk;
 pub mod input;
+pub mod mouse;
 pub mod onboarding_tui;
 pub mod persistence;
 pub mod ui;

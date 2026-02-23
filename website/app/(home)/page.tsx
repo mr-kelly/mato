@@ -68,7 +68,7 @@ export default function HomePage() {
           <div className="relative rounded-2xl border border-fd-border bg-fd-card/30 p-1.5 shadow-2xl backdrop-blur-sm sm:p-3 sm:rounded-3xl">
             <div className="absolute inset-0 -z-10 bg-gradient-to-tr from-fd-primary/10 via-transparent to-fd-primary/5 blur-2xl" />
             <img 
-              src="/screenshot-0.png" 
+              src="/screenshot-office.png" 
               alt="Mato Terminal Office" 
               className="rounded-xl border border-fd-border/50 shadow-sm sm:rounded-2xl"
             />

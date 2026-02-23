@@ -1,6 +1,6 @@
 [package]
 name = "mato"
-version = "0.8.1"
+version = "0.9.0"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
 description = "Multi-Agent Terminal Office - A daemon-based persistent terminal multiplexer"
@@ -42,3 +42,6 @@ signal-hook = "0.3"
 semver = "1"
 unicode-width = "0.2"
 rmp-serde = "1.3.1"
+
+[dev-dependencies]
+insta = "1"

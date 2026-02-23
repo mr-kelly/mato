@@ -108,7 +108,20 @@ pub struct PartialColors {
     pub sel_bg: Option<[u8; 3]>,
 }
 
-pub const BUILTIN_THEMES: &[&str] = &["system", "navy", "gruvbox", "catppuccin"];
+pub const BUILTIN_THEMES: &[&str] = &[
+    "system",
+    "tomato",
+    "potato",
+    "one-dark",
+    "nord",
+    "darcula",
+    "solarized",
+    "starship",
+    "p10k",
+    "gruvbox",
+    "catppuccin",
+    "navy",
+];
 
 pub fn builtin(name: &str) -> ThemeColors {
     match name {
@@ -122,6 +135,94 @@ pub fn builtin(name: &str) -> ThemeColors {
             fg: [0, 0, 0],
             fg_dim: [0, 0, 0],
             sel_bg: [0, 0, 0],
+        },
+        "tomato" => ThemeColors {
+            follow_terminal: false,
+            bg: [20, 15, 15],           // Warm dark black
+            surface: [35, 25, 25],      // Warm dark surface
+            border: [80, 45, 45],       // Muted tomato-skin border
+            accent: [230, 57, 70],      // High-end Tomato Red (#E63946)
+            accent2: [80, 220, 160],    // Leaf Green
+            fg: [241, 250, 238],        // Off-white for high contrast
+            fg_dim: [160, 140, 140],    // Warm dimmed text
+            sel_bg: [100, 35, 35],      // Deep focused red
+        },
+        "potato" => ThemeColors {
+            follow_terminal: false,
+            bg: [40, 35, 30],           // Earthy dark brown
+            surface: [55, 50, 45],      // Muted potato-skin
+            border: [100, 90, 80],      // Earthy border
+            accent: [212, 163, 115],    // Potato gold
+            accent2: [233, 196, 106],   // Flashy yellow
+            fg: [241, 234, 218],        // Warm parchment
+            fg_dim: [140, 130, 120],    // Muted earthy text
+            sel_bg: [85, 75, 65],       // Deep earthy selection
+        },
+        "one-dark" => ThemeColors {
+            follow_terminal: false,
+            bg: [40, 44, 52],
+            surface: [44, 50, 60],
+            border: [70, 75, 90],
+            accent: [97, 175, 239],     // One Dark Blue
+            accent2: [152, 195, 121],   // One Dark Green
+            fg: [171, 178, 191],
+            fg_dim: [92, 99, 112],
+            sel_bg: [62, 68, 81],
+        },
+        "nord" => ThemeColors {
+            follow_terminal: false,
+            bg: [46, 52, 64],
+            surface: [59, 66, 82],
+            border: [76, 86, 106],
+            accent: [136, 192, 208],    // Frost blue
+            accent2: [163, 190, 140],   // Frost green
+            fg: [216, 222, 233],
+            fg_dim: [103, 110, 125],
+            sel_bg: [67, 76, 94],
+        },
+        "darcula" => ThemeColors {
+            follow_terminal: false,
+            bg: [43, 43, 43],
+            surface: [60, 63, 65],
+            border: [85, 85, 85],
+            accent: [187, 134, 252],    // Purple
+            accent2: [106, 135, 89],    // Olive Green
+            fg: [169, 183, 198],
+            fg_dim: [128, 128, 128],
+            sel_bg: [33, 66, 131],
+        },
+        "solarized" => ThemeColors {
+            follow_terminal: false,
+            bg: [0, 43, 54],
+            surface: [7, 54, 66],
+            border: [88, 110, 117],
+            accent: [38, 139, 210],     // Solarized Blue
+            accent2: [133, 153, 0],     // Solarized Green
+            fg: [131, 148, 150],
+            fg_dim: [101, 123, 131],
+            sel_bg: [0, 33, 43],
+        },
+        "starship" => ThemeColors {
+            follow_terminal: false,
+            bg: [28, 28, 28],
+            surface: [36, 36, 36],
+            border: [64, 64, 64],
+            accent: [255, 0, 127],      // Neon Magenta
+            accent2: [0, 255, 255],     // Neon Cyan
+            fg: [255, 255, 255],
+            fg_dim: [160, 160, 160],
+            sel_bg: [48, 48, 48],
+        },
+        "p10k" => ThemeColors {
+            follow_terminal: false,
+            bg: [10, 10, 10],           // Near black
+            surface: [30, 30, 30],
+            border: [50, 50, 50],
+            accent: [0, 255, 0],        // Matrix Green
+            accent2: [255, 255, 0],     // Laser Yellow
+            fg: [255, 255, 255],
+            fg_dim: [150, 150, 150],
+            sel_bg: [60, 60, 60],
         },
         "gruvbox" => ThemeColors {
             follow_terminal: false,
@@ -146,16 +247,16 @@ pub fn builtin(name: &str) -> ThemeColors {
             sel_bg: [69, 71, 90],
         },
         _ => ThemeColors {
-            // navy (default)
-            follow_terminal: false,
-            bg: [18, 18, 28],
-            surface: [28, 28, 42],
-            border: [60, 60, 90],
-            accent: [100, 160, 255],
-            accent2: [80, 220, 160],
-            fg: [210, 210, 230],
-            fg_dim: [100, 100, 130],
-            sel_bg: [40, 60, 100],
+            // system (default/fallback)
+            follow_terminal: true,
+            bg: [0, 0, 0],
+            surface: [0, 0, 0],
+            border: [0, 0, 0],
+            accent: [0, 0, 0],
+            accent2: [0, 0, 0],
+            fg: [0, 0, 0],
+            fg_dim: [0, 0, 0],
+            sel_bg: [0, 0, 0],
         },
     }
 }

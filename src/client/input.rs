@@ -1,4 +1,6 @@
-use crate::client::app::{App, Focus, JumpMode, OfficeDeleteConfirm, RenameTarget};
+use crate::client::app::{
+    App, Focus, JumpMode, OfficeDeleteConfirm, RenameTarget, CONTENT_ESC_DOUBLE_PRESS_WINDOW_MS,
+};
 use crossterm::{
     event::{EnableMouseCapture, KeyCode, KeyEventKind, KeyModifiers},
     execute,
@@ -36,6 +38,21 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
             KeyCode::PageDown => app.pty_scroll(-20),
             KeyCode::Char('g') => app.pty_scroll(1_000_000),
             KeyCode::Char('G') => app.pty_scroll(-1_000_000),
+            _ => {}
+        }
+        return false;
+    }
+
+    // Office delete confirmation intercepts keys
+    if let Some(confirm) = app.desk_delete_confirm.as_ref() {
+        let desk_idx = confirm.desk_idx;
+        match key.code {
+            KeyCode::Char('y' | 'Y') | KeyCode::Enter => {
+                app.confirm_close_desk(desk_idx);
+            }
+            KeyCode::Char('n' | 'N') | KeyCode::Esc => {
+                app.desk_delete_confirm = None;
+            }
             _ => {}
         }
         return false;
@@ -246,20 +263,33 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
         return false;
     }
 
+    // In Content focus, flush a pending single-ESC before handling any non-ESC key.
+    // This preserves Alt/meta-style workflows while avoiding ESC-ESC bell side effects.
+    if app.focus == Focus::Content
+        && !matches!(key.code, KeyCode::Esc)
+        && app.last_content_esc.is_some()
+    {
+        app.flush_pending_content_esc();
+    }
+
     if key.code == KeyCode::Esc {
         if app.focus == Focus::Content {
-            // In Content focus: double-ESC (within 300ms) → Jump Mode.
-            // Single ESC → pass through to shell (vim, fzf, etc.).
+            // In Content focus: double-ESC enters Jump Mode.
+            // Single ESC is delayed briefly, then forwarded to shell.
             let now = Instant::now();
             if let Some(prev) = app.last_content_esc {
-                if now.duration_since(prev) < Duration::from_millis(300) {
+                if now.duration_since(prev)
+                    < Duration::from_millis(CONTENT_ESC_DOUBLE_PRESS_WINDOW_MS)
+                {
                     app.last_content_esc = None;
                     app.jump_mode = JumpMode::Active;
                     return false;
                 }
+                // Previous ESC is no longer a double-press candidate; forward it now.
+                app.last_content_esc = None;
+                app.pty_write(b"\x1b");
             }
             app.last_content_esc = Some(now);
-            app.pty_write(b"\x1b");
             return false;
         }
         // Non-Content focus: single ESC enters Jump Mode
@@ -293,7 +323,7 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
                     .select(Some(app.current_office));
             }
             KeyCode::Char('n') => app.new_desk(),
-            KeyCode::Char('x') => app.close_desk(),
+            KeyCode::Char('x') => app.request_close_desk(),
             KeyCode::Char('r' | 'R') => {
                 let i = app.selected();
                 app.begin_rename_desk(i);
@@ -337,6 +367,8 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
             }
             KeyCode::Char('x') => {
                 app.cur_desk_mut().close_tab();
+                app.mark_tab_switch();
+                app.spawn_active_pty();
                 app.dirty = true;
             }
             KeyCode::Char('r' | 'R') => app.begin_rename_tab(),

@@ -29,6 +29,7 @@ pub enum JumpMode {
 }
 
 pub const JUMP_LABELS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+pub const CONTENT_ESC_DOUBLE_PRESS_WINDOW_MS: u64 = 300;
 
 #[derive(PartialEq, Clone)]
 pub enum RenameTarget {
@@ -70,6 +71,16 @@ impl OfficeDeleteConfirm {
             office_idx,
             input: String::new(),
         }
+    }
+}
+
+pub struct DeskDeleteConfirm {
+    pub desk_idx: usize,
+}
+
+impl DeskDeleteConfirm {
+    pub fn new(desk_idx: usize) -> Self {
+        Self { desk_idx }
     }
 }
 
@@ -121,64 +132,7 @@ impl TabEntry {
     }
 }
 
-pub struct Desk {
-    pub id: String,
-    pub name: String,
-    pub tabs: Vec<TabEntry>,
-    pub active_tab: usize,
-}
-
-impl Desk {
-    pub fn new(name: impl Into<String>) -> Self {
-        Self {
-            id: new_id(),
-            name: name.into(),
-            tabs: vec![TabEntry::new("Terminal 1")],
-            active_tab: 0,
-        }
-    }
-
-    pub fn active_tab_ref(&self) -> &TabEntry {
-        &self.tabs[self.active_tab]
-    }
-
-    pub fn new_tab(&mut self) {
-        let n = self.tabs.len() + 1;
-        self.tabs.push(TabEntry::new(format!("Terminal {n}")));
-        self.active_tab = self.tabs.len() - 1;
-    }
-
-    pub fn close_tab(&mut self) {
-        if self.tabs.len() <= 1 {
-            return;
-        }
-
-        // Send ClosePty message to daemon before removing tab
-        let tab = &self.tabs[self.active_tab];
-        let socket_path = crate::utils::get_socket_path();
-        if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(&socket_path) {
-            use crate::protocol::ClientMsg;
-            use std::io::Write;
-            let msg = ClientMsg::ClosePty {
-                tab_id: tab.id.clone(),
-            };
-            if let Ok(json) = serde_json::to_vec(&msg) {
-                let _ = stream.write_all(&json);
-                let _ = stream.write_all(b"\n");
-                let _ = stream.flush();
-            }
-        }
-
-        self.tabs.remove(self.active_tab);
-        self.active_tab = self.active_tab.min(self.tabs.len() - 1);
-    }
-
-    pub fn resize_all_ptys(&mut self, rows: u16, cols: u16) {
-        for tab in &mut self.tabs {
-            tab.resize_pty(rows, cols);
-        }
-    }
-}
+pub use crate::client::desk::Desk;
 
 pub struct Office {
     pub id: String,
@@ -244,6 +198,8 @@ pub struct App {
     pub copy_mode: bool,
     /// Office delete confirmation
     pub office_delete_confirm: Option<OfficeDeleteConfirm>,
+    /// Desk delete confirmation (yes/no)
+    pub desk_delete_confirm: Option<DeskDeleteConfirm>,
     mouse_mode_cache: Option<MouseModeCache>,
     active_status_rx: Option<Receiver<HashSet<String>>>,
     tab_switch_started_at: Option<Instant>,
@@ -255,33 +211,14 @@ pub struct App {
 }
 
 impl App {
-    fn jump_key_reserved_for_focus(&self, c: char) -> bool {
-        let key = c.to_ascii_lowercase();
-        match self.focus {
-            Focus::Content => matches!(key, 'c' | 'r' | 'q'),
-            Focus::Sidebar | Focus::Topbar => matches!(key, 'r' | 'q'),
+    pub fn flush_pending_content_esc(&mut self) {
+        let Some(prev) = self.last_content_esc else {
+            return;
+        };
+        if prev.elapsed() >= Duration::from_millis(CONTENT_ESC_DOUBLE_PRESS_WINDOW_MS) {
+            self.last_content_esc = None;
+            self.pty_write(b"\x1b");
         }
-    }
-
-    pub fn jump_labels(&self) -> Vec<char> {
-        JUMP_LABELS
-            .chars()
-            .filter(|c| !self.jump_key_reserved_for_focus(*c))
-            .collect()
-    }
-
-    fn visible_desk_indices(&self) -> Vec<usize> {
-        let desks_len = self.offices[self.current_office].desks.len();
-        if desks_len == 0 {
-            return vec![];
-        }
-        let visible_rows = self.sidebar_list_area.height.saturating_sub(2) as usize;
-        if visible_rows == 0 {
-            return (0..desks_len).collect();
-        }
-        let start = self.list_state.offset().min(desks_len.saturating_sub(1));
-        let end = (start + visible_rows).min(desks_len);
-        (start..end).collect()
     }
 
     pub fn new() -> Self {
@@ -370,6 +307,7 @@ impl App {
             should_show_onboarding: false,
             copy_mode: false,
             office_delete_confirm: None,
+            desk_delete_confirm: None,
             mouse_mode_cache: None,
             active_status_rx: None,
             tab_switch_started_at: None,
@@ -460,6 +398,7 @@ impl App {
             should_show_onboarding: false,
             copy_mode: false,
             office_delete_confirm: None,
+            desk_delete_confirm: None,
             mouse_mode_cache: None,
             active_status_rx: None,
             tab_switch_started_at: None,
@@ -541,11 +480,29 @@ impl App {
         self.dirty = true;
     }
 
+    pub fn request_close_desk(&mut self) {
+        if self.offices[self.current_office].desks.len() <= 1 {
+            return;
+        }
+        self.desk_delete_confirm = Some(DeskDeleteConfirm::new(self.selected()));
+    }
+
+    #[allow(dead_code)]
     pub fn close_desk(&mut self) {
         if self.offices[self.current_office].desks.len() <= 1 {
             return;
         }
         let idx = self.selected();
+        self.close_desk_at(idx);
+    }
+
+    fn close_desk_at(&mut self, idx: usize) {
+        if self.offices[self.current_office].desks.len() <= 1 {
+            return;
+        }
+        if idx >= self.offices[self.current_office].desks.len() {
+            return;
+        }
 
         // Close all PTYs in this desk
         let desk = &self.offices[self.current_office].desks[idx];
@@ -566,8 +523,16 @@ impl App {
         }
 
         self.offices[self.current_office].desks.remove(idx);
-        self.select_desk(idx.min(self.offices[self.current_office].desks.len() - 1));
+        self.select_desk(idx.min(self.offices[self.current_office].desks.len().saturating_sub(1)));
+        self.tab_scroll = 0;
+        self.mark_tab_switch();
+        self.spawn_active_pty();
         self.dirty = true;
+    }
+
+    pub fn confirm_close_desk(&mut self, desk_idx: usize) {
+        self.desk_delete_confirm = None;
+        self.close_desk_at(desk_idx);
     }
 
     pub fn nav(&mut self, delta: i32) {
@@ -718,30 +683,6 @@ impl App {
         } // focus out
         self.prev_focus = self.focus;
     }
-    pub fn sync_tab_titles(&mut self) {
-        if self.last_title_sync.elapsed() < Duration::from_millis(500) {
-            return;
-        }
-        self.last_title_sync = Instant::now();
-
-        // Sync only the currently visible tab to avoid per-frame N×socket round-trips.
-        let desk_idx = self.selected();
-        let tab_idx = self.offices[self.current_office].desks[desk_idx].active_tab;
-        if let Some(tab) = self.offices[self.current_office].desks[desk_idx]
-            .tabs
-            .get_mut(tab_idx)
-        {
-            let rows = self.term_rows.max(1);
-            let cols = self.term_cols.max(1);
-            let screen = tab.provider.get_screen(rows, cols);
-            if let Some(title) = screen.title {
-                if !title.is_empty() {
-                    self.terminal_titles.insert(tab.id.clone(), title);
-                }
-            }
-        }
-    }
-
     /// Start renaming task at sidebar index
     pub fn begin_rename_desk(&mut self, idx: usize) {
         let name = self.offices[self.current_office].desks[idx].name.clone();
