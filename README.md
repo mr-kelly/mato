@@ -253,13 +253,12 @@ Tip: the better your `[Describe ...]` section (expected behavior, actual behavio
 
 You say tomato, I say Mato.
 
-English: MAY-to  
-粤语: 咩圖  
-普通话: 番茄终端 
-日本語: メイト  
-한국어: 메이토  
-
-Spanish: `...maybe don't translate this one.`
+- English: MAY-to  
+- 粤语: 咩圖  
+- 普通话: 番茄终端 
+- 日本語: メイト  
+- 한국어: 메이토  
+- Spanish: `...maybe don't translate this one.`
 
 ---
 

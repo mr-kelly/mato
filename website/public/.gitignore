@@ -2,4 +2,5 @@
 install.sh
 version.txt
 logo.svg
-screenshot-0.png
+*.png
+*.gif

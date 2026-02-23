@@ -1,4 +1,3 @@
-use crate::protocol::{ClientMsg, ServerMsg};
 use crate::theme::ThemeColors;
 use crate::{
     client::persistence::{load_state, SavedState},
@@ -8,11 +7,7 @@ use crate::{
 };
 use ratatui::{layout::Rect, widgets::ListState};
 use std::collections::{HashMap, HashSet};
-use std::io::{BufRead, BufReader, Write};
-use std::os::unix::net::UnixStream;
-use std::path::Path;
-use std::sync::mpsc::{self, Receiver};
-use std::thread;
+use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -201,7 +196,7 @@ pub struct App {
     /// Desk delete confirmation (yes/no)
     pub desk_delete_confirm: Option<DeskDeleteConfirm>,
     mouse_mode_cache: Option<MouseModeCache>,
-    active_status_rx: Option<Receiver<HashSet<String>>>,
+    pub(crate) active_status_rx: Option<Receiver<HashSet<String>>>,
     tab_switch_started_at: Option<Instant>,
     pub pending_bell: bool,
     /// Timestamp of last ESC press in Content focus (for double-ESC detection)
@@ -763,196 +758,12 @@ impl App {
         self.jump_mode = JumpMode::None;
     }
 
-    pub fn jump_targets(&self) -> Vec<(char, usize, usize)> {
-        let max_labels = self.jump_labels().len();
-        let mut targets: Vec<(char, usize, usize)> = Vec::new();
-        let desk_indices = self.visible_desk_indices();
-        let tab_indices: Vec<usize> = self.tab_area_tab_indices.clone();
-        let task_idx = self.selected();
-
-        let push_tab = |targets: &mut Vec<(char, usize, usize)>, t: usize| {
-            targets.push(('b', task_idx, t));
-        };
-        let push_desk = |targets: &mut Vec<(char, usize, usize)>, d: usize| {
-            targets.push(('t', d, 0));
-        };
-
-        match self.focus {
-            Focus::Topbar => {
-                for &t in &tab_indices {
-                    if targets.len() >= max_labels {
-                        break;
-                    }
-                    push_tab(&mut targets, t);
-                }
-                for &d in &desk_indices {
-                    if targets.len() >= max_labels {
-                        break;
-                    }
-                    push_desk(&mut targets, d);
-                }
-            }
-            Focus::Sidebar => {
-                for &d in &desk_indices {
-                    if targets.len() >= max_labels {
-                        break;
-                    }
-                    push_desk(&mut targets, d);
-                }
-                for &t in &tab_indices {
-                    if targets.len() >= max_labels {
-                        break;
-                    }
-                    push_tab(&mut targets, t);
-                }
-            }
-            Focus::Content => {
-                // Balanced allocation: interleave tab/desk as much as possible.
-                let (mut ti, mut di) = (0usize, 0usize);
-                let mut take_tab = true;
-                while targets.len() < max_labels
-                    && (ti < tab_indices.len() || di < desk_indices.len())
-                {
-                    if take_tab {
-                        if ti < tab_indices.len() {
-                            push_tab(&mut targets, tab_indices[ti]);
-                            ti += 1;
-                        } else if di < desk_indices.len() {
-                            push_desk(&mut targets, desk_indices[di]);
-                            di += 1;
-                        }
-                    } else if di < desk_indices.len() {
-                        push_desk(&mut targets, desk_indices[di]);
-                        di += 1;
-                    } else if ti < tab_indices.len() {
-                        push_tab(&mut targets, tab_indices[ti]);
-                        ti += 1;
-                    }
-                    take_tab = !take_tab;
-                }
-            }
-        }
-
-        targets
-    }
-
-    /// Query daemon for active status of all tabs (call every frame)
-    pub fn refresh_active_status(&mut self) {
-        const ACTIVE_THRESHOLD_SECS: u64 = 2;
-        if self.active_status_rx.is_none() {
-            self.active_status_rx = Some(Self::spawn_active_status_worker(ACTIVE_THRESHOLD_SECS));
-            self.daemon_connected = false;
-        }
-        let mut latest: Option<HashSet<String>> = None;
-        if let Some(rx) = &self.active_status_rx {
-            while let Ok(active) = rx.try_recv() {
-                latest = Some(active);
-            }
-        }
-        if let Some(active) = latest {
-            self.active_tabs = active;
-            self.daemon_connected = true;
-            self.daemon_last_ok = Instant::now();
-        } else if self.daemon_connected && self.daemon_last_ok.elapsed() > Duration::from_secs(2) {
-            // No recent successful daemon status reads.
-            self.daemon_connected = false;
-        }
-    }
-
-    fn spawn_active_status_worker(active_threshold_secs: u64) -> Receiver<HashSet<String>> {
-        let (tx, rx) = mpsc::channel();
-        thread::spawn(move || {
-            let socket_path = crate::utils::get_socket_path();
-            loop {
-                let active = (|| -> Option<HashSet<String>> {
-                    let mut stream = UnixStream::connect(&socket_path).ok()?;
-                    stream
-                        .set_read_timeout(Some(Duration::from_millis(150)))
-                        .ok()?;
-                    let msg = serde_json::to_vec(&ClientMsg::GetIdleStatus).ok()?;
-                    stream.write_all(&msg).ok()?;
-                    stream.write_all(b"\n").ok()?;
-                    stream.flush().ok()?;
-                    let mut line = String::new();
-                    BufReader::new(&stream).read_line(&mut line).ok()?;
-                    let ServerMsg::IdleStatus { tabs } = serde_json::from_str(&line).ok()? else {
-                        return None;
-                    };
-                    Some(
-                        tabs.into_iter()
-                            .filter(|(_, secs)| *secs < active_threshold_secs)
-                            .map(|(id, _)| id)
-                            .collect(),
-                    )
-                })();
-                let poll_interval = if let Some(active_tabs) = active {
-                    let next = if active_tabs.is_empty() {
-                        Duration::from_millis(1000)
-                    } else {
-                        Duration::from_millis(300)
-                    };
-                    if tx.send(active_tabs).is_err() {
-                        break;
-                    }
-                    next
-                } else {
-                    // Daemon/socket issue: back off briefly to avoid hot-looping.
-                    Duration::from_millis(1000)
-                };
-                thread::sleep(poll_interval);
-            }
-        });
-        rx
-    }
-
     pub fn mark_tab_switch(&mut self) {
         self.tab_switch_started_at = Some(Instant::now());
     }
 
     pub fn finish_tab_switch_measurement(&mut self) -> Option<Duration> {
         self.tab_switch_started_at.take().map(|t| t.elapsed())
-    }
-
-    pub fn refresh_update_status(&mut self) {
-        let socket_path = crate::utils::get_socket_path();
-        self.refresh_update_status_from_socket(socket_path);
-    }
-
-    pub fn refresh_update_status_from_socket<P: AsRef<Path>>(&mut self, socket_path: P) {
-        use std::time::Duration;
-        if self.last_update_check.elapsed() < Duration::from_secs(3600) {
-            return;
-        }
-        self.last_update_check = Instant::now();
-        use std::io::{BufRead, BufReader, Write};
-        use std::os::unix::net::UnixStream;
-        let Ok(mut stream) = UnixStream::connect(socket_path.as_ref()) else {
-            return;
-        };
-        let msg = serde_json::to_vec(&ClientMsg::GetUpdateStatus).unwrap();
-        let _ = stream.write_all(&msg);
-        let _ = stream.write_all(b"\n");
-        let _ = stream.flush();
-        let mut line = String::new();
-        let _ = BufReader::new(&stream).read_line(&mut line);
-        if let Ok(ServerMsg::UpdateStatus { latest }) = serde_json::from_str(&line) {
-            self.update_available = latest;
-        }
-    }
-
-    /// Update spinner animation frame
-    pub fn update_spinner(&mut self) {
-        use std::time::Duration;
-        if self.last_spinner_update.elapsed() > Duration::from_millis(80) {
-            self.spinner_frame = (self.spinner_frame + 1) % 10;
-            self.last_spinner_update = Instant::now();
-        }
-    }
-
-    /// Get current spinner character
-    pub fn get_spinner(&self) -> &str {
-        const SPINNER: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-        SPINNER[self.spinner_frame]
     }
 
     /// Check if any tab is active

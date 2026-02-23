@@ -42,7 +42,7 @@ impl App {
         }
         let mut latest: Option<HashSet<String>> = None;
         if let Some(rx) = &self.active_status_rx {
-            while let Ok(active) = rx.try_recv() {
+            while let Ok(active) = rx.try_recv() as Result<HashSet<String>, _> {
                 latest = Some(active);
             }
         }
