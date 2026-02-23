@@ -240,6 +240,7 @@ impl TerminalEmulator for AlacrittyEmulator {
             title,
             cursor_shape,
             bell: self.bell.swap(false, Ordering::Relaxed),
+            focus_events_enabled: self.term.mode().contains(TermMode::FOCUS_IN_OUT),
         }
     }
 

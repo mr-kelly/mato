@@ -134,6 +134,11 @@ impl App {
         }
     }
 
+    /// True when the spinner is due for its next frame — used to drive redraws.
+    pub fn spinner_needs_update(&self) -> bool {
+        self.last_spinner_update.elapsed() > Duration::from_millis(80)
+    }
+
     /// Get current spinner character
     pub fn get_spinner(&self) -> &str {
         const SPINNER: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];

@@ -17,7 +17,7 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeCo
 
     // Office selector (top area)
     let office_name = &app.offices[app.current_office].name;
-    let office_text = format!(" 🏢 {} ", office_name);
+    
     let office_style = if active {
         if t.follow_terminal {
             Style::default().add_modifier(ratatui::style::Modifier::BOLD | ratatui::style::Modifier::REVERSED)
@@ -32,8 +32,14 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeCo
     } else {
         Style::default().fg(t.fg_dim()).bg(t.surface())
     };
+
+    let office_text = Line::from(vec![
+        Span::styled(" 🏢 ", office_style),
+        Span::styled(office_name, office_style),
+    ]);
+
     f.render_widget(
-        ratatui::widgets::Paragraph::new(Line::from(vec![Span::styled(office_text, office_style)]))
+        ratatui::widgets::Paragraph::new(office_text)
             .alignment(ratatui::layout::Alignment::Center)
             .block(
                 Block::default()

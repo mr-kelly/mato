@@ -649,7 +649,8 @@ pub async fn handle_client(
                         let meta_changed = content.cursor != prev.cursor
                             || content.cursor_shape != prev.cursor_shape
                             || content.title != prev.title
-                            || content.bell;
+                            || content.bell
+                            || content.focus_events_enabled != prev.focus_events_enabled;
 
                         if changed.is_empty() && !meta_changed {
                             // Truly unchanged
@@ -664,6 +665,7 @@ pub async fn handle_client(
                                 cursor_shape: content.cursor_shape.clone(),
                                 title: content.title.clone(),
                                 bell: content.bell,
+                                focus_events_enabled: content.focus_events_enabled,
                             };
                             rmp_serde::to_vec(&diff).unwrap_or_default()
                         } else {

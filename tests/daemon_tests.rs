@@ -412,3 +412,49 @@ fn active_tab_ref_returns_correct_tab() {
     task.active_tab = 2;
     assert_eq!(task.active_tab_ref().name, "T3");
 }
+
+// ── Alacritty: bell and focus-tracking mode ───────────────────────────────────
+
+#[test]
+fn alacritty_bell_is_consumed_once_per_ding() {
+    let mut emu = AlacrittyEmulator::new(24, 80);
+    emu.process(b"\x07"); // BEL
+    let s1 = emu.get_screen(24, 80);
+    assert!(s1.bell, "first get_screen should report bell=true");
+    let s2 = emu.get_screen(24, 80);
+    assert!(!s2.bell, "second get_screen should report bell=false (consumed)");
+}
+
+#[test]
+fn alacritty_focus_events_disabled_by_default() {
+    let emu = AlacrittyEmulator::new(24, 80);
+    let screen = emu.get_screen(24, 80);
+    assert!(
+        !screen.focus_events_enabled,
+        "focus tracking should be off by default"
+    );
+}
+
+#[test]
+fn alacritty_focus_events_enabled_after_escape_sequence() {
+    let mut emu = AlacrittyEmulator::new(24, 80);
+    // \x1b[?1004h enables focus event reporting
+    emu.process(b"\x1b[?1004h");
+    let screen = emu.get_screen(24, 80);
+    assert!(
+        screen.focus_events_enabled,
+        "focus tracking should be on after \\x1b[?1004h"
+    );
+}
+
+#[test]
+fn alacritty_focus_events_disabled_after_reset_sequence() {
+    let mut emu = AlacrittyEmulator::new(24, 80);
+    emu.process(b"\x1b[?1004h"); // enable
+    emu.process(b"\x1b[?1004l"); // disable
+    let screen = emu.get_screen(24, 80);
+    assert!(
+        !screen.focus_events_enabled,
+        "focus tracking should be off after \\x1b[?1004l"
+    );
+}

@@ -124,3 +124,70 @@ fn test_input_modes_server_msg() {
         _ => panic!("Wrong message type"),
     }
 }
+
+use mato::terminal_provider::{CursorShape, ScreenContent};
+
+#[test]
+fn screen_content_json_roundtrip_preserves_bell_and_focus_events() {
+    let content = ScreenContent {
+        lines: vec![],
+        cursor: (3, 7),
+        title: Some("vim".into()),
+        cursor_shape: CursorShape::Beam,
+        bell: true,
+        focus_events_enabled: true,
+    };
+    let json = serde_json::to_string(&content).unwrap();
+    let restored: ScreenContent = serde_json::from_str(&json).unwrap();
+    assert!(restored.bell, "bell must survive JSON roundtrip");
+    assert!(restored.focus_events_enabled, "focus_events_enabled must survive JSON roundtrip");
+    assert_eq!(restored.cursor, (3, 7));
+    assert_eq!(restored.title.as_deref(), Some("vim"));
+}
+
+#[test]
+fn screen_content_msgpack_roundtrip_preserves_bell_and_focus_events() {
+    let content = ScreenContent {
+        lines: vec![],
+        cursor: (1, 2),
+        title: None,
+        cursor_shape: CursorShape::Block,
+        bell: true,
+        focus_events_enabled: true,
+    };
+    let bin = rmp_serde::to_vec(&content).unwrap();
+    let restored: ScreenContent = rmp_serde::from_slice(&bin).unwrap();
+    assert!(restored.bell);
+    assert!(restored.focus_events_enabled);
+}
+
+#[test]
+fn screen_content_missing_new_fields_deserialize_as_false() {
+    // Old JSON without bell/focus_events_enabled should deserialize cleanly (serde default).
+    let old_json = r#"{"lines":[],"cursor":[0,0],"title":null,"cursor_shape":"Block"}"#;
+    let content: ScreenContent = serde_json::from_str(old_json).unwrap();
+    assert!(!content.bell, "old client JSON with no bell field must default to false");
+    assert!(!content.focus_events_enabled, "old client JSON with no focus_events_enabled must default to false");
+}
+
+#[test]
+fn screen_diff_msgpack_roundtrip_preserves_focus_events_enabled() {
+    use mato::protocol::ServerMsg;
+    use mato::terminal_provider::ScreenLine;
+    let msg = ServerMsg::ScreenDiff {
+        changed_lines: vec![],
+        cursor: (0, 0),
+        cursor_shape: CursorShape::Block,
+        title: None,
+        bell: false,
+        focus_events_enabled: true,
+    };
+    let bin = rmp_serde::to_vec(&msg).unwrap();
+    let restored: ServerMsg = rmp_serde::from_slice(&bin).unwrap();
+    match restored {
+        ServerMsg::ScreenDiff { focus_events_enabled, .. } => {
+            assert!(focus_events_enabled, "focus_events_enabled must survive msgpack roundtrip");
+        }
+        _ => panic!("Expected ScreenDiff"),
+    }
+}

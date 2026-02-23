@@ -349,6 +349,14 @@ impl TerminalProvider for DaemonProvider {
         self.start_screen_worker_if_needed();
 
         if let Some(content) = self.cached_screen(rows, cols) {
+            // Consume bell: clear it in cache so it only fires once per BEL.
+            if content.bell {
+                if let Ok(mut c) = self.screen_cache.lock() {
+                    if let Some(ref mut entry) = *c {
+                        entry.content.bell = false;
+                    }
+                }
+            }
             return content;
         }
 
@@ -418,5 +426,14 @@ impl TerminalProvider for DaemonProvider {
 
     fn screen_generation(&self) -> u64 {
         self.screen_generation.load(Ordering::Relaxed)
+    }
+
+    fn focus_events_enabled(&self) -> bool {
+        if let Ok(cache) = self.screen_cache.lock() {
+            if let Some(ref entry) = *cache {
+                return entry.content.focus_events_enabled;
+            }
+        }
+        false
     }
 }

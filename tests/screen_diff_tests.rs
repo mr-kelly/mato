@@ -32,6 +32,7 @@ fn make_screen(lines: &[&str]) -> ScreenContent {
         title: None,
         cursor_shape: CursorShape::Block,
         bell: false,
+        focus_events_enabled: false,
     }
 }
 
@@ -51,7 +52,8 @@ fn compute_diff(prev: &ScreenContent, content: &ScreenContent) -> Option<ServerM
     let meta_changed = content.cursor != prev.cursor
         || content.cursor_shape != prev.cursor_shape
         || content.title != prev.title
-        || content.bell;
+        || content.bell
+        || content.focus_events_enabled != prev.focus_events_enabled;
 
     if changed.is_empty() && !meta_changed {
         return None; // unchanged
@@ -65,6 +67,7 @@ fn compute_diff(prev: &ScreenContent, content: &ScreenContent) -> Option<ServerM
             cursor_shape: content.cursor_shape.clone(),
             title: content.title.clone(),
             bell: content.bell,
+            focus_events_enabled: content.focus_events_enabled,
         })
     } else {
         Some(ServerMsg::Screen {
@@ -83,6 +86,7 @@ fn apply_diff(screen: &mut ScreenContent, msg: ServerMsg) {
             cursor_shape,
             title,
             bell,
+            focus_events_enabled,
         } => {
             for (idx, line) in changed_lines {
                 let i = idx as usize;
@@ -94,6 +98,7 @@ fn apply_diff(screen: &mut ScreenContent, msg: ServerMsg) {
             screen.cursor_shape = cursor_shape;
             screen.title = title;
             screen.bell = bell;
+            screen.focus_events_enabled = focus_events_enabled;
         }
         ServerMsg::Screen { content, .. } => {
             *screen = content;
@@ -305,4 +310,85 @@ fn screen_diff_roundtrip_preserves_content() {
     assert_eq!(cached.lines[3], original.lines[3]); // unchanged
     assert_eq!(cached.cursor, (1, 14));
     assert_eq!(cached.title, Some("test-title".into()));
+}
+
+// ── focus_events_enabled + bell robustness ────────────────────────────────────
+
+#[test]
+fn screen_content_defaults_have_no_bell_no_focus_events() {
+    let sc = ScreenContent::default();
+    assert!(!sc.bell, "default bell must be false");
+    assert!(
+        !sc.focus_events_enabled,
+        "default focus_events_enabled must be false"
+    );
+}
+
+#[test]
+fn focus_events_enabled_propagates_through_diff() {
+    let a = make_screen(&["hello"]);
+    let mut b = a.clone();
+    b.focus_events_enabled = true;
+
+    let diff = compute_diff(&a, &b).unwrap();
+    match &diff {
+        ServerMsg::ScreenDiff {
+            focus_events_enabled,
+            ..
+        } => assert!(*focus_events_enabled, "diff should carry focus_events_enabled=true"),
+        _ => panic!("Expected ScreenDiff"),
+    }
+
+    let mut cached = a.clone();
+    apply_diff(&mut cached, diff);
+    assert!(
+        cached.focus_events_enabled,
+        "cache must have focus_events_enabled=true after applying diff"
+    );
+}
+
+#[test]
+fn focus_events_enabled_false_clears_after_true_via_diff() {
+    let base = make_screen(&["hello"]);
+    let mut enabled = base.clone();
+    enabled.focus_events_enabled = true;
+
+    let diff1 = compute_diff(&base, &enabled).unwrap();
+    let mut cached = base.clone();
+    apply_diff(&mut cached, diff1);
+    assert!(cached.focus_events_enabled);
+
+    // App disables focus tracking (e.g. exits vim)
+    let mut disabled = enabled.clone();
+    disabled.focus_events_enabled = false;
+    disabled.lines[0] = make_line("bye"); // force non-empty diff
+    let diff2 = compute_diff(&enabled, &disabled).unwrap();
+    apply_diff(&mut cached, diff2);
+    assert!(
+        !cached.focus_events_enabled,
+        "focus_events_enabled must be cleared after diff with false"
+    );
+}
+
+#[test]
+fn bell_cleared_by_subsequent_diff_without_bell() {
+    // Bell arrives in diff1; diff2 has no bell → cached bell must become false.
+    let a = make_screen(&["hello"]);
+    let mut b = a.clone();
+    b.bell = true;
+
+    let diff1 = compute_diff(&a, &b).unwrap();
+    let mut cached = a.clone();
+    apply_diff(&mut cached, diff1);
+    assert!(cached.bell, "bell should be true after first diff");
+
+    let mut c = b.clone();
+    c.bell = false;
+    c.lines[0] = make_line("world"); // force a real diff so compute_diff returns Some
+    let diff2 = compute_diff(&b, &c).unwrap();
+    apply_diff(&mut cached, diff2);
+    assert!(
+        !cached.bell,
+        "bell must be false after diff without bell"
+    );
 }

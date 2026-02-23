@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-02-23
+
+### Added
+- **Toast notification system**: `app.toast: Option<(String, Instant)>` field drives bottom-right floating messages. Visible for 3s with binary DIM fade after 2s. Event loop drives `dirty=true` while active so toast auto-expires without needing user input. Triggered on: desk created, desk closed (confirmed), desk/tab/office renamed.
+- **Jump Mode background dim**: entering Jump Mode now applies `DIM` modifier to every cell in the buffer, visually suppressing the background to make jump labels stand out.
+- **Google Analytics (GA4) integration for website**: added via Next.js official `@next/third-parties` with configured measurement id.
+
+### Fixed
+- **Focus sequences (`^[[I`/`^[[O`) shown as literal characters on tab switch**: `sync_focus_events()` now gates on `focus_events_enabled` from the screen cache — sequences are only sent to a PTY that has explicitly enabled focus tracking via `\x1b[?1004h`. If the shell/app hasn't opted in, focus transitions are silently skipped.
+- **Bell rings continuously after a single BEL**: cached `ScreenContent.bell = true` was never cleared after being consumed by the renderer, causing `pending_bell` to be set on every frame. Bell in the daemon provider screen cache is now cleared immediately after being read once (consume-on-read).
+- **`focus_events_enabled` not pushed to client on mode change**: `meta_changed` check in the daemon's ScreenDiff push loop did not include `focus_events_enabled`, so a PTY enabling/disabling focus tracking would not trigger a diff push — clients could become stale. Added to `meta_changed` in `src/daemon/service.rs`.
+- **Spinner freezes when focus is on terminal with no activity**: `ui_changed` check did not include spinner timing, so when there were no PTY output changes, no dirty flag, and no recent input, `terminal.draw()` was skipped entirely — spinner froze until the next keypress. Fixed by adding `app.has_active_tabs() && app.spinner_needs_update()` to the `ui_changed` condition. Spinner now drives its own redraws at 80ms intervals whenever there are active tabs, regardless of user input.
+- **Toast fade DIM applied to wrong layer**: DIM was patched onto the Paragraph container style rather than the Span — text color was unaffected. Fixed to apply `Modifier::DIM` directly to the Span style.
+- **Dead `startup_instant` parameter in `border_style`**: breathing border animation was reverted due to `as_rgb()` API issue, but the unused parameter and imports (`Color`, `std::time::Instant`) remained. Removed from signature and all callers.
+
+### Tests
+- **101 tests** passing across 14 suites (+3 spinner tests this fix):
+  - Spinner: `needs_update` false immediately after update, true after 80ms, frame advances after 80ms
+  - Alacritty emulator: bell one-shot consume, `FOCUS_IN_OUT` mode enable/disable via escape sequences
+  - ScreenDiff protocol: `focus_events_enabled` propagation, bell cleared by subsequent diff, msgpack roundtrip
+  - App logic: `sync_focus_events` gating (4 cases), `from_saved` clamping for corrupted state, tab_scroll reset, empty-tabs safety, mouse-mode cache invalidation on tab switch
+  - Protocol serde: `ScreenContent` JSON + msgpack roundtrips preserve `bell` and `focus_events_enabled`; old JSON missing new fields deserializes as `false` (backward compat)
+  - Utils: 1000-ID uniqueness under load, hex-alphanumeric format contract
+
 ## [0.9.1] - 2026-02-23
 
 ### Changed
@@ -316,7 +340,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Links
 
-[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/mr-kelly/mato/releases/tag/v0.9.2
 [0.9.1]: https://github.com/mr-kelly/mato/releases/tag/v0.9.1
 [0.9.0]: https://github.com/mr-kelly/mato/releases/tag/v0.9.0
 [0.8.1]: https://github.com/mr-kelly/mato/releases/tag/v0.8.1

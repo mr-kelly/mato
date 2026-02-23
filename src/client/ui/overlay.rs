@@ -7,8 +7,21 @@ use ratatui::{
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame,
 };
+use std::time::Duration;
 
 pub(super) fn draw_jump_mode(f: &mut Frame, app: &App, t: &ThemeColors) {
+    // 1. DIM THE BACKGROUND
+    // Apply DIM modifier to every cell in the current buffer to suppress background noise
+    let area = f.area();
+    let buf = f.buffer_mut();
+    for y in area.top()..area.bottom() {
+        for x in area.left()..area.right() {
+            if let Some(cell) = buf.cell_mut((x, y)) {
+                cell.set_style(cell.style().add_modifier(Modifier::DIM));
+            }
+        }
+    }
+
     let labels = app.jump_labels();
     let jump_fg = if t.follow_terminal {
         Style::default().add_modifier(Modifier::BOLD | Modifier::REVERSED)
@@ -355,4 +368,36 @@ pub(super) fn draw_desk_delete_confirm(f: &mut Frame, app: &App, t: &ThemeColors
         .alignment(Alignment::Center)
         .style(Style::default().fg(t.fg_dim()));
     f.render_widget(help, chunks[2]);
+}
+
+pub(super) fn draw_toast(f: &mut Frame, app: &App, t: &ThemeColors) {
+    if let Some((msg, instant)) = &app.toast {
+        let elapsed = instant.elapsed();
+        if elapsed > Duration::from_secs(3) {
+            return;
+        }
+
+        let area = f.area();
+        let msg_len = (msg.len() + 4) as u16;
+        let toast_area = Rect {
+            x: area.width.saturating_sub(msg_len + 2),
+            y: area.height.saturating_sub(3),
+            width: msg_len,
+            height: 1,
+        };
+
+        // Binary fade: dim after 2s
+        let faded = elapsed.as_secs_f32() > 2.0;
+        let span_style = Style::default()
+            .fg(t.bg())
+            .bg(t.accent2())
+            .add_modifier(Modifier::BOLD)
+            .add_modifier(if faded { Modifier::DIM } else { Modifier::empty() });
+
+        f.render_widget(Clear, toast_area);
+        f.render_widget(
+            Paragraph::new(Span::styled(format!(" {} ", msg), span_style)),
+            toast_area,
+        );
+    }
 }

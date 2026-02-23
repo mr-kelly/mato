@@ -324,10 +324,21 @@ fn run_client() -> Result<()> {
                 app.sync_focus_events();
                 app.flush_pending_content_esc();
 
+                // Drive toast expiry: keep dirty while toast is visible so it auto-clears.
+                if let Some((_, toast_at)) = &app.toast {
+                    let age = toast_at.elapsed();
+                    if age < Duration::from_secs(3) {
+                        app.dirty = true;
+                    } else {
+                        app.toast = None;
+                    }
+                }
+
                 // Skip render if screen content hasn't changed (push mode dedup)
                 let current_gen = app.active_provider_screen_generation();
                 let ui_changed = app.dirty
                     || app.pending_bell
+                    || (app.has_active_tabs() && app.spinner_needs_update())
                     || (!app.copy_mode && current_gen != app.last_rendered_screen_gen);
 
                 if ui_changed || last_input_at.elapsed() < Duration::from_millis(100) {

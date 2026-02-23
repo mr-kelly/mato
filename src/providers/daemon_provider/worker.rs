@@ -192,6 +192,7 @@ impl DaemonProvider {
                         cursor_shape,
                         title,
                         bell,
+                        focus_events_enabled,
                     }) => {
                         screen_gen.fetch_add(1, Ordering::Relaxed);
                         if let Ok(mut c) = cache.lock() {
@@ -207,6 +208,7 @@ impl DaemonProvider {
                                 entry.content.cursor_shape = cursor_shape;
                                 entry.content.title = title;
                                 entry.content.bell = bell;
+                                entry.content.focus_events_enabled = focus_events_enabled;
                             }
                         }
                     }

@@ -4,7 +4,13 @@ This directory contains release notes and summaries for Mato versions.
 
 ## 📦 Releases
 
-### v0.9.0 (2026-02-23) - Latest
+### v0.9.2 (2026-02-23) - Latest
+- **[RELEASE_NOTES_v0.9.2.md](RELEASE_NOTES_v0.9.2.md)** - Runtime Correctness + Signal UX + Analytics Integration
+- **[RELEASE_SUMMARY_v0.9.2.md](RELEASE_SUMMARY_v0.9.2.md)** - Technical summary
+
+**Highlights**: focus-event gating fix (`^[[I`/`^[[O` leakage), bell consume-on-read, spinner timer redraw reliability, toast + jump background dim UX polish, and GA4 integration via `@next/third-parties`.
+
+### v0.9.0 (2026-02-23)
 - **[RELEASE_NOTES_v0.9.0.md](RELEASE_NOTES_v0.9.0.md)** - Desk Confirmation UX + Esc Double-Press Reliability + Docs/Website Refresh
 - **[RELEASE_SUMMARY_v0.9.0.md](RELEASE_SUMMARY_v0.9.0.md)** - Technical summary
 
@@ -72,5 +78,5 @@ Milestone-level historical overview.
 
 ---
 
-**Latest Release**: v0.9.0 (2026-02-23)  
+**Latest Release**: v0.9.2 (2026-02-23)  
 **Status**: Stable

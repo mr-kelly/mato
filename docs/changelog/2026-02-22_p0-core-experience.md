@@ -549,3 +549,80 @@ Implement P0 items from roadmap.md that are critical for daily user experience.
   - `src/client/ui/overlay.rs`
   - `src/client/app.rs`
   - `src/providers/daemon_provider/mod.rs`
+
+## §48 Fix: `^[[I`/`^[[O` appearing in terminal on tab switch
+
+**Problem**: When switching focus between Mato UI elements (sidebar → terminal, or desk switch), `^[[I` (focus-in) and `^[[O` (focus-out) escape sequences appeared as literal characters in the terminal. This happened because `sync_focus_events()` sent `\x1b[I`/`\x1b[O` unconditionally — even when the running shell/app had NOT enabled focus tracking via `\x1b[?1004h`.
+
+**Root cause**: `sync_focus_events()` didn't gate on whether the PTY application had enabled `FOCUS_IN_OUT` mode in the terminal emulator.
+
+**Fix**:
+- Added `focus_events_enabled: bool` field to `ScreenContent` (serde default=false for backward compat)
+- `AlacrittyEmulator::get_screen()` now populates it from `TermMode::FOCUS_IN_OUT`
+- `vt100_emulator` and `ScreenContent::default()` default to `false`
+- `ScreenDiff` protocol message gains `focus_events_enabled` field (propagated by daemon push and worker)
+- `DaemonProvider::focus_events_enabled()` reads from screen cache
+- `sync_focus_events()` checks `provider.focus_events_enabled()` before sending sequences
+
+**Files changed**:
+- `src/terminal_provider.rs` — new field + trait default method
+- `src/emulators/alacritty_emulator.rs` — populate from TermMode
+- `src/emulators/vt100_emulator.rs` — set false
+- `src/protocol.rs` — ScreenDiff gains field
+- `src/daemon/service.rs` — populate in ScreenDiff push
+- `src/providers/daemon_provider/worker.rs` — apply in diff patch
+- `src/providers/daemon_provider/mod.rs` — `focus_events_enabled()` from cache
+- `src/client/app.rs` — gate `sync_focus_events` on provider
+
+## §49 Fix: Bell keeps ringing after tab switch
+
+**Problem**: After a single `\x07` BEL character, the bell would keep firing on every frame. The `ScreenContent.bell = true` was set in the worker's screen cache but never cleared after being consumed by `draw_terminal`.
+
+**Root cause**: `DaemonProvider::get_screen()` returned cached content with `bell=true`. After `draw_terminal` set `app.pending_bell = true`, the cache entry still had `bell=true`. The next frame would again set `pending_bell = true`, creating an infinite bell.
+
+Note: `AlacrittyEmulator` correctly uses `self.bell.swap(false)` to clear on read, but the daemon worker caches `bell=true` from pushes and never clears it.
+
+**Fix**: In `DaemonProvider::get_screen()`, after returning cached content with `bell=true`, immediately clear `entry.content.bell = false` in the cache. Bell is now consumed once.
+
+**Files changed**:
+- `src/providers/daemon_provider/mod.rs` — consume bell in cache after returning it
+
+## §50 +20 tests: bell, focus tracking, protocol serde, app robustness
+
+Added 20 new tests across 5 test suites. All 98 tests pass.
+
+**`daemon_tests.rs` +4 (alacritty emulator)**:
+- `alacritty_bell_is_consumed_once_per_ding` — verifies `bell.swap(false)` one-shot behavior
+- `alacritty_focus_events_disabled_by_default` — baseline: `FOCUS_IN_OUT` off
+- `alacritty_focus_events_enabled_after_escape_sequence` — `\x1b[?1004h` enables mode
+- `alacritty_focus_events_disabled_after_reset_sequence` — `\x1b[?1004l` clears mode
+
+**`screen_diff_tests.rs` +4 (bell + focus propagation)**:
+- `screen_content_defaults_have_no_bell_no_focus_events`
+- `focus_events_enabled_propagates_through_diff`
+- `focus_events_enabled_false_clears_after_true_via_diff` (app exits vim)
+- `bell_cleared_by_subsequent_diff_without_bell`
+
+**`app_tests.rs` +8 (app logic robustness)**:
+- `sync_focus_events_no_write_when_tracking_disabled`
+- `sync_focus_events_sends_focus_in_when_tracking_enabled`
+- `sync_focus_events_sends_focus_out_when_leaving_content`
+- `sync_focus_events_no_op_when_focus_unchanged`
+- `from_saved_clamps_active_tab_to_valid_range`
+- `from_saved_clamps_active_desk_to_valid_range`
+- `close_desk_resets_tab_scroll_to_zero`
+- `sync_focus_events_safe_with_empty_tabs_desk`
+- `pty_mouse_mode_cache_invalidated_on_tab_switch`
+
+**`protocol_tests.rs` +4 (serde roundtrips)**:
+- JSON + msgpack roundtrips for `bell` and `focus_events_enabled`
+- Backward compat: old JSON without new fields deserializes as `false`
+- `ScreenDiff` msgpack roundtrip preserves `focus_events_enabled`
+
+**`utils_tests.rs` +2 (ID contract)**:
+- `new_id_produces_unique_ids_under_load` (1000 IDs)
+- `new_id_is_hex_alphanumeric`
+
+Snapshots regenerated after `border_style` breathing-effect signature change (`as_rgb` fix).
+
+- README updated with test suite table (98 tests, 14 suites)

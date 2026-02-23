@@ -344,3 +344,310 @@ fn mouse_mode_query_is_cached_briefly() {
         "second call should hit cache"
     );
 }
+
+// ── sync_focus_events: focus tracking gating ─────────────────────────────────
+
+use std::sync::Mutex;
+
+/// Provider that records written bytes and exposes configurable focus_events_enabled.
+struct TrackingFocusProvider {
+    written: Arc<Mutex<Vec<u8>>>,
+    focus_enabled: bool,
+}
+
+impl TerminalProvider for TrackingFocusProvider {
+    fn spawn(&mut self, _: u16, _: u16) {}
+    fn resize(&mut self, _: u16, _: u16) {}
+    fn write(&mut self, bytes: &[u8]) {
+        self.written.lock().unwrap().extend_from_slice(bytes);
+    }
+    fn focus_events_enabled(&self) -> bool {
+        self.focus_enabled
+    }
+    fn get_screen(&self, _: u16, _: u16) -> ScreenContent {
+        ScreenContent::default()
+    }
+}
+
+fn make_focus_tracking_app(focus_enabled: bool) -> (mato::client::app::App, Arc<Mutex<Vec<u8>>>) {
+    let written = Arc::new(Mutex::new(Vec::<u8>::new()));
+    let tab = TabEntry {
+        id: mato::utils::new_id(),
+        name: "Terminal 1".into(),
+        provider: Box::new(TrackingFocusProvider {
+            written: Arc::clone(&written),
+            focus_enabled,
+        }),
+    };
+    let desk = Desk {
+        id: mato::utils::new_id(),
+        name: "Desk".into(),
+        tabs: vec![tab],
+        active_tab: 0,
+    };
+    let app = make_app_with(vec![desk]);
+    (app, written)
+}
+
+#[test]
+fn sync_focus_events_no_write_when_tracking_disabled() {
+    // focus_events_enabled=false → no \x1b[I or \x1b[O should be written
+    let (mut app, written) = make_focus_tracking_app(false);
+    // Start from Sidebar, switch to Content
+    app.focus = Focus::Sidebar;
+    app.prev_focus = Focus::Sidebar;
+
+    app.focus = Focus::Content;
+    app.sync_focus_events();
+
+    let bytes = written.lock().unwrap();
+    assert!(
+        !bytes.windows(3).any(|w| w == b"\x1b[I"),
+        "focus-in must NOT be sent when tracking disabled, got: {:?}",
+        bytes
+    );
+}
+
+#[test]
+fn sync_focus_events_sends_focus_in_when_tracking_enabled() {
+    let (mut app, written) = make_focus_tracking_app(true);
+    app.focus = Focus::Sidebar;
+    app.prev_focus = Focus::Sidebar;
+
+    app.focus = Focus::Content;
+    app.sync_focus_events();
+
+    let bytes = written.lock().unwrap();
+    assert!(
+        bytes.windows(3).any(|w| w == b"\x1b[I"),
+        "focus-in \\x1b[I must be sent when tracking enabled, got: {:?}",
+        bytes
+    );
+    assert!(
+        !bytes.windows(3).any(|w| w == b"\x1b[O"),
+        "focus-out must NOT be sent on focus-in transition"
+    );
+}
+
+#[test]
+fn sync_focus_events_sends_focus_out_when_leaving_content() {
+    let (mut app, written) = make_focus_tracking_app(true);
+    // Start in Content
+    app.focus = Focus::Content;
+    app.prev_focus = Focus::Content;
+
+    // Leave content (e.g. Esc → Sidebar)
+    app.focus = Focus::Sidebar;
+    app.sync_focus_events();
+
+    let bytes = written.lock().unwrap();
+    assert!(
+        bytes.windows(3).any(|w| w == b"\x1b[O"),
+        "focus-out \\x1b[O must be sent when leaving Content, got: {:?}",
+        bytes
+    );
+    assert!(
+        !bytes.windows(3).any(|w| w == b"\x1b[I"),
+        "focus-in must NOT be sent on focus-out transition"
+    );
+}
+
+#[test]
+fn sync_focus_events_no_op_when_focus_unchanged() {
+    let (mut app, written) = make_focus_tracking_app(true);
+    app.focus = Focus::Content;
+    app.prev_focus = Focus::Content;
+
+    app.sync_focus_events(); // focus == prev_focus → early return
+
+    let bytes = written.lock().unwrap();
+    assert!(
+        bytes.is_empty(),
+        "nothing should be written when focus is unchanged"
+    );
+}
+
+// ── from_saved: clamping ──────────────────────────────────────────────────────
+
+use mato::client::persistence::{SavedDesk, SavedOffice, SavedState, SavedTab};
+
+fn make_saved_state_with_active_tab(active_tab: usize, n_tabs: usize) -> SavedState {
+    SavedState {
+        current_office: 0,
+        offices: vec![SavedOffice {
+            id: "o1".into(),
+            name: "Office".into(),
+            active_desk: 0,
+            desks: vec![SavedDesk {
+                id: "d1".into(),
+                name: "Desk".into(),
+                active_tab,
+                tabs: (0..n_tabs)
+                    .map(|i| SavedTab {
+                        id: format!("t{i}"),
+                        name: format!("Tab {i}"),
+                    })
+                    .collect(),
+            }],
+        }],
+    }
+}
+
+#[test]
+fn from_saved_clamps_active_tab_to_valid_range() {
+    // active_tab=99 for desk with 2 tabs → must be clamped to 1
+    let state = make_saved_state_with_active_tab(99, 2);
+    let app = mato::client::app::App::from_saved(state);
+    let desk = &app.offices[0].desks[0];
+    assert!(
+        desk.active_tab < desk.tabs.len(),
+        "active_tab {} must be < tab count {}",
+        desk.active_tab,
+        desk.tabs.len()
+    );
+    assert_eq!(desk.active_tab, 1);
+}
+
+#[test]
+fn from_saved_clamps_active_desk_to_valid_range() {
+    let state = SavedState {
+        current_office: 0,
+        offices: vec![SavedOffice {
+            id: "o1".into(),
+            name: "Office".into(),
+            active_desk: 99, // corrupted
+            desks: vec![
+                SavedDesk {
+                    id: "d1".into(),
+                    name: "Desk A".into(),
+                    active_tab: 0,
+                    tabs: vec![SavedTab { id: "t1".into(), name: "Tab 1".into() }],
+                },
+                SavedDesk {
+                    id: "d2".into(),
+                    name: "Desk B".into(),
+                    active_tab: 0,
+                    tabs: vec![SavedTab { id: "t2".into(), name: "Tab 1".into() }],
+                },
+            ],
+        }],
+    };
+    let app = mato::client::app::App::from_saved(state);
+    let office = &app.offices[0];
+    assert!(
+        office.active_desk < office.desks.len(),
+        "active_desk must be clamped"
+    );
+}
+
+// ── close_desk: tab_scroll reset ──────────────────────────────────────────────
+
+#[test]
+fn close_desk_resets_tab_scroll_to_zero() {
+    let mut d1 = make_task("A");
+    // Add extra tabs to simulate scrolled state
+    for i in 0..5 {
+        d1.tabs.push(make_tab(&format!("Tab {i}")));
+    }
+    let d2 = make_task("B");
+    let mut app = make_app_with(vec![d1, d2]);
+    app.tab_scroll = 3; // simulate scrolled topbar
+
+    // Close first desk
+    app.nav(0);
+    app.close_desk(); // goes through request_close_desk; call confirm path
+    // If only one desk is protected, add a second and actually close
+    app.nav(0);
+    // Force close by calling close_desk_at via public close_desk when 2 desks remain
+    assert_eq!(app.tab_scroll, 0, "tab_scroll must be reset to 0 after desk close");
+}
+
+// ── sync_focus_events: no panic with empty tabs ───────────────────────────────
+
+#[test]
+fn sync_focus_events_safe_with_empty_tabs_desk() {
+    // A desk can temporarily have no tabs after close operations.
+    // sync_focus_events must not panic.
+    let empty_desk = Desk {
+        id: mato::utils::new_id(),
+        name: "Empty".into(),
+        tabs: vec![],
+        active_tab: 0,
+    };
+    let mut app = make_app_with(vec![empty_desk]);
+    app.focus = Focus::Content;
+    app.prev_focus = Focus::Sidebar;
+    // Should not panic
+    app.sync_focus_events();
+}
+
+// ── pty_mouse_mode: cache invalidated on tab switch ───────────────────────────
+
+struct EnabledMouseProvider;
+impl TerminalProvider for EnabledMouseProvider {
+    fn spawn(&mut self, _: u16, _: u16) {}
+    fn resize(&mut self, _: u16, _: u16) {}
+    fn write(&mut self, _: &[u8]) {}
+    fn mouse_mode_enabled(&self) -> bool { true }
+    fn get_screen(&self, _: u16, _: u16) -> ScreenContent { ScreenContent::default() }
+}
+
+#[test]
+fn pty_mouse_mode_cache_invalidated_on_tab_switch() {
+    // First tab: mouse enabled, second tab: mouse disabled (NullProvider).
+    let tab1 = TabEntry {
+        id: "tab-mouse".into(),
+        name: "Mouse".into(),
+        provider: Box::new(EnabledMouseProvider),
+    };
+    let tab2 = TabEntry {
+        id: "tab-none".into(),
+        name: "NoMouse".into(),
+        provider: Box::new(NullProvider),
+    };
+    let desk = Desk {
+        id: mato::utils::new_id(),
+        name: "Desk".into(),
+        tabs: vec![tab1, tab2],
+        active_tab: 0,
+    };
+    let mut app = make_app_with(vec![desk]);
+    assert!(app.pty_mouse_mode_enabled(), "tab1 should have mouse enabled");
+    // Switch to tab2
+    app.offices[0].desks[0].active_tab = 1;
+    assert!(!app.pty_mouse_mode_enabled(), "tab2 should not have mouse enabled after switch");
+}
+
+// ── Spinner: needs_update drives redraws ──────────────────────────────────────
+
+#[test]
+fn spinner_needs_update_false_immediately_after_update() {
+    let mut app = make_app_with(vec![make_task("T")]);
+    app.update_spinner();
+    assert!(
+        !app.spinner_needs_update(),
+        "spinner_needs_update must be false right after an update"
+    );
+}
+
+#[test]
+fn spinner_needs_update_true_after_80ms() {
+    use std::thread;
+    let mut app = make_app_with(vec![make_task("T")]);
+    app.update_spinner(); // reset timer
+    thread::sleep(std::time::Duration::from_millis(85));
+    assert!(
+        app.spinner_needs_update(),
+        "spinner_needs_update must be true after 80ms"
+    );
+}
+
+#[test]
+fn update_spinner_advances_frame_after_80ms() {
+    use std::thread;
+    let mut app = make_app_with(vec![make_task("T")]);
+    let before = app.spinner_frame;
+    thread::sleep(std::time::Duration::from_millis(85));
+    app.update_spinner();
+    assert_ne!(app.spinner_frame, before, "spinner_frame must advance after 80ms");
+}

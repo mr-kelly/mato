@@ -76,6 +76,8 @@ pub enum ServerMsg {
         title: Option<String>,
         #[serde(default)]
         bell: bool,
+        #[serde(default)]
+        focus_events_enabled: bool,
     },
     Error {
         message: String,

@@ -202,6 +202,10 @@ pub struct App {
     pub last_content_esc: Option<Instant>,
     /// Frame generation for screen cache change detection
     pub last_rendered_screen_gen: u64,
+    /// Launch time for animations
+    pub startup_instant: Instant,
+    /// Temporary notification message
+    pub toast: Option<(String, Instant)>,
 }
 
 impl App {
@@ -307,6 +311,8 @@ impl App {
             pending_bell: false,
             last_content_esc: None,
             last_rendered_screen_gen: 0,
+            startup_instant: Instant::now(),
+            toast: None,
         }
     }
 
@@ -398,6 +404,8 @@ impl App {
             pending_bell: false,
             last_content_esc: None,
             last_rendered_screen_gen: 0,
+            startup_instant: Instant::now(),
+            toast: None,
         }
     }
 
@@ -465,11 +473,13 @@ impl App {
 
     pub fn new_desk(&mut self) {
         let n = self.offices[self.current_office].desks.len() + 1;
+        let name = format!("Desk {n}");
         self.offices[self.current_office]
             .desks
-            .push(Desk::new(format!("Desk {n}")));
+            .push(Desk::new(name.clone()));
         self.select_desk(self.offices[self.current_office].desks.len().saturating_sub(1));
         self.spawn_active_pty();
+        self.show_toast(format!("New desk \"{}\" created", name));
         self.dirty = true;
     }
 
@@ -525,7 +535,15 @@ impl App {
 
     pub fn confirm_close_desk(&mut self, desk_idx: usize) {
         self.desk_delete_confirm = None;
+        let desk_name = self.offices[self.current_office]
+            .desks
+            .get(desk_idx)
+            .map(|d| d.name.clone())
+            .unwrap_or_default();
         self.close_desk_at(desk_idx);
+        if !desk_name.is_empty() {
+            self.show_toast(format!("Desk \"{}\" closed", desk_name));
+        }
     }
 
     pub fn nav(&mut self, delta: i32) {
@@ -638,19 +656,28 @@ impl App {
         enabled
     }
 
-    /// Send focus in/out events to PTY when focus changes
+    /// Send focus in/out events to PTY when focus changes.
+    /// Only sends if the PTY application has enabled focus tracking (\x1b[?1004h).
     pub fn sync_focus_events(&mut self) {
         if self.prev_focus == self.focus {
             return;
         }
         let was_content = self.prev_focus == Focus::Content;
         let is_content = self.focus == Focus::Content;
-        if is_content {
-            self.pty_write(b"\x1b[I");
-        } // focus in
-        if was_content {
-            self.pty_write(b"\x1b[O");
-        } // focus out
+        if is_content || was_content {
+            let i = self.selected();
+            let desk = &self.offices[self.current_office].desks[i];
+            let enabled = !desk.tabs.is_empty()
+                && desk.tabs[desk.active_tab].provider.focus_events_enabled();
+            if enabled {
+                if is_content {
+                    self.pty_write(b"\x1b[I");
+                }
+                if was_content {
+                    self.pty_write(b"\x1b[O");
+                }
+            }
+        }
         self.prev_focus = self.focus;
     }
     /// Start renaming task at sidebar index
@@ -676,11 +703,18 @@ impl App {
                 return;
             }
             match target {
-                RenameTarget::Desk(i) => self.offices[self.current_office].desks[i].name = name,
-                RenameTarget::Tab(ti, at) => {
-                    self.offices[self.current_office].desks[ti].tabs[at].name = name
+                RenameTarget::Desk(i) => {
+                    self.offices[self.current_office].desks[i].name = name.clone();
+                    self.show_toast(format!("Desk renamed to \"{}\"", name));
                 }
-                RenameTarget::Office(i) => self.offices[i].name = name,
+                RenameTarget::Tab(ti, at) => {
+                    self.offices[self.current_office].desks[ti].tabs[at].name = name.clone();
+                    self.show_toast(format!("Tab renamed to \"{}\"", name));
+                }
+                RenameTarget::Office(i) => {
+                    self.offices[i].name = name.clone();
+                    self.show_toast(format!("Office renamed to \"{}\"", name));
+                }
             }
             self.dirty = true;
         }
@@ -739,6 +773,12 @@ impl App {
 
     pub fn finish_tab_switch_measurement(&mut self) -> Option<Duration> {
         self.tab_switch_started_at.take().map(|t| t.elapsed())
+    }
+
+    /// Show a transient toast notification (bottom-right, 3s).
+    pub fn show_toast(&mut self, msg: impl Into<String>) {
+        self.toast = Some((msg.into(), Instant::now()));
+        self.dirty = true;
     }
 
     /// Check if any tab is active

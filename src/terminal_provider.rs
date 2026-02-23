@@ -15,6 +15,9 @@ pub trait TerminalProvider: Send {
     fn bracketed_paste_enabled(&self) -> bool {
         false
     }
+    fn focus_events_enabled(&self) -> bool {
+        false
+    }
     fn get_screen(&self, rows: u16, cols: u16) -> ScreenContent;
     fn screen_generation(&self) -> u64 {
         0
@@ -31,6 +34,9 @@ pub struct ScreenContent {
     /// Bell (BEL) was triggered since last screen fetch.
     #[serde(default)]
     pub bell: bool,
+    /// Whether the PTY application has enabled focus tracking (\x1b[?1004h).
+    #[serde(default)]
+    pub focus_events_enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -114,6 +120,7 @@ impl Default for ScreenContent {
             title: None,
             cursor_shape: CursorShape::Block,
             bell: false,
+            focus_events_enabled: false,
         }
     }
 }

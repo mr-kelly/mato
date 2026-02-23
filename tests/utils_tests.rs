@@ -37,3 +37,19 @@ fn test_paths_contain_mato() {
     // Path should contain "mato"
     assert!(path_str.contains("mato"));
 }
+
+#[test]
+fn new_id_produces_unique_ids_under_load() {
+    use std::collections::HashSet;
+    let ids: HashSet<String> = (0..1000).map(|_| new_id()).collect();
+    assert_eq!(ids.len(), 1000, "all 1000 IDs must be unique");
+}
+
+#[test]
+fn new_id_is_hex_alphanumeric() {
+    let id = new_id();
+    assert!(
+        id.chars().all(|c| c.is_ascii_hexdigit()),
+        "id should be all hex digits, got: {id:?}"
+    );
+}
