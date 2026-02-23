@@ -55,6 +55,10 @@ pub enum ClientMsg {
         rows: u16,
         cols: u16,
     },
+    /// Get the current working directory of the PTY child process.
+    GetCwd {
+        tab_id: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,5 +114,11 @@ pub enum ServerMsg {
         cursor: (u16, u16),
         /// Each entry is one complete `\x1b_...\x1b\\` APC sequence.
         payloads: Vec<Vec<u8>>,
+    },
+    /// Response to GetCwd: current working directory of the PTY child process.
+    /// None if the tab doesn't exist or the CWD cannot be determined.
+    Cwd {
+        tab_id: String,
+        path: Option<String>,
     },
 }

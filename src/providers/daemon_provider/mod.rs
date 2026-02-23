@@ -474,7 +474,24 @@ impl TerminalProvider for DaemonProvider {
     }
 
     fn get_cwd(&self) -> Option<String> {
-        self.cached_cwd.lock().ok().and_then(|g| g.clone())
+        // Ask the daemon — it reads /proc/<pid>/cwd (Linux) or lsof (macOS) directly.
+        match self.send_msg(ClientMsg::GetCwd {
+            tab_id: self.tab_id.clone(),
+        }) {
+            Some(crate::protocol::ServerMsg::Cwd { path, .. }) => {
+                // Cache the result for future use
+                if let Some(ref p) = path {
+                    if let Ok(mut c) = self.cached_cwd.lock() {
+                        *c = Some(p.clone());
+                    }
+                }
+                path
+            }
+            _ => {
+                // Fallback: return last OSC 7 value if daemon not responding
+                self.cached_cwd.lock().ok().and_then(|g| g.clone())
+            }
+        }
     }
 }
 

@@ -469,6 +469,12 @@ pub async fn handle_client(
                     continue;
                 }
             }
+            ClientMsg::GetCwd { tab_id } => {
+                let path = tabs
+                    .get(&tab_id)
+                    .and_then(|e| e.lock().get_cwd());
+                ServerMsg::Cwd { tab_id, path }
+            }
             ClientMsg::Scroll { tab_id, delta } => {
                 if let Some(entry) = tabs.get(&tab_id) {
                     let mut tab = entry.lock();

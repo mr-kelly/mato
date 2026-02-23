@@ -395,6 +395,35 @@ impl TerminalProvider for PtyProvider {
     }
 
     fn get_cwd(&self) -> Option<String> {
+        // Primary: read /proc/<pid>/cwd (Linux) — works regardless of shell config
+        #[cfg(target_os = "linux")]
+        if let Some(pid) = self.child_pid() {
+            let proc_cwd = std::path::PathBuf::from(format!("/proc/{}/cwd", pid));
+            if let Ok(path) = std::fs::read_link(&proc_cwd) {
+                return path.to_str().map(|s| s.to_string());
+            }
+        }
+
+        // macOS fallback: lsof -p <pid> -Fn to find cwd (fd type 'cwd')
+        #[cfg(target_os = "macos")]
+        if let Some(pid) = self.child_pid() {
+            if let Ok(out) = std::process::Command::new("lsof")
+                .args(["-p", &pid.to_string(), "-Fn", "-a", "-d", "cwd"])
+                .output()
+            {
+                // lsof -Fn prints "p<pid>\nn<path>" — grab the line starting with 'n'
+                let stdout = String::from_utf8_lossy(&out.stdout);
+                for line in stdout.lines() {
+                    if let Some(path) = line.strip_prefix('n') {
+                        if path.starts_with('/') {
+                            return Some(path.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Last resort: OSC 7 path reported by shell
         self.current_cwd.lock().ok().and_then(|g| g.clone())
     }
 }
