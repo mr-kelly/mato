@@ -46,7 +46,7 @@ pub struct ScreenLine {
     pub cells: Vec<ScreenCell>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ScreenCell {
     pub ch: char,
     #[serde(default = "default_display_width")]

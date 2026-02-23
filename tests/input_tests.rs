@@ -1,5 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use mato::client::app::{App, Desk, Focus, JumpMode, RenameTarget, TabEntry};
+use mato::client::app::{App, Desk, Focus, RenameTarget, TabEntry};
 use mato::client::input::handle_key;
 /// Tests for handle_key input logic.
 /// Uses NullProvider + make_app helper (same pattern as app_tests).
@@ -60,20 +60,13 @@ fn make_capture_app() -> (App, Arc<Mutex<Vec<u8>>>) {
         tabs: vec![tab],
         active_tab: 0,
     };
-    let mut app = make_app(vec![desk]);
-    app.focus = Focus::Content;
+    let app = make_app(vec![desk]);
     (app, sink)
 }
 
 fn make_app(desks: Vec<Desk>) -> App {
     let mut app = App::new();
-    app.current_office = 0;
-    app.offices = vec![mato::client::app::Office {
-        id: "test".into(),
-        name: "Test".into(),
-        desks,
-        active_desk: 0,
-    }];
+    app.desks = desks;
     app.list_state.select(Some(0));
     app
 }
@@ -99,98 +92,37 @@ fn key_mod(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
 // ── quit ──────────────────────────────────────────────────────────────────────
 
 #[test]
-fn q_in_sidebar_returns_true() {
+fn ctrl_q_quits() {
     let mut app = make_app(vec![make_task("T")]);
-    assert!(handle_key(&mut app, key(KeyCode::Char('q'))));
+    assert!(handle_key(
+        &mut app,
+        key_mod(KeyCode::Char('q'), KeyModifiers::CONTROL)
+    ));
 }
 
 #[test]
-fn q_in_topbar_quits() {
-    let mut app = make_app(vec![make_task("T")]);
-    app.focus = Focus::Topbar;
-    assert!(handle_key(&mut app, key(KeyCode::Char('q'))));
+fn q_goes_to_pty_not_quit() {
+    let (mut app, sink) = make_capture_app();
+    app.daemon_connected = true; // avoid emergency exit path
+    let quit = handle_key(&mut app, key(KeyCode::Char('q')));
+    assert!(!quit, "plain q should not quit");
+    assert_eq!(*sink.lock().unwrap(), b"q");
 }
 
-// ── focus transitions ─────────────────────────────────────────────────────────
+// ── focus is always Content ──────────────────────────────────────────────────
 
 #[test]
-fn esc_from_topbar_enters_jump_mode() {
-    let mut app = make_app(vec![make_task("T")]);
-    app.focus = Focus::Topbar;
+fn default_focus_is_content() {
+    let app = make_app(vec![make_task("T")]);
+    assert_eq!(app.focus, Focus::Content);
+}
+
+#[test]
+fn esc_is_forwarded_to_pty() {
+    let (mut app, sink) = make_capture_app();
     handle_key(&mut app, key(KeyCode::Esc));
-    assert_eq!(app.focus, Focus::Topbar);
-    assert_eq!(app.jump_mode, JumpMode::Active);
-}
-
-#[test]
-fn esc_from_sidebar_enters_jump_mode() {
-    let mut app = make_app(vec![make_task("T")]);
-    app.focus = Focus::Sidebar;
-    handle_key(&mut app, key(KeyCode::Esc));
-    assert_eq!(app.focus, Focus::Sidebar);
-    assert_eq!(app.jump_mode, JumpMode::Active);
-}
-
-#[test]
-fn esc_from_content_enters_jump_mode() {
-    // Double-ESC from Content enters Jump Mode
-    let mut app = make_app(vec![make_task("T")]);
-    app.focus = Focus::Content;
-    // First ESC: passes through to shell, records timestamp
-    handle_key(&mut app, key(KeyCode::Esc));
-    assert_eq!(app.jump_mode, JumpMode::None);
-    // Second ESC (within 300ms): enters Jump Mode
-    handle_key(&mut app, key(KeyCode::Esc));
-    assert_eq!(app.jump_mode, JumpMode::Active);
-}
-
-#[test]
-fn jump_mode_a_goes_to_sidebar() {
-    let mut app = make_app(vec![make_task("T")]);
-    app.focus = Focus::Content;
-    app.jump_mode = JumpMode::Active;
-    handle_key(&mut app, key(KeyCode::Char('a')));
-    // 'a' in jump mode jumps to first task (index 0), focus stays on content or sidebar
-    assert_eq!(app.jump_mode, JumpMode::None);
-}
-
-#[test]
-fn jump_mode_left_goes_to_sidebar() {
-    let mut app = make_app(vec![make_task("T")]);
-    app.focus = Focus::Content;
-    app.jump_mode = JumpMode::Active;
-    handle_key(&mut app, key(KeyCode::Left));
-    assert_eq!(app.focus, Focus::Sidebar);
-    assert_eq!(app.jump_mode, JumpMode::None);
-}
-
-#[test]
-fn jump_mode_w_is_letter_jump_not_focus_shortcut() {
-    let mut app = make_app(vec![make_task("T")]);
-    app.focus = Focus::Content;
-    app.jump_mode = JumpMode::Active;
-    handle_key(&mut app, key(KeyCode::Char('w')));
-    // 'w' should not forcibly move focus to topbar.
-    assert_ne!(app.focus, Focus::Topbar);
-}
-
-#[test]
-fn jump_mode_digit_key_is_accepted_for_jump() {
-    let mut app = make_app(vec![make_task("T")]);
-    app.focus = Focus::Content;
-    app.jump_mode = JumpMode::Active;
-    handle_key(&mut app, key(KeyCode::Char('1')));
-    assert_eq!(app.jump_mode, JumpMode::None);
-}
-
-#[test]
-fn jump_mode_content_c_enters_copy_mode_not_jump() {
-    let mut app = make_app(vec![make_task("T")]);
-    app.focus = Focus::Content;
-    app.jump_mode = JumpMode::Active;
-    handle_key(&mut app, key(KeyCode::Char('c')));
-    assert!(app.copy_mode);
-    assert_eq!(app.jump_mode, JumpMode::None);
+    assert_eq!(*sink.lock().unwrap(), b"\x1b");
+    assert_eq!(app.focus, Focus::Content, "focus should stay Content");
 }
 
 // ── rename buffer editing ─────────────────────────────────────────────────────
@@ -217,7 +149,7 @@ fn rename_mode_enter_commits() {
     app.rename = Some((RenameTarget::Desk(0), "New".into()));
     handle_key(&mut app, key(KeyCode::Enter));
     assert!(app.rename.is_none());
-    assert_eq!(app.offices[0].desks[0].name, "New");
+    assert_eq!(app.desks[0].name, "New");
 }
 
 #[test]
@@ -226,7 +158,7 @@ fn rename_mode_esc_cancels() {
     app.rename = Some((RenameTarget::Desk(0), "typing".into()));
     handle_key(&mut app, key(KeyCode::Esc));
     assert!(app.rename.is_none());
-    assert_eq!(app.offices[0].desks[0].name, "Old");
+    assert_eq!(app.desks[0].name, "Old");
 }
 
 // ── Alt+1-9 tab switching ─────────────────────────────────────────────────────
@@ -239,52 +171,36 @@ fn alt_1_switches_to_first_tab() {
     task.active_tab = 2;
     let mut app = make_app(vec![task]);
     handle_key(&mut app, key_mod(KeyCode::Char('1'), KeyModifiers::ALT));
-    assert_eq!(app.offices[0].desks[0].active_tab, 0);
+    assert_eq!(app.desks[0].active_tab, 0);
 }
 
 #[test]
 fn alt_n_out_of_range_does_nothing() {
     let mut app = make_app(vec![make_task("T")]); // only 1 tab
     handle_key(&mut app, key_mod(KeyCode::Char('9'), KeyModifiers::ALT));
-    assert_eq!(app.offices[0].desks[0].active_tab, 0); // unchanged
+    assert_eq!(app.desks[0].active_tab, 0); // unchanged
 }
 
-// ── sidebar navigation ────────────────────────────────────────────────────────
+// ── PageUp/PageDown scrollback ───────────────────────────────────────────────
 
 #[test]
-fn n_in_sidebar_creates_task() {
-    let mut app = make_app(vec![make_task("T")]);
-    handle_key(&mut app, key(KeyCode::Char('n')));
-    assert_eq!(app.offices[0].desks.len(), 2);
-}
-
-#[test]
-fn up_down_navigate_tasks() {
-    let mut app = make_app(vec![make_task("A"), make_task("B"), make_task("C")]);
-    handle_key(&mut app, key(KeyCode::Down));
-    assert_eq!(app.selected(), 1);
-    handle_key(&mut app, key(KeyCode::Up));
-    assert_eq!(app.selected(), 0);
-}
-
-// ── topbar tab switching ──────────────────────────────────────────────────────
-
-#[test]
-fn right_in_topbar_advances_tab() {
-    let mut task = make_task("T");
-    task.tabs.push(make_tab("T2"));
-    let mut app = make_app(vec![task]);
-    app.focus = Focus::Topbar;
-    handle_key(&mut app, key(KeyCode::Right));
-    assert_eq!(app.offices[0].desks[0].active_tab, 1);
+fn page_up_does_not_go_to_pty() {
+    let (mut app, sink) = make_capture_app();
+    handle_key(&mut app, key(KeyCode::PageUp));
+    assert!(
+        sink.lock().unwrap().is_empty(),
+        "PageUp should scroll, not forward to PTY"
+    );
 }
 
 #[test]
-fn left_in_topbar_does_not_go_below_zero() {
-    let mut app = make_app(vec![make_task("T")]);
-    app.focus = Focus::Topbar;
-    handle_key(&mut app, key(KeyCode::Left));
-    assert_eq!(app.offices[0].desks[0].active_tab, 0);
+fn page_down_does_not_go_to_pty() {
+    let (mut app, sink) = make_capture_app();
+    handle_key(&mut app, key(KeyCode::PageDown));
+    assert!(
+        sink.lock().unwrap().is_empty(),
+        "PageDown should scroll, not forward to PTY"
+    );
 }
 
 // ── content key encoding ──────────────────────────────────────────────────────
@@ -298,12 +214,11 @@ fn content_home_end_are_encoded() {
 }
 
 #[test]
-fn content_delete_page_and_function_keys_are_encoded() {
+fn content_delete_and_function_keys_are_encoded() {
     let (mut app, sink) = make_capture_app();
     handle_key(&mut app, key(KeyCode::Delete));
-    handle_key(&mut app, key(KeyCode::PageUp));
     handle_key(&mut app, key(KeyCode::F(5)));
-    assert_eq!(*sink.lock().unwrap(), b"\x1b[3~\x1b[5~\x1b[15~");
+    assert_eq!(*sink.lock().unwrap(), b"\x1b[3~\x1b[15~");
 }
 
 #[test]

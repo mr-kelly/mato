@@ -210,10 +210,15 @@ impl DaemonProvider {
     }
 
     fn cached_screen(&self, rows: u16, cols: u16) -> Option<ScreenContent> {
-        if let Ok(cache) = self.screen_cache.lock() {
-            if let Some(entry) = cache.as_ref() {
+        if let Ok(mut cache) = self.screen_cache.lock() {
+            if let Some(entry) = cache.as_mut() {
                 if entry.rows == rows && entry.cols == cols {
-                    return Some(entry.content.clone());
+                    let content = entry.content.clone();
+                    // Clear bell flag after reading so it only fires once
+                    if content.bell {
+                        entry.content.bell = false;
+                    }
+                    return Some(content);
                 }
             }
         }

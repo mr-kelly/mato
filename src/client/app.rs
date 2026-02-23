@@ -22,55 +22,10 @@ pub enum Focus {
     Content,
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum JumpMode {
-    None,
-    Active, // ESC pressed in Content - can jump OR use arrows
-}
-
-pub const JUMP_LABELS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
 #[derive(PartialEq, Clone)]
 pub enum RenameTarget {
     Desk(usize),
     Tab(usize, usize),
-    Office(usize),
-}
-
-pub struct OfficeSelectorState {
-    pub active: bool,
-    pub list_state: ListState,
-}
-
-impl OfficeSelectorState {
-    pub fn new() -> Self {
-        let mut list_state = ListState::default();
-        list_state.select(Some(0));
-        Self {
-            active: false,
-            list_state,
-        }
-    }
-}
-
-impl Default for OfficeSelectorState {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-pub struct OfficeDeleteConfirm {
-    pub office_idx: usize,
-    pub input: String,
-}
-
-impl OfficeDeleteConfirm {
-    pub fn new(office_idx: usize) -> Self {
-        Self {
-            office_idx,
-            input: String::new(),
-        }
-    }
 }
 
 struct MouseModeCache {
@@ -148,6 +103,7 @@ impl Desk {
         self.active_tab = self.tabs.len() - 1;
     }
 
+    #[allow(dead_code)]
     pub fn close_tab(&mut self) {
         if self.tabs.len() <= 1 {
             return;
@@ -180,36 +136,15 @@ impl Desk {
     }
 }
 
-pub struct Office {
-    pub id: String,
-    pub name: String,
-    pub desks: Vec<Desk>,
-    pub active_desk: usize,
-}
-
-impl Office {
-    pub fn new(name: impl Into<String>) -> Self {
-        Self {
-            id: new_id(),
-            name: name.into(),
-            desks: vec![Desk::new("Desk 1")],
-            active_desk: 0,
-        }
-    }
-}
-
 pub struct App {
-    pub offices: Vec<Office>,
-    pub current_office: usize,
+    pub desks: Vec<Desk>,
     pub list_state: ListState,
     pub focus: Focus,
     pub prev_focus: Focus,
-    pub jump_mode: JumpMode,
     pub rename: Option<(RenameTarget, String)>,
-    pub office_selector: OfficeSelectorState,
     pub term_rows: u16,
     pub term_cols: u16,
-    pub pending_resize: Option<(u16, u16, std::time::Instant)>, // Delay resize to avoid content loss
+    pub pending_resize: Option<(u16, u16, std::time::Instant)>,
     pub dirty: bool,
     // layout rects
     pub sidebar_list_area: Rect,
@@ -219,7 +154,9 @@ pub struct App {
     pub new_desk_area: Rect,
     pub tab_areas: Vec<Rect>,
     pub tab_area_tab_indices: Vec<usize>,
+    pub tab_close_areas: Vec<Rect>,
     pub new_tab_area: Rect,
+    pub desk_close_areas: Vec<Rect>,
     pub tab_scroll: usize,
     pub last_click: Option<(u16, u16, std::time::Instant)>,
     /// tab_ids that are ACTIVE (have output in last 2 seconds)
@@ -232,114 +169,54 @@ pub struct App {
     pub last_spinner_update: Instant,
     pub last_title_sync: Instant,
     pub theme: ThemeColors,
-    /// Settings screen open
-    pub show_settings: bool,
-    pub settings_selected: usize,
     /// Some(version) if an update is available
     pub update_available: Option<String>,
     pub last_update_check: Instant,
-    /// Trigger onboarding for new office
-    pub should_show_onboarding: bool,
-    /// Full-screen content-only copy/scroll mode.
-    pub copy_mode: bool,
-    /// Office delete confirmation
-    pub office_delete_confirm: Option<OfficeDeleteConfirm>,
     mouse_mode_cache: Option<MouseModeCache>,
     active_status_rx: Option<Receiver<HashSet<String>>>,
     tab_switch_started_at: Option<Instant>,
     pub pending_bell: bool,
-    /// Timestamp of last ESC press in Content focus (for double-ESC detection)
-    pub last_content_esc: Option<Instant>,
     /// Frame generation for screen cache change detection
     pub last_rendered_screen_gen: u64,
 }
 
 impl App {
-    fn jump_key_reserved_for_focus(&self, c: char) -> bool {
-        let key = c.to_ascii_lowercase();
-        match self.focus {
-            Focus::Content => matches!(key, 'c' | 'r' | 'q'),
-            Focus::Sidebar | Focus::Topbar => matches!(key, 'r' | 'q'),
-        }
-    }
-
-    pub fn jump_labels(&self) -> Vec<char> {
-        JUMP_LABELS
-            .chars()
-            .filter(|c| !self.jump_key_reserved_for_focus(*c))
-            .collect()
-    }
-
-    fn visible_desk_indices(&self) -> Vec<usize> {
-        let desks_len = self.offices[self.current_office].desks.len();
-        if desks_len == 0 {
-            return vec![];
-        }
-        let visible_rows = self.sidebar_list_area.height.saturating_sub(2) as usize;
-        if visible_rows == 0 {
-            return (0..desks_len).collect();
-        }
-        let start = self.list_state.offset().min(desks_len.saturating_sub(1));
-        let end = (start + visible_rows).min(desks_len);
-        (start..end).collect()
-    }
-
     pub fn new() -> Self {
         let mut list_state = ListState::default();
-        let (offices, current_office): (Vec<Office>, usize) = if let Ok(s) = load_state() {
-            let offices: Vec<Office> = s
-                .offices
+        let (desks, selected_desk): (Vec<Desk>, usize) = if let Ok(s) = load_state() {
+            let desks: Vec<Desk> = s
+                .desks
                 .into_iter()
-                .map(|o| {
-                    let desks = o
-                        .desks
+                .map(|d| {
+                    let tabs = d
+                        .tabs
                         .into_iter()
-                        .map(|d| {
-                            let tabs = d
-                                .tabs
-                                .into_iter()
-                                .map(|tb| TabEntry::with_id(tb.id, tb.name))
-                                .collect();
-                            Desk {
-                                id: d.id,
-                                name: d.name,
-                                tabs,
-                                active_tab: d.active_tab,
-                            }
-                        })
+                        .map(|tb| TabEntry::with_id(tb.id, tb.name))
                         .collect();
-                    Office {
-                        id: o.id,
-                        name: o.name,
-                        desks,
-                        active_desk: o.active_desk,
+                    Desk {
+                        id: d.id,
+                        name: d.name,
+                        tabs,
+                        active_tab: d.active_tab,
                     }
                 })
                 .collect();
-            if offices.is_empty() {
-                (vec![Office::new("Default")], 0)
+            if desks.is_empty() {
+                (vec![Desk::new("Desk 1")], 0)
             } else {
-                (offices, s.current_office)
+                (desks, s.selected_desk)
             }
         } else {
-            (vec![Office::new("Default")], 0)
+            (vec![Desk::new("Desk 1")], 0)
         };
-        let current_office = current_office.min(offices.len().saturating_sub(1));
-        let active_desk = offices[current_office]
-            .active_desk
-            .min(offices[current_office].desks.len().saturating_sub(1));
-        let mut offices = offices;
-        offices[current_office].active_desk = active_desk;
-        list_state.select(Some(active_desk));
+        let selected_desk = selected_desk.min(desks.len().saturating_sub(1));
+        list_state.select(Some(selected_desk));
         Self {
-            offices,
-            current_office,
+            desks,
             list_state,
-            focus: Focus::Sidebar,
-            prev_focus: Focus::Sidebar,
-            jump_mode: JumpMode::None,
+            focus: Focus::Content,
+            prev_focus: Focus::Content,
             rename: None,
-            office_selector: OfficeSelectorState::new(),
             term_rows: 24,
             term_cols: 80,
             pending_resize: None,
@@ -350,8 +227,10 @@ impl App {
             content_area: Rect::default(),
             new_desk_area: Rect::default(),
             tab_areas: vec![],
+            tab_close_areas: vec![],
             new_tab_area: Rect::default(),
             tab_area_tab_indices: vec![],
+            desk_close_areas: vec![],
             tab_scroll: 0,
             last_click: None,
             active_tabs: HashSet::new(),
@@ -362,19 +241,13 @@ impl App {
             last_spinner_update: Instant::now(),
             last_title_sync: Instant::now() - Duration::from_millis(500),
             theme: crate::theme::load(),
-            show_settings: false,
-            settings_selected: crate::theme::selected_index(),
             update_available: None,
             // Force first update check immediately after startup.
             last_update_check: Instant::now() - std::time::Duration::from_secs(3601),
-            should_show_onboarding: false,
-            copy_mode: false,
-            office_delete_confirm: None,
             mouse_mode_cache: None,
             active_status_rx: None,
             tab_switch_started_at: None,
             pending_bell: false,
-            last_content_esc: None,
             last_rendered_screen_gen: 0,
         }
     }
@@ -382,54 +255,35 @@ impl App {
     #[allow(dead_code)]
     pub fn from_saved(state: SavedState) -> Self {
         let mut list_state = ListState::default();
-        let mut offices = state
-            .offices
+        let mut desks: Vec<Desk> = state
+            .desks
             .into_iter()
-            .map(|o| {
-                let desks = o
-                    .desks
+            .map(|d| {
+                let tabs = d
+                    .tabs
                     .into_iter()
-                    .map(|d| {
-                        let tabs = d
-                            .tabs
-                            .into_iter()
-                            .map(|tb| TabEntry::with_id(tb.id, tb.name))
-                            .collect();
-                        Desk {
-                            id: d.id,
-                            name: d.name,
-                            tabs,
-                            active_tab: d.active_tab,
-                        }
-                    })
+                    .map(|tb| TabEntry::with_id(tb.id, tb.name))
                     .collect();
-                Office {
-                    id: o.id,
-                    name: o.name,
-                    desks,
-                    active_desk: o.active_desk,
+                Desk {
+                    id: d.id,
+                    name: d.name,
+                    tabs,
+                    active_tab: d.active_tab,
                 }
             })
-            .collect::<Vec<_>>();
-        if offices.is_empty() {
-            offices.push(Office::new("Default"));
+            .collect();
+        if desks.is_empty() {
+            desks.push(Desk::new("Desk 1"));
         }
-        let current_office = state.current_office.min(offices.len().saturating_sub(1));
-        let active_desk = offices[current_office]
-            .active_desk
-            .min(offices[current_office].desks.len().saturating_sub(1));
-        offices[current_office].active_desk = active_desk;
-        list_state.select(Some(active_desk));
+        let selected_desk = state.selected_desk.min(desks.len().saturating_sub(1));
+        list_state.select(Some(selected_desk));
 
         Self {
-            offices,
-            current_office,
+            desks,
             list_state,
-            focus: Focus::Sidebar,
-            prev_focus: Focus::Sidebar,
-            jump_mode: JumpMode::None,
+            focus: Focus::Content,
+            prev_focus: Focus::Content,
             rename: None,
-            office_selector: OfficeSelectorState::new(),
             term_rows: 24,
             term_cols: 80,
             pending_resize: None,
@@ -440,8 +294,10 @@ impl App {
             content_area: Rect::default(),
             new_desk_area: Rect::default(),
             tab_areas: vec![],
+            tab_close_areas: vec![],
             new_tab_area: Rect::default(),
             tab_area_tab_indices: vec![],
+            desk_close_areas: vec![],
             tab_scroll: 0,
             last_click: None,
             active_tabs: HashSet::new(),
@@ -452,39 +308,15 @@ impl App {
             last_spinner_update: Instant::now(),
             last_title_sync: Instant::now() - Duration::from_millis(500),
             theme: crate::theme::load(),
-            show_settings: false,
-            settings_selected: crate::theme::selected_index(),
             update_available: None,
             // Force first update check immediately after startup.
             last_update_check: Instant::now() - std::time::Duration::from_secs(3601),
-            should_show_onboarding: false,
-            copy_mode: false,
-            office_delete_confirm: None,
             mouse_mode_cache: None,
             active_status_rx: None,
             tab_switch_started_at: None,
             pending_bell: false,
-            last_content_esc: None,
             last_rendered_screen_gen: 0,
         }
-    }
-
-    // Helper methods to access current office's desks
-    #[allow(dead_code)]
-    pub fn desks(&self) -> &Vec<Desk> {
-        &self.offices[self.current_office].desks
-    }
-    #[allow(dead_code)]
-    pub fn desks_mut(&mut self) -> &mut Vec<Desk> {
-        &mut self.offices[self.current_office].desks
-    }
-    #[allow(dead_code)]
-    pub fn office(&self) -> &Office {
-        &self.offices[self.current_office]
-    }
-    #[allow(dead_code)]
-    pub fn office_mut(&mut self) -> &mut Office {
-        &mut self.offices[self.current_office]
     }
 
     pub fn selected(&self) -> usize {
@@ -492,18 +324,14 @@ impl App {
     }
 
     pub fn select_desk(&mut self, desk_idx: usize) {
-        if self.offices.is_empty() {
+        if self.desks.is_empty() {
             self.list_state.select(None);
             return;
         }
-        let max = self.offices[self.current_office]
-            .desks
-            .len()
-            .saturating_sub(1);
+        let max = self.desks.len().saturating_sub(1);
         let idx = desk_idx.min(max);
         let prev = self.selected();
         self.list_state.select(Some(idx));
-        self.offices[self.current_office].active_desk = idx;
         if prev != idx {
             self.dirty = true;
         }
@@ -516,39 +344,26 @@ impl App {
 
     pub fn cur_desk_mut(&mut self) -> &mut Desk {
         let i = self.selected();
-        &mut self.offices[self.current_office].desks[i]
-    }
-
-    pub fn switch_office(&mut self, office_idx: usize) {
-        if office_idx < self.offices.len() {
-            self.current_office = office_idx;
-            let active_desk = self.offices[office_idx].active_desk;
-            self.select_desk(active_desk);
-            self.tab_scroll = 0;
-            self.mark_tab_switch();
-            self.spawn_active_pty();
-            self.dirty = true;
-        }
+        &mut self.desks[i]
     }
 
     pub fn new_desk(&mut self) {
-        let n = self.offices[self.current_office].desks.len() + 1;
-        self.offices[self.current_office]
-            .desks
-            .push(Desk::new(format!("Desk {n}")));
-        self.select_desk(self.offices[self.current_office].desks.len() - 1);
+        let n = self.desks.len() + 1;
+        self.desks.push(Desk::new(format!("Desk {n}")));
+        self.select_desk(self.desks.len() - 1);
         self.spawn_active_pty();
         self.dirty = true;
     }
 
+    #[allow(dead_code)]
     pub fn close_desk(&mut self) {
-        if self.offices[self.current_office].desks.len() <= 1 {
+        if self.desks.len() <= 1 {
             return;
         }
         let idx = self.selected();
 
         // Close all PTYs in this desk
-        let desk = &self.offices[self.current_office].desks[idx];
+        let desk = &self.desks[idx];
         let socket_path = crate::utils::get_socket_path();
         if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(&socket_path) {
             use crate::protocol::ClientMsg;
@@ -565,16 +380,77 @@ impl App {
             let _ = stream.flush();
         }
 
-        self.offices[self.current_office].desks.remove(idx);
-        self.select_desk(idx.min(self.offices[self.current_office].desks.len() - 1));
+        self.desks.remove(idx);
+        self.select_desk(idx.min(self.desks.len() - 1));
+        self.dirty = true;
+    }
+
+    pub fn close_desk_at(&mut self, idx: usize) {
+        if self.desks.len() <= 1 || idx >= self.desks.len() {
+            return;
+        }
+        let desk = &self.desks[idx];
+        let socket_path = crate::utils::get_socket_path();
+        if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(&socket_path) {
+            use crate::protocol::ClientMsg;
+            use std::io::Write;
+            for tab in &desk.tabs {
+                let msg = ClientMsg::ClosePty {
+                    tab_id: tab.id.clone(),
+                };
+                if let Ok(json) = serde_json::to_vec(&msg) {
+                    let _ = stream.write_all(&json);
+                    let _ = stream.write_all(b"\n");
+                }
+            }
+            let _ = stream.flush();
+        }
+        let selected = self.selected();
+        self.desks.remove(idx);
+        let new_selected = if idx < selected {
+            selected - 1
+        } else if idx == selected {
+            idx.min(self.desks.len() - 1)
+        } else {
+            selected
+        };
+        self.select_desk(new_selected);
+        self.spawn_active_pty();
+        self.dirty = true;
+    }
+
+    pub fn close_tab_at(&mut self, tab_idx: usize) {
+        let di = self.selected();
+        if self.desks[di].tabs.len() <= 1 || tab_idx >= self.desks[di].tabs.len() {
+            return;
+        }
+        let tab = &self.desks[di].tabs[tab_idx];
+        let socket_path = crate::utils::get_socket_path();
+        if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(&socket_path) {
+            use crate::protocol::ClientMsg;
+            use std::io::Write;
+            let msg = ClientMsg::ClosePty {
+                tab_id: tab.id.clone(),
+            };
+            if let Ok(json) = serde_json::to_vec(&msg) {
+                let _ = stream.write_all(&json);
+                let _ = stream.write_all(b"\n");
+                let _ = stream.flush();
+            }
+        }
+        let at = self.desks[di].active_tab;
+        self.desks[di].tabs.remove(tab_idx);
+        if tab_idx < at {
+            self.desks[di].active_tab = at - 1;
+        } else if tab_idx == at {
+            self.desks[di].active_tab = tab_idx.min(self.desks[di].tabs.len() - 1);
+        }
+        self.spawn_active_pty();
         self.dirty = true;
     }
 
     pub fn nav(&mut self, delta: i32) {
-        let max = self.offices[self.current_office]
-            .desks
-            .len()
-            .saturating_sub(1) as i32;
+        let max = self.desks.len().saturating_sub(1) as i32;
         let next = (self.selected() as i32 + delta).clamp(0, max) as usize;
         let changed = self.selected() != next;
         self.select_desk(next);
@@ -589,16 +465,14 @@ impl App {
     pub fn spawn_active_pty(&mut self) {
         let (rows, cols) = (self.term_rows, self.term_cols);
         let i = self.selected();
-        let at = self.offices[self.current_office].desks[i].active_tab;
-        self.offices[self.current_office].desks[i].tabs[at].spawn_pty(rows, cols);
+        let at = self.desks[i].active_tab;
+        self.desks[i].tabs[at].spawn_pty(rows, cols);
     }
 
     pub fn restart_active_pty(&mut self) {
         let i = self.selected();
-        let at = self.offices[self.current_office].desks[i].active_tab;
-        let tab_id = self.offices[self.current_office].desks[i].tabs[at]
-            .id
-            .clone();
+        let at = self.desks[i].active_tab;
+        let tab_id = self.desks[i].tabs[at].id.clone();
 
         let socket_path = crate::utils::get_socket_path();
         if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(&socket_path) {
@@ -640,7 +514,7 @@ impl App {
                     );
                     self.term_rows = rows;
                     self.term_cols = cols;
-                    for desk in &mut self.offices[self.current_office].desks {
+                    for desk in &mut self.desks {
                         desk.resize_all_ptys(rows, cols);
                     }
                 }
@@ -651,29 +525,25 @@ impl App {
 
     pub fn pty_write(&mut self, bytes: &[u8]) {
         let i = self.selected();
-        let at = self.offices[self.current_office].desks[i].active_tab;
-        self.offices[self.current_office].desks[i].tabs[at].pty_write(bytes);
+        let at = self.desks[i].active_tab;
+        self.desks[i].tabs[at].pty_write(bytes);
     }
 
     pub fn pty_paste(&mut self, text: &str) {
         let i = self.selected();
-        let at = self.offices[self.current_office].desks[i].active_tab;
-        self.offices[self.current_office].desks[i].tabs[at]
-            .provider
-            .paste(text);
+        let at = self.desks[i].active_tab;
+        self.desks[i].tabs[at].provider.paste(text);
     }
 
     pub fn pty_scroll(&mut self, delta: i32) {
         let i = self.selected();
-        let at = self.offices[self.current_office].desks[i].active_tab;
-        self.offices[self.current_office].desks[i].tabs[at]
-            .provider
-            .scroll(delta);
+        let at = self.desks[i].active_tab;
+        self.desks[i].tabs[at].provider.scroll(delta);
     }
 
     pub fn active_provider_screen_generation(&self) -> u64 {
         let i = self.selected();
-        let desk = &self.offices[self.current_office].desks[i];
+        let desk = &self.desks[i];
         if desk.tabs.is_empty() {
             return 0;
         }
@@ -682,19 +552,15 @@ impl App {
 
     pub fn pty_mouse_mode_enabled(&mut self) -> bool {
         let i = self.selected();
-        let at = self.offices[self.current_office].desks[i].active_tab;
-        let tab_id = self.offices[self.current_office].desks[i].tabs[at]
-            .id
-            .clone();
+        let at = self.desks[i].active_tab;
+        let tab_id = self.desks[i].tabs[at].id.clone();
         if let Some(cache) = &self.mouse_mode_cache {
             if cache.tab_id == tab_id && cache.checked_at.elapsed() < Duration::from_millis(100) {
                 return cache.mouse_enabled;
             }
         }
 
-        let enabled = self.offices[self.current_office].desks[i].tabs[at]
-            .provider
-            .mouse_mode_enabled();
+        let enabled = self.desks[i].tabs[at].provider.mouse_mode_enabled();
         self.mouse_mode_cache = Some(MouseModeCache {
             tab_id,
             mouse_enabled: enabled,
@@ -726,11 +592,8 @@ impl App {
 
         // Sync only the currently visible tab to avoid per-frame N×socket round-trips.
         let desk_idx = self.selected();
-        let tab_idx = self.offices[self.current_office].desks[desk_idx].active_tab;
-        if let Some(tab) = self.offices[self.current_office].desks[desk_idx]
-            .tabs
-            .get_mut(tab_idx)
-        {
+        let tab_idx = self.desks[desk_idx].active_tab;
+        if let Some(tab) = self.desks[desk_idx].tabs.get_mut(tab_idx) {
             let rows = self.term_rows.max(1);
             let cols = self.term_cols.max(1);
             let screen = tab.provider.get_screen(rows, cols);
@@ -744,17 +607,15 @@ impl App {
 
     /// Start renaming task at sidebar index
     pub fn begin_rename_desk(&mut self, idx: usize) {
-        let name = self.offices[self.current_office].desks[idx].name.clone();
+        let name = self.desks[idx].name.clone();
         self.rename = Some((RenameTarget::Desk(idx), name));
     }
 
     /// Start renaming active tab of current task
     pub fn begin_rename_tab(&mut self) {
         let ti = self.selected();
-        let at = self.offices[self.current_office].desks[ti].active_tab;
-        let name = self.offices[self.current_office].desks[ti].tabs[at]
-            .name
-            .clone();
+        let at = self.desks[ti].active_tab;
+        let name = self.desks[ti].tabs[at].name.clone();
         self.rename = Some((RenameTarget::Tab(ti, at), name));
     }
 
@@ -765,11 +626,8 @@ impl App {
                 return;
             }
             match target {
-                RenameTarget::Desk(i) => self.offices[self.current_office].desks[i].name = name,
-                RenameTarget::Tab(ti, at) => {
-                    self.offices[self.current_office].desks[ti].tabs[at].name = name
-                }
-                RenameTarget::Office(i) => self.offices[i].name = name,
+                RenameTarget::Desk(i) => self.desks[i].name = name,
+                RenameTarget::Tab(ti, at) => self.desks[ti].tabs[at].name = name,
             }
             self.dirty = true;
         }
@@ -777,122 +635,6 @@ impl App {
 
     pub fn cancel_rename(&mut self) {
         self.rename = None;
-    }
-
-    /// Handle jump mode character selection
-    pub fn handle_jump_selection(&mut self, c: char) {
-        let targets = self.jump_targets();
-        let labels = self.jump_labels();
-        let origin_focus = self.focus;
-
-        // Map character to target
-        if let Some(idx) = labels.iter().position(|&ch| ch == c) {
-            if idx < targets.len() {
-                let (kind, task_idx, tab_idx) = targets[idx];
-                match kind {
-                    't' => {
-                        // Jump to desk target.
-                        self.select_desk(task_idx);
-                        self.focus = match origin_focus {
-                            Focus::Content => Focus::Content,
-                            Focus::Topbar => Focus::Sidebar,
-                            Focus::Sidebar => Focus::Sidebar,
-                        };
-                        self.mark_tab_switch();
-                        self.spawn_active_pty();
-                    }
-                    'b' => {
-                        // Jump to tab target.
-                        self.offices[self.current_office].desks[task_idx].active_tab = tab_idx;
-                        self.focus = match origin_focus {
-                            Focus::Content => Focus::Content,
-                            Focus::Sidebar => Focus::Topbar,
-                            Focus::Topbar => Focus::Topbar,
-                        };
-                        self.mark_tab_switch();
-                        self.spawn_active_pty();
-                    }
-                    _ => {}
-                }
-                self.dirty = true;
-            }
-        }
-
-        // Exit jump mode
-        self.jump_mode = JumpMode::None;
-    }
-
-    pub fn jump_targets(&self) -> Vec<(char, usize, usize)> {
-        let max_labels = self.jump_labels().len();
-        let mut targets: Vec<(char, usize, usize)> = Vec::new();
-        let desk_indices = self.visible_desk_indices();
-        let tab_indices: Vec<usize> = self.tab_area_tab_indices.clone();
-        let task_idx = self.selected();
-
-        let push_tab = |targets: &mut Vec<(char, usize, usize)>, t: usize| {
-            targets.push(('b', task_idx, t));
-        };
-        let push_desk = |targets: &mut Vec<(char, usize, usize)>, d: usize| {
-            targets.push(('t', d, 0));
-        };
-
-        match self.focus {
-            Focus::Topbar => {
-                for &t in &tab_indices {
-                    if targets.len() >= max_labels {
-                        break;
-                    }
-                    push_tab(&mut targets, t);
-                }
-                for &d in &desk_indices {
-                    if targets.len() >= max_labels {
-                        break;
-                    }
-                    push_desk(&mut targets, d);
-                }
-            }
-            Focus::Sidebar => {
-                for &d in &desk_indices {
-                    if targets.len() >= max_labels {
-                        break;
-                    }
-                    push_desk(&mut targets, d);
-                }
-                for &t in &tab_indices {
-                    if targets.len() >= max_labels {
-                        break;
-                    }
-                    push_tab(&mut targets, t);
-                }
-            }
-            Focus::Content => {
-                // Balanced allocation: interleave tab/desk as much as possible.
-                let (mut ti, mut di) = (0usize, 0usize);
-                let mut take_tab = true;
-                while targets.len() < max_labels
-                    && (ti < tab_indices.len() || di < desk_indices.len())
-                {
-                    if take_tab {
-                        if ti < tab_indices.len() {
-                            push_tab(&mut targets, tab_indices[ti]);
-                            ti += 1;
-                        } else if di < desk_indices.len() {
-                            push_desk(&mut targets, desk_indices[di]);
-                            di += 1;
-                        }
-                    } else if di < desk_indices.len() {
-                        push_desk(&mut targets, desk_indices[di]);
-                        di += 1;
-                    } else if ti < tab_indices.len() {
-                        push_tab(&mut targets, tab_indices[ti]);
-                        ti += 1;
-                    }
-                    take_tab = !take_tab;
-                }
-            }
-        }
-
-        targets
     }
 
     /// Query daemon for active status of all tabs (call every frame)

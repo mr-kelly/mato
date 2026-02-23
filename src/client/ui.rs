@@ -1,8 +1,8 @@
-use crate::client::app::{App, Focus, JumpMode, RenameTarget};
+use crate::client::app::{App, Focus, RenameTarget};
 use crate::terminal_provider::CursorShape;
-use crate::theme::{ThemeColors, BUILTIN_THEMES};
+use crate::theme::ThemeColors;
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Clear, List, ListItem, Paragraph},
@@ -61,60 +61,31 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         .constraints([Constraint::Min(0), Constraint::Length(1)])
         .split(f.area());
 
-    if app.copy_mode {
-        app.sidebar_area = Rect::default();
-        app.topbar_area = Rect::default();
-        app.sidebar_list_area = Rect::default();
-        app.tab_areas.clear();
-        app.tab_area_tab_indices.clear();
-        app.new_desk_area = Rect::default();
-        app.new_tab_area = Rect::default();
-        app.content_area = root[0];
+    let cols = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(28), Constraint::Min(0)])
+        .split(root[0]);
 
-        let tr = root[0].height;
-        let tc = root[0].width;
-        app.term_rows = tr;
-        app.term_cols = tc;
-        draw_terminal(f, app, root[0], &t);
-    } else {
-        let cols = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Length(24), Constraint::Min(0)])
-            .split(root[0]);
+    let main_rows = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(3), Constraint::Min(0)])
+        .split(cols[1]);
 
-        let main_rows = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Length(3), Constraint::Min(0)])
-            .split(cols[1]);
+    let tr = main_rows[1].height.saturating_sub(2);
+    let tc = main_rows[1].width.saturating_sub(2);
+    // Update dimensions for spawn (no resize triggered here)
+    app.term_rows = tr;
+    app.term_cols = tc;
 
-        let tr = main_rows[1].height.saturating_sub(2);
-        let tc = main_rows[1].width.saturating_sub(2);
-        // Update dimensions for spawn (no resize triggered here)
-        app.term_rows = tr;
-        app.term_cols = tc;
+    app.sidebar_area = cols[0];
+    app.topbar_area = main_rows[0];
+    app.content_area = main_rows[1];
 
-        app.sidebar_area = cols[0];
-        app.topbar_area = main_rows[0];
-        app.content_area = main_rows[1];
-
-        draw_sidebar(f, app, cols[0], &t);
-        draw_topbar(f, app, main_rows[0], &t);
-        draw_terminal(f, app, main_rows[1], &t);
-    }
+    draw_sidebar(f, app, cols[0], &t);
+    draw_topbar(f, app, main_rows[0], &t);
+    draw_terminal(f, app, main_rows[1], &t);
     draw_statusbar(f, app, root[1], &t);
 
-    if let JumpMode::Active = app.jump_mode {
-        draw_jump_mode(f, app, &t);
-    }
-    if app.show_settings {
-        draw_settings(f, app, &t);
-    }
-    if app.office_selector.active {
-        draw_office_selector(f, app, &t);
-    }
-    if app.office_delete_confirm.is_some() {
-        draw_office_delete_confirm(f, app, &t);
-    }
     // Keep rename popup on top of all overlays so it is always visible.
     if app.rename.is_some() {
         draw_rename_popup(f, app, &t);
@@ -122,86 +93,16 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 }
 
 fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
-    let focus_name = match app.focus {
-        Focus::Sidebar => "Sidebar",
-        Focus::Topbar => "Topbar",
-        Focus::Content => "Content",
-    };
-    let keys: &[(&str, &str)] = if app.copy_mode {
-        &[
-            ("↑/k", "Scroll Up"),
-            ("↓/j", "Scroll Down"),
-            ("PgUp/PgDn", "Fast Scroll"),
-            ("g/G", "Bottom/Top"),
-            ("Esc/q", "Exit Copy"),
-        ]
-    } else if app.rename.is_some() {
+    let keys: &[(&str, &str)] = if app.rename.is_some() {
         &[("Enter", "Confirm"), ("Esc", "Cancel")]
-    } else if let JumpMode::Active = app.jump_mode {
-        // In Jump Mode, always show explicit focus targets as separate keys.
-        match app.focus {
-            Focus::Content => &[
-                ("a-z/A-Z/0-9", "Jump"),
-                ("c", "Copy Mode"),
-                ("r", "Restart Terminal"),
-                ("←", "Focus Sidebar"),
-                ("↑", "Focus Tabbar"),
-                ("q", "Quit"),
-                ("Esc", "Cancel"),
-            ],
-            Focus::Topbar => &[
-                ("a-z/A-Z/0-9", "Jump"),
-                ("r", "Rename"),
-                ("←", "Focus Sidebar"),
-                ("↓", "Focus Content"),
-                ("q", "Quit"),
-                ("Esc", "Cancel"),
-            ],
-            Focus::Sidebar => &[
-                ("a-z/A-Z/0-9", "Jump"),
-                ("r", "Rename"),
-                ("→", "Focus Content"),
-                ("↑", "Focus Tabbar"),
-                ("Esc", "Cancel"),
-            ],
-        }
     } else {
-        match app.focus {
-            Focus::Sidebar => &[
-                ("↑↓", "Navigate"),
-                ("o", "Office"),
-                ("n", "New Desk"),
-                ("x", "Close"),
-                ("r", "Rename"),
-                ("s", "Settings"),
-                ("Esc", "Jump"),
-                ("q", "Quit"),
-            ],
-            Focus::Topbar => &[
-                ("←→", "Switch Tab"),
-                ("n", "New Tab"),
-                ("x", "Close Tab"),
-                ("r", "Rename"),
-                ("Enter", "Focus"),
-                ("Esc", "Jump"),
-                ("q", "Quit"),
-            ],
-            Focus::Content => &[("Esc·Esc", "Jump"), ("keys→shell", "")],
-        }
+        &[
+            ("Ctrl+Q", "Quit"),
+            ("PgUp/Dn", "Scroll"),
+            ("Alt+N", "Tab"),
+        ]
     };
-    let focus_badge_style = if t.follow_terminal {
-        Style::default().add_modifier(Modifier::BOLD | Modifier::REVERSED)
-    } else {
-        Style::default()
-            .fg(t.bg())
-            .bg(t.accent())
-            .add_modifier(Modifier::BOLD)
-    };
-    let mut spans: Vec<Span> = vec![
-        Span::raw(" "),
-        Span::styled(format!(" Focus:{focus_name} "), focus_badge_style),
-        Span::raw("  "),
-    ];
+    let mut spans: Vec<Span> = vec![Span::raw(" ")];
     for (key, desc) in keys {
         let key_style = if t.follow_terminal {
             Style::default().add_modifier(Modifier::BOLD | Modifier::REVERSED)
@@ -254,44 +155,10 @@ fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColors) {
 
 fn draw_sidebar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     let active = app.focus == Focus::Sidebar;
-    let rows = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(0)])
-        .split(area);
-
-    // Office selector (top area)
-    let office_name = &app.offices[app.current_office].name;
-    let office_text = format!(" 🏢 {} ", office_name);
-    let office_style = if active {
-        if t.follow_terminal {
-            Style::default().add_modifier(Modifier::BOLD | Modifier::REVERSED)
-        } else {
-            Style::default()
-                .fg(t.fg())
-                .bg(t.surface())
-                .add_modifier(Modifier::BOLD)
-        }
-    } else if t.follow_terminal {
-        Style::default().add_modifier(Modifier::DIM)
-    } else {
-        Style::default().fg(t.fg_dim()).bg(t.surface())
-    };
-    f.render_widget(
-        Paragraph::new(Line::from(vec![Span::styled(office_text, office_style)]))
-            .alignment(ratatui::layout::Alignment::Center)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(border_type(t, active))
-                    .border_style(border_style(t, active))
-                    .style(Style::default().bg(t.surface())),
-            ),
-        rows[0],
-    );
-    app.new_desk_area = rows[0]; // Reuse this for office selector click area
+    let can_close = app.desks.len() > 1;
 
     let selected_desk_idx = app.selected();
-    let items: Vec<ListItem> = app.offices[app.current_office]
+    let items: Vec<ListItem> = app
         .desks
         .iter()
         .enumerate()
@@ -321,30 +188,87 @@ fn draw_sidebar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
             } else {
                 Style::default().fg(if sel { t.fg() } else { t.fg_dim() })
             };
-            ListItem::new(Line::from(vec![
-                Span::styled(
-                    if sel { " ▶ " } else { "   " },
-                    Style::default().fg(t.accent()),
-                ),
-                Span::styled(name, item_style),
-            ]))
+            ListItem::new(vec![
+                Line::from(vec![
+                    Span::styled(
+                        if sel { " ▶ " } else { "   " },
+                        Style::default().fg(t.accent()),
+                    ),
+                    Span::styled(name, item_style),
+                ]),
+                Line::from(""),
+            ])
             .style(Style::default().bg(if sel { t.sel_bg() } else { t.surface() }))
         })
         .collect();
 
-    app.sidebar_list_area = rows[1];
+    app.sidebar_list_area = area;
+
+    // [+ New] button in bottom border
+    let plus_label = " + New ";
+    let plus_style = if t.follow_terminal {
+        Style::default().add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(t.accent2())
+    };
+    // Position: centered in bottom border
+    let plus_w = display_width(plus_label);
+    let plus_x = area.x + (area.width.saturating_sub(plus_w)) / 2;
+    app.new_desk_area = Rect {
+        x: plus_x,
+        y: area.y + area.height.saturating_sub(2),
+        width: plus_w,
+        height: 2, // cover border row + row above for easier touch
+    };
+
     f.render_stateful_widget(
         List::new(items).block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(border_type(t, active))
                 .title(Span::styled(" Desks ", title_style(t, active)))
+                .title_bottom(
+                    Line::from(Span::styled(plus_label, plus_style)).centered(),
+                )
                 .border_style(border_style(t, active))
                 .style(Style::default().bg(t.surface())),
         ),
-        rows[1],
+        area,
         &mut app.list_state,
     );
+
+    // Overlay [×] close buttons for each visible desk
+    app.desk_close_areas.clear();
+    let inner_x = area.x + 1;
+    let inner_y = area.y + 1;
+    let inner_w = area.width.saturating_sub(2);
+    let inner_h = area.height.saturating_sub(2);
+    let offset = app.list_state.offset();
+    let close_style = if t.follow_terminal {
+        Style::default().add_modifier(Modifier::DIM)
+    } else {
+        Style::default().fg(t.fg_dim())
+    };
+
+    // Each desk item is 2 rows tall (name + spacer)
+    for i in 0..app.desks.len() {
+        let vis_row = (i as i32 - offset as i32) * 2; // 2 rows per item
+        if can_close && vis_row >= 0 && (vis_row as u16) < inner_h {
+            let close_rect = Rect {
+                x: inner_x + inner_w.saturating_sub(4),
+                y: inner_y + vis_row as u16,
+                width: 4,
+                height: 2, // cover both rows of desk item for easier touch
+            };
+            app.desk_close_areas.push(close_rect);
+            f.render_widget(
+                Paragraph::new(Span::styled(" × ", close_style)),
+                close_rect,
+            );
+        } else {
+            app.desk_close_areas.push(Rect::default());
+        }
+    }
 }
 
 fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
@@ -358,7 +282,7 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
         area,
     );
 
-    let task = &app.offices[app.current_office].desks[app.selected()];
+    let task = &app.desks[app.selected()];
     let inner_w = area.width.saturating_sub(2);
     let inner = Rect {
         x: area.x + 1,
@@ -401,13 +325,23 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
 
     app.tab_areas.clear();
     app.tab_area_tab_indices.clear();
+    app.tab_close_areas.clear();
     let mut x = inner.x;
     let mut spans: Vec<Span> = vec![];
+    let can_close_tab = task.tabs.len() > 1;
 
     if app.tab_scroll > 0 {
         spans.push(Span::styled("‹ ", Style::default().fg(t.accent2())));
         x += 2;
     }
+
+    let close_str = " × ";
+    let close_w = display_width(close_str);
+    let close_style = if t.follow_terminal {
+        Style::default().add_modifier(Modifier::DIM)
+    } else {
+        Style::default().fg(t.fg_dim())
+    };
 
     let mut available = inner_w.saturating_sub(plus_w + if app.tab_scroll > 0 { 2 } else { 0 });
     for i in app.tab_scroll..task.tabs.len() {
@@ -424,7 +358,8 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
             format!("  {}  ", tab.name)
         };
         let w = display_width(&label);
-        if w + 1 > available {
+        let extra = if can_close_tab { close_w + 1 } else { 0 };
+        if w + extra + 1 > available {
             break;
         }
         let style = if is_current_tab {
@@ -446,21 +381,36 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
             Style::default().fg(t.fg_dim()).bg(t.surface())
         };
         spans.push(Span::styled(label, style));
-        spans.push(Span::raw(" "));
         app.tab_areas.push(Rect {
             x,
-            y: inner.y,
+            y: area.y,
             width: w,
-            height: 1,
+            height: area.height,
         });
         app.tab_area_tab_indices.push(i);
-        x += w + 1;
-        available = available.saturating_sub(w + 1);
+        if can_close_tab {
+            spans.push(Span::styled(close_str, close_style));
+            app.tab_close_areas.push(Rect {
+                x: x + w,
+                y: area.y,
+                width: close_w,
+                height: area.height,
+            });
+            x += w + close_w + 1;
+            available = available.saturating_sub(w + close_w + 1);
+        } else {
+            app.tab_close_areas.push(Rect::default());
+            x += w + 1;
+            available = available.saturating_sub(w + 1);
+        }
+        spans.push(Span::raw(" "));
     }
 
     let last_rendered = app.tab_scroll + app.tab_areas.len();
     if last_rendered < task.tabs.len() {
-        spans.push(Span::styled(" ›", Style::default().fg(t.accent2())));
+        let arrow = " ›";
+        spans.push(Span::styled(arrow, Style::default().fg(t.accent2())));
+        x += display_width(arrow);
     }
 
     let plus_style = if t.follow_terminal {
@@ -471,9 +421,9 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     spans.push(Span::styled(plus, plus_style));
     app.new_tab_area = Rect {
         x,
-        y: inner.y,
+        y: area.y,
         width: plus_w,
-        height: 1,
+        height: area.height,
     };
 
     let daemon_status = if app.daemon_connected {
@@ -507,50 +457,40 @@ fn draw_topbar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
 
 fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     let active = app.focus == Focus::Content;
-    let task = &app.offices[app.current_office].desks[app.selected()];
+    let task = &app.desks[app.selected()];
     let tab = task.active_tab_ref();
 
     let term_bg = t.bg();
-    let (ix, iy, iw, ih) = if app.copy_mode {
-        f.render_widget(Block::default().style(Style::default().bg(term_bg)), area);
-        (area.x, area.y, area.width, area.height)
-    } else {
-        f.render_widget(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(border_type(t, active))
-                .title(Span::styled(
-                    format!(
-                        " {} ",
-                        match app.terminal_titles.get(&tab.id) {
-                            Some(term_title) if !term_title.is_empty() =>
-                                format!("{} : {}", tab.name, term_title),
-                            _ => tab.name.clone(),
-                        }
-                    ),
-                    title_style(t, active),
-                ))
-                .border_style(border_style(t, active))
-                .style(Style::default().bg(term_bg)),
-            area,
-        );
-        (
-            area.x + 1,
-            area.y + 1,
-            area.width.saturating_sub(2),
-            area.height.saturating_sub(2),
-        )
-    };
+    f.render_widget(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_type(border_type(t, active))
+            .title(Span::styled(
+                format!(
+                    " {} ",
+                    match app.terminal_titles.get(&tab.id) {
+                        Some(term_title) if !term_title.is_empty() =>
+                            format!("{} : {}", tab.name, term_title),
+                        _ => tab.name.clone(),
+                    }
+                ),
+                title_style(t, active),
+            ))
+            .border_style(border_style(t, active))
+            .style(Style::default().bg(term_bg)),
+        area,
+    );
+    let (ix, iy, iw, ih) = (
+        area.x + 1,
+        area.y + 1,
+        area.width.saturating_sub(2),
+        area.height.saturating_sub(2),
+    );
     let screen = tab.provider.get_screen(ih, iw);
     let screen_rows = (screen.lines.len() as u16).min(ih);
-    // Copy mode prefers bottom-aligned viewport for scrollback reading.
-    // Normal mode should stay top-aligned to avoid startup offset when
+    // Top-aligned viewport to avoid startup offset when
     // PTY rows temporarily lag behind UI rows.
-    let row_base = if app.copy_mode {
-        ih.saturating_sub(screen_rows)
-    } else {
-        0
-    };
+    let row_base: u16 = 0;
 
     if screen.bell {
         app.pending_bell = true;
@@ -651,7 +591,7 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     // We use a software cursor overlay rendered in the buffer instead.
     // For Hidden cursor shape (e.g. Claude Code), skip the overlay entirely —
     // the inner TUI app renders its own visual cursor via INVERSE text.
-    if !app.copy_mode && ih > 0 && iw > 0 && screen.cursor_shape != CursorShape::Hidden {
+    if ih > 0 && iw > 0 && screen.cursor_shape != CursorShape::Hidden {
         let cursor_row = cr.min(screen_rows.saturating_sub(1));
         let cursor_col = cc.min(iw.saturating_sub(1));
         let visual_cc = screen
@@ -717,102 +657,6 @@ fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeColors) {
     }
 }
 
-fn draw_jump_mode(f: &mut Frame, app: &App, t: &ThemeColors) {
-    let labels = app.jump_labels();
-    let jump_fg = if t.follow_terminal {
-        Style::default().add_modifier(Modifier::BOLD | Modifier::REVERSED)
-    } else {
-        Style::default()
-            .fg(t.bg())
-            .bg(t.accent())
-            .add_modifier(Modifier::BOLD)
-    };
-    let targets = app.jump_targets();
-    for (idx, (kind, desk_idx, tab_idx)) in targets.iter().enumerate() {
-        if idx >= labels.len() {
-            break;
-        }
-        let label = labels[idx];
-        match kind {
-            't' => {
-                let x = app.sidebar_list_area.x + 1;
-                let sidebar_offset = app.list_state.offset();
-                if let Some(local_row) = desk_idx.checked_sub(sidebar_offset) {
-                    let y = app.sidebar_list_area.y + 1 + local_row as u16;
-                    if y < app.sidebar_list_area.y + app.sidebar_list_area.height.saturating_sub(1)
-                    {
-                        f.render_widget(
-                            Paragraph::new(Span::styled(format!("[{}]", label), jump_fg)),
-                            Rect {
-                                x,
-                                y,
-                                width: 3,
-                                height: 1,
-                            },
-                        );
-                    }
-                }
-            }
-            'b' => {
-                if let Some(area_idx) = app.tab_area_tab_indices.iter().position(|i| *i == *tab_idx)
-                {
-                    if let Some(tab_area) = app.tab_areas.get(area_idx) {
-                        let label_x = tab_area.x + tab_area.width.saturating_sub(3) / 2;
-                        f.render_widget(
-                            Paragraph::new(Span::styled(format!("[{}]", label), jump_fg)),
-                            Rect {
-                                x: label_x,
-                                y: tab_area.y,
-                                width: 3,
-                                height: 1,
-                            },
-                        );
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
-    let help_area = Rect {
-        x: app.content_area.x + 2,
-        y: app.content_area.y + 2,
-        width: 50,
-        height: 4,
-    };
-    f.render_widget(Clear, help_area);
-
-    // Help text varies by focus
-    let help_line_2 = match app.focus {
-        Focus::Content => " Press letters or digits to jump (no c/r/q) ",
-        Focus::Topbar | Focus::Sidebar => " Press letters or digits to jump (no r/q) ",
-    };
-    let help_line_3 = match app.focus {
-        Focus::Content => " c CopyMode | r Restart | ← Sidebar | ↑ Tabbar | q quit | ESC cancel ",
-        Focus::Topbar => " r Rename | ← Sidebar | ↓ Content | q quit | ESC cancel ",
-        Focus::Sidebar => " r Rename | → Content | ↑ Tabbar | ESC cancel ",
-    };
-
-    f.render_widget(
-        Paragraph::new(vec![
-            Line::from(Span::styled(" JUMP MODE ", jump_fg)),
-            Line::from(Span::styled(help_line_2, Style::default().fg(t.fg()))),
-            Line::from(Span::styled(help_line_3, Style::default().fg(t.fg_dim()))),
-        ])
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(t.accent()))
-                .style(Style::default().bg(if t.follow_terminal {
-                    Color::Black
-                } else {
-                    t.surface()
-                })),
-        ),
-        help_area,
-    );
-}
-
 fn draw_rename_popup(f: &mut Frame, app: &App, t: &ThemeColors) {
     let Some((target, buf)) = &app.rename else {
         return;
@@ -820,7 +664,6 @@ fn draw_rename_popup(f: &mut Frame, app: &App, t: &ThemeColors) {
     let label = match target {
         RenameTarget::Desk(_) => " Rename Desk ",
         RenameTarget::Tab(_, _) => " Rename Tab ",
-        RenameTarget::Office(_) => " Rename Office ",
     };
     let area = f.area();
     let w = 40u16.min(area.width);
@@ -849,169 +692,4 @@ fn draw_rename_popup(f: &mut Frame, app: &App, t: &ThemeColors) {
         ),
         popup,
     );
-}
-
-pub fn draw_settings(f: &mut Frame, app: &mut App, t: &ThemeColors) {
-    let area = f.area();
-    let w = 50u16.min(area.width);
-    let h = (BUILTIN_THEMES.len() as u16 + 6).min(area.height);
-    let popup = Rect {
-        x: (area.width.saturating_sub(w)) / 2,
-        y: (area.height.saturating_sub(h)) / 2,
-        width: w,
-        height: h,
-    };
-    f.render_widget(Clear, popup);
-
-    let items: Vec<ListItem> = BUILTIN_THEMES
-        .iter()
-        .enumerate()
-        .map(|(i, name)| {
-            let sel = app.settings_selected == i;
-            let label = if *name == "system" {
-                "system (follow terminal)"
-            } else {
-                *name
-            };
-            ListItem::new(Line::from(vec![
-                Span::styled(
-                    if sel { " ▶ " } else { "   " },
-                    Style::default().fg(t.accent()),
-                ),
-                Span::styled(
-                    label,
-                    Style::default().fg(if sel { t.fg() } else { t.fg_dim() }),
-                ),
-            ]))
-            .style(Style::default().bg(if sel { t.sel_bg() } else { t.surface() }))
-        })
-        .collect();
-
-    let mut list_state = ratatui::widgets::ListState::default();
-    list_state.select(Some(app.settings_selected));
-
-    f.render_stateful_widget(
-        List::new(items)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(Span::styled(
-                        " Settings — Theme ",
-                        Style::default().fg(t.accent()).add_modifier(Modifier::BOLD),
-                    ))
-                    .border_style(Style::default().fg(t.accent()))
-                    .style(Style::default().bg(t.surface())),
-            )
-            .highlight_style(Style::default().bg(t.sel_bg())),
-        popup,
-        &mut list_state,
-    );
-}
-
-fn draw_office_selector(f: &mut Frame, app: &mut App, t: &ThemeColors) {
-    let area = f.area();
-    let w = 50u16.min(area.width);
-    let h = (app.offices.len() as u16 + 6).min(area.height);
-    let popup = Rect {
-        x: (area.width.saturating_sub(w)) / 2,
-        y: (area.height.saturating_sub(h)) / 2,
-        width: w,
-        height: h,
-    };
-    f.render_widget(Clear, popup);
-
-    let mut items: Vec<ListItem> = app
-        .offices
-        .iter()
-        .enumerate()
-        .map(|(i, office)| {
-            let is_current = i == app.current_office;
-            let prefix = if is_current { " ● " } else { "   " };
-            ListItem::new(Line::from(vec![
-                Span::styled(prefix, Style::default().fg(t.accent())),
-                Span::styled(&office.name, Style::default().fg(t.fg())),
-            ]))
-        })
-        .collect();
-
-    items.push(ListItem::new(Line::from(vec![
-        Span::styled("   ", Style::default()),
-        Span::styled("＋ New Office", Style::default().fg(t.accent())),
-    ])));
-
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(Span::styled(
-            " Switch Office ",
-            Style::default().fg(t.accent()).add_modifier(Modifier::BOLD),
-        ))
-        .title_bottom(Line::from(vec![
-            Span::styled(" Enter ", Style::default().fg(t.accent())),
-            Span::styled("Select  ", Style::default().fg(t.fg_dim())),
-            Span::styled("r ", Style::default().fg(t.accent())),
-            Span::styled("Rename  ", Style::default().fg(t.fg_dim())),
-            Span::styled("d ", Style::default().fg(t.accent())),
-            Span::styled("Delete ", Style::default().fg(t.fg_dim())),
-        ]))
-        .border_style(Style::default().fg(t.accent()))
-        .style(Style::default().bg(t.surface()));
-
-    f.render_stateful_widget(
-        List::new(items)
-            .block(block)
-            .highlight_style(Style::default().bg(t.sel_bg()).add_modifier(Modifier::BOLD))
-            .highlight_symbol("▶ "),
-        popup,
-        &mut app.office_selector.list_state,
-    );
-}
-
-fn draw_office_delete_confirm(f: &mut Frame, app: &App, t: &ThemeColors) {
-    let Some(ref confirm) = app.office_delete_confirm else {
-        return;
-    };
-    let office_name = &app.offices[confirm.office_idx].name;
-
-    let area = f.area();
-    let w = 60u16.min(area.width);
-    let h = 9u16.min(area.height);
-    let popup = Rect {
-        x: (area.width.saturating_sub(w)) / 2,
-        y: (area.height.saturating_sub(h)) / 2,
-        width: w,
-        height: h,
-    };
-    f.render_widget(Clear, popup);
-
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3),
-            Constraint::Length(3),
-            Constraint::Length(3),
-        ])
-        .split(popup);
-
-    let warning = Paragraph::new(format!("⚠️  Delete office \"{}\"?", office_name))
-        .alignment(Alignment::Center)
-        .style(Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Red)),
-        );
-    f.render_widget(warning, chunks[0]);
-
-    let prompt = Paragraph::new(format!(
-        "Type the office name to confirm:\n{}",
-        confirm.input
-    ))
-    .alignment(Alignment::Center)
-    .style(Style::default().fg(t.fg()));
-    f.render_widget(prompt, chunks[1]);
-
-    let help = Paragraph::new("Enter Confirm  │  Esc Cancel")
-        .alignment(Alignment::Center)
-        .style(Style::default().fg(t.fg_dim()));
-    f.render_widget(help, chunks[2]);
 }

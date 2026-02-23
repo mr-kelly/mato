@@ -147,23 +147,18 @@ fn alacritty_wide_char_sets_display_width_and_spacer() {
 
 // ── persistence ───────────────────────────────────────────────────────────────
 
-use mato::client::persistence::{SavedDesk, SavedOffice, SavedState, SavedTab};
+use mato::client::persistence::{SavedDesk, SavedState, SavedTab};
 
 fn make_state() -> SavedState {
     SavedState {
-        current_office: 0,
-        offices: vec![SavedOffice {
-            id: "o1".into(),
-            name: "Default".into(),
-            active_desk: 0,
-            desks: vec![SavedDesk {
-                id: "t1".into(),
-                name: "Work".into(),
-                active_tab: 0,
-                tabs: vec![SavedTab {
-                    id: "tb1".into(),
-                    name: "Terminal 1".into(),
-                }],
+        selected_desk: 0,
+        desks: vec![SavedDesk {
+            id: "t1".into(),
+            name: "Work".into(),
+            active_tab: 0,
+            tabs: vec![SavedTab {
+                id: "tb1".into(),
+                name: "Terminal 1".into(),
             }],
         }],
     }
@@ -178,9 +173,9 @@ fn persistence_save_and_load_roundtrip() {
     std::fs::write(&path, &json).unwrap();
     let restored: SavedState =
         serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
-    assert_eq!(restored.offices[0].desks.len(), 1);
-    assert_eq!(restored.offices[0].desks[0].name, "Work");
-    assert_eq!(restored.offices[0].desks[0].tabs[0].name, "Terminal 1");
+    assert_eq!(restored.desks.len(), 1);
+    assert_eq!(restored.desks[0].name, "Work");
+    assert_eq!(restored.desks[0].tabs[0].name, "Terminal 1");
 }
 
 #[test]
@@ -190,10 +185,11 @@ fn persistence_corrupt_json_fails_gracefully() {
 }
 
 #[test]
-fn persistence_missing_active_task_defaults_to_zero() {
-    let json = r#"{"offices":[]}"#;
+fn persistence_missing_desks_defaults_to_empty() {
+    let json = r#"{}"#;
     let state: SavedState = serde_json::from_str(json).unwrap();
-    assert_eq!(state.current_office, 0);
+    assert_eq!(state.selected_desk, 0);
+    assert!(state.desks.is_empty());
 }
 
 // ── persistence: save_state / load_state via XDG_CONFIG_HOME ─────────────────
@@ -250,13 +246,7 @@ fn null_task(name: &str, n: usize) -> Desk {
 
 fn make_app(desks: Vec<Desk>) -> App {
     let mut app = App::new();
-    app.current_office = 0;
-    app.offices = vec![mato::client::app::Office {
-        id: "test".into(),
-        name: "Test".into(),
-        desks,
-        active_desk: 0,
-    }];
+    app.desks = desks;
     app.list_state.select(Some(0));
     app
 }
@@ -277,15 +267,15 @@ fn with_temp_config<F: FnOnce()>(name: &str, f: F) {
 fn save_and_load_state_roundtrip() {
     with_temp_config("save_load", || {
         let mut app = make_app(vec![null_task("Work", 2), null_task("Play", 1)]);
-        app.offices[0].desks[0].active_tab = 1;
+        app.desks[0].active_tab = 1;
         app.nav(1);
         mato::client::persistence::save_state(&app).unwrap();
         let restored = mato::client::persistence::load_state().unwrap();
-        assert_eq!(restored.offices[0].desks.len(), 2);
-        assert_eq!(restored.offices[0].active_desk, 1);
-        assert_eq!(restored.offices[0].desks[0].name, "Work");
-        assert_eq!(restored.offices[0].desks[0].tabs.len(), 2);
-        assert_eq!(restored.offices[0].desks[0].active_tab, 1);
+        assert_eq!(restored.desks.len(), 2);
+        assert_eq!(restored.selected_desk, 1);
+        assert_eq!(restored.desks[0].name, "Work");
+        assert_eq!(restored.desks[0].tabs.len(), 2);
+        assert_eq!(restored.desks[0].active_tab, 1);
     });
 }
 
@@ -313,7 +303,7 @@ fn commit_rename_tab_applies_name() {
     let mut app = make_app(vec![null_task("T", 2)]);
     app.rename = Some((RenameTarget::Tab(0, 1), "Renamed".into()));
     app.commit_rename();
-    assert_eq!(app.offices[0].desks[0].tabs[1].name, "Renamed");
+    assert_eq!(app.desks[0].tabs[1].name, "Renamed");
 }
 
 #[test]

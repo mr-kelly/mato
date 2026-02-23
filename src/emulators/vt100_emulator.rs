@@ -29,29 +29,31 @@ impl TerminalEmulator for Vt100Emulator {
         for row in 0..rows {
             let mut cells = vec![];
             for col in 0..cols {
-                let def = vt100::Cell::default();
-                let cell = screen.cell(row, col).unwrap_or(&def);
-                let ch = cell.contents().chars().next().unwrap_or(' ');
-                let display_width = if ch == '\0' {
-                    0
+                if let Some(cell) = screen.cell(row, col) {
+                    let ch = cell.contents().chars().next().unwrap_or(' ');
+                    let display_width = if ch == '\0' {
+                        0
+                    } else {
+                        UnicodeWidthChar::width(ch).unwrap_or(1).clamp(1, 2) as u8
+                    };
+                    cells.push(ScreenCell {
+                        ch,
+                        display_width,
+                        fg: vt_color(cell.fgcolor()),
+                        bg: vt_color(cell.bgcolor()),
+                        bold: cell.bold(),
+                        italic: cell.italic(),
+                        underline: cell.underline(),
+                        dim: false,
+                        reverse: cell.inverse(),
+                        strikethrough: false,
+                        hidden: false,
+                        underline_color: None,
+                        zerowidth: None,
+                    });
                 } else {
-                    UnicodeWidthChar::width(ch).unwrap_or(1).clamp(1, 2) as u8
-                };
-                cells.push(ScreenCell {
-                    ch,
-                    display_width,
-                    fg: vt_color(cell.fgcolor()),
-                    bg: vt_color(cell.bgcolor()),
-                    bold: cell.bold(),
-                    italic: cell.italic(),
-                    underline: cell.underline(),
-                    dim: false,
-                    reverse: cell.inverse(),
-                    strikethrough: false,
-                    hidden: false,
-                    underline_color: None,
-                    zerowidth: None,
-                });
+                    cells.push(ScreenCell::default());
+                }
             }
             lines.push(ScreenLine { cells });
         }

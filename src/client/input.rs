@@ -1,15 +1,5 @@
-use crate::client::app::{App, Focus, JumpMode, OfficeDeleteConfirm, RenameTarget};
-use crossterm::{
-    event::{EnableMouseCapture, KeyCode, KeyEventKind, KeyModifiers},
-    execute,
-    terminal::{enable_raw_mode, EnterAlternateScreen},
-};
-use std::io;
-use std::time::{Duration, Instant};
-
-fn hard_disable_terminal_modes() {
-    crate::terminal::restore_terminal_modes();
-}
+use crate::client::app::App;
+use crossterm::event::{KeyCode, KeyEventKind, KeyModifiers};
 
 pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
     if key.code == KeyCode::Esc && key.kind == KeyEventKind::Repeat {
@@ -19,185 +9,11 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
     let alt = key.modifiers.contains(KeyModifiers::ALT);
 
     // Emergency exit when daemon connection is unhealthy.
-    // This provides a reliable way out when the top-right status is blinking/disconnected.
     if !app.daemon_connected
         && (matches!(key.code, KeyCode::Char('q') | KeyCode::Char('Q'))
             || (ctrl && key.code == KeyCode::Char('c')))
     {
         return true;
-    }
-
-    if app.copy_mode {
-        match key.code {
-            KeyCode::Esc | KeyCode::Char('q') => app.copy_mode = false,
-            KeyCode::Up | KeyCode::Char('k') => app.pty_scroll(3),
-            KeyCode::Down | KeyCode::Char('j') => app.pty_scroll(-3),
-            KeyCode::PageUp => app.pty_scroll(20),
-            KeyCode::PageDown => app.pty_scroll(-20),
-            KeyCode::Char('g') => app.pty_scroll(1_000_000),
-            KeyCode::Char('G') => app.pty_scroll(-1_000_000),
-            _ => {}
-        }
-        return false;
-    }
-
-    // Office delete confirmation intercepts keys
-    if let Some(ref mut confirm) = app.office_delete_confirm {
-        match key.code {
-            KeyCode::Esc => {
-                app.office_delete_confirm = None;
-            }
-            KeyCode::Char(c) => {
-                confirm.input.push(c);
-            }
-            KeyCode::Backspace => {
-                confirm.input.pop();
-            }
-            KeyCode::Enter => {
-                let office_idx = confirm.office_idx;
-                let expected_name = &app.offices[office_idx].name;
-                if confirm.input == *expected_name && app.offices.len() > 1 {
-                    app.offices.remove(office_idx);
-                    if app.current_office >= app.offices.len() {
-                        app.current_office = app.offices.len() - 1;
-                    }
-                    app.switch_office(app.current_office);
-                    app.dirty = true;
-                }
-                app.office_delete_confirm = None;
-            }
-            _ => {}
-        }
-        return false;
-    }
-
-    // Office selector intercepts keys
-    if app.office_selector.active {
-        let max_idx = app.offices.len();
-        match key.code {
-            KeyCode::Esc | KeyCode::Char('q') => {
-                app.office_selector.active = false;
-            }
-            KeyCode::Up => {
-                let selected = app.office_selector.list_state.selected().unwrap_or(0);
-                if selected > 0 {
-                    app.office_selector.list_state.select(Some(selected - 1));
-                }
-            }
-            KeyCode::Down => {
-                let selected = app.office_selector.list_state.selected().unwrap_or(0);
-                if selected < max_idx {
-                    app.office_selector.list_state.select(Some(selected + 1));
-                }
-            }
-            KeyCode::Char('r') => {
-                let selected = app.office_selector.list_state.selected().unwrap_or(0);
-                if selected < app.offices.len() {
-                    let office_name = app.offices[selected].name.clone();
-                    app.rename = Some((RenameTarget::Office(selected), office_name));
-                    app.office_selector.active = false;
-                }
-            }
-            KeyCode::Char('d') => {
-                let selected = app.office_selector.list_state.selected().unwrap_or(0);
-                if selected < app.offices.len() && app.offices.len() > 1 {
-                    app.office_delete_confirm = Some(OfficeDeleteConfirm::new(selected));
-                    app.office_selector.active = false;
-                }
-            }
-            KeyCode::Enter => {
-                let selected = app.office_selector.list_state.selected().unwrap_or(0);
-                if selected < app.offices.len() {
-                    app.switch_office(selected);
-                    app.office_selector.active = false;
-                } else {
-                    app.office_selector.active = false;
-                    app.should_show_onboarding = true;
-                }
-            }
-            _ => {}
-        }
-        return false;
-    }
-
-    // Settings screen intercepts keys
-    if app.show_settings {
-        match key.code {
-            KeyCode::Esc | KeyCode::Char('s') | KeyCode::Char('q') => {
-                app.show_settings = false;
-            }
-            KeyCode::Up => {
-                if app.settings_selected > 0 {
-                    app.settings_selected -= 1;
-                }
-            }
-            KeyCode::Down => {
-                if app.settings_selected + 1 < crate::theme::BUILTIN_THEMES.len() {
-                    app.settings_selected += 1;
-                }
-            }
-            KeyCode::Enter => {
-                let name = crate::theme::BUILTIN_THEMES[app.settings_selected];
-                app.theme = crate::theme::builtin(name);
-                crate::theme::save_name(name).ok();
-                app.show_settings = false;
-            }
-            _ => {}
-        }
-        return false;
-    }
-
-    // Jump mode intercepts all keys
-    if let JumpMode::Active = app.jump_mode {
-        match key.code {
-            KeyCode::Char('q' | 'Q') => return true, // Quit in Jump Mode
-            KeyCode::Char('c') if app.focus == Focus::Content => {
-                app.copy_mode = true;
-                app.jump_mode = JumpMode::None;
-            }
-            KeyCode::Char(c) if matches!(c, 'r' | 'R') && app.focus == Focus::Sidebar => {
-                let i = app.selected();
-                app.begin_rename_desk(i);
-                app.jump_mode = JumpMode::None;
-            }
-            KeyCode::Char(c) if matches!(c, 'r' | 'R') && app.focus == Focus::Topbar => {
-                app.begin_rename_tab();
-                app.jump_mode = JumpMode::None;
-            }
-            KeyCode::Char(c) if matches!(c, 'r' | 'R') && app.focus == Focus::Content => {
-                app.restart_active_pty();
-                app.jump_mode = JumpMode::None;
-            }
-            KeyCode::Esc => {
-                app.jump_mode = JumpMode::None;
-            }
-            // Focus switching matrix in Jump Mode:
-            // Topbar:  ← Sidebar, ↓ Content
-            // Sidebar: ↑ Topbar, → Content
-            // Content: ← Sidebar, ↑ Topbar
-            KeyCode::Left if matches!(app.focus, Focus::Topbar | Focus::Content) => {
-                app.focus = Focus::Sidebar;
-                app.jump_mode = JumpMode::None;
-            }
-            KeyCode::Down if app.focus == Focus::Topbar => {
-                app.focus = Focus::Content;
-                app.jump_mode = JumpMode::None;
-            }
-            KeyCode::Right if app.focus == Focus::Sidebar => {
-                app.focus = Focus::Content;
-                app.jump_mode = JumpMode::None;
-            }
-            KeyCode::Up if matches!(app.focus, Focus::Sidebar | Focus::Content) => {
-                app.focus = Focus::Topbar;
-                app.jump_mode = JumpMode::None;
-            }
-            // Alphanumeric keys for jumping (filtered by focus-specific reserved keys).
-            KeyCode::Char(c) if c.is_ascii_alphanumeric() => {
-                app.handle_jump_selection(c);
-            }
-            _ => {}
-        }
-        return false;
     }
 
     // Rename mode intercepts all keys
@@ -220,50 +36,18 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
         return false;
     }
 
-    // Ctrl+Z suspend
-    if ctrl && key.code == KeyCode::Char('z') && app.focus != Focus::Content {
-        #[cfg(unix)]
-        {
-            use std::io::Write;
-            hard_disable_terminal_modes();
-
-            // Send SIGTSTP to self
-            unsafe {
-                libc::kill(libc::getpid(), libc::SIGTSTP);
-            }
-
-            // After resume (fg) - reinitialize everything
-            enable_raw_mode().ok();
-            execute!(
-                io::stdout(),
-                EnterAlternateScreen,
-                EnableMouseCapture,
-                crossterm::event::EnableBracketedPaste
-            )
-            .ok();
-            io::stdout().flush().ok();
-        }
-        return false;
+    // Ctrl+Q: quit
+    if ctrl && key.code == KeyCode::Char('q') {
+        return true;
     }
 
-    if key.code == KeyCode::Esc {
-        if app.focus == Focus::Content {
-            // In Content focus: double-ESC (within 300ms) → Jump Mode.
-            // Single ESC → pass through to shell (vim, fzf, etc.).
-            let now = Instant::now();
-            if let Some(prev) = app.last_content_esc {
-                if now.duration_since(prev) < Duration::from_millis(300) {
-                    app.last_content_esc = None;
-                    app.jump_mode = JumpMode::Active;
-                    return false;
-                }
-            }
-            app.last_content_esc = Some(now);
-            app.pty_write(b"\x1b");
-            return false;
-        }
-        // Non-Content focus: single ESC enters Jump Mode
-        app.jump_mode = JumpMode::Active;
+    // PageUp/PageDown: scroll terminal scrollback
+    if key.code == KeyCode::PageUp {
+        app.pty_scroll(5);
+        return false;
+    }
+    if key.code == KeyCode::PageDown {
+        app.pty_scroll(-5);
         return false;
     }
 
@@ -273,8 +57,8 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
             if let Some(n) = c.to_digit(10) {
                 let idx = (n as usize).saturating_sub(1);
                 let i = app.selected();
-                if idx < app.offices[app.current_office].desks[i].tabs.len() {
-                    app.offices[app.current_office].desks[i].active_tab = idx;
+                if idx < app.desks[i].tabs.len() {
+                    app.desks[i].active_tab = idx;
                     app.mark_tab_switch();
                     app.spawn_active_pty();
                 }
@@ -283,87 +67,10 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
         }
     }
 
-    match app.focus {
-        Focus::Sidebar => match key.code {
-            KeyCode::Char('q') => return true,
-            KeyCode::Char('o') => {
-                app.office_selector.active = true;
-                app.office_selector
-                    .list_state
-                    .select(Some(app.current_office));
-            }
-            KeyCode::Char('n') => app.new_desk(),
-            KeyCode::Char('x') => app.close_desk(),
-            KeyCode::Char('r' | 'R') => {
-                let i = app.selected();
-                app.begin_rename_desk(i);
-            }
-            KeyCode::Char('s') => {
-                app.show_settings = true;
-            }
-            KeyCode::Up => app.nav(-1),
-            KeyCode::Down => app.nav(1),
-            KeyCode::Enter => {
-                app.focus = Focus::Content;
-                app.spawn_active_pty();
-            }
-            _ => {}
-        },
-        Focus::Topbar => match key.code {
-            KeyCode::Char('q') => return true,
-            KeyCode::Left => {
-                let i = app.selected();
-                let at = app.offices[app.current_office].desks[i].active_tab;
-                if at > 0 {
-                    app.offices[app.current_office].desks[i].active_tab = at - 1;
-                    app.mark_tab_switch();
-                    app.spawn_active_pty();
-                }
-            }
-            KeyCode::Right => {
-                let i = app.selected();
-                let len = app.offices[app.current_office].desks[i].tabs.len();
-                let at = app.offices[app.current_office].desks[i].active_tab;
-                if at + 1 < len {
-                    app.offices[app.current_office].desks[i].active_tab = at + 1;
-                    app.mark_tab_switch();
-                    app.spawn_active_pty();
-                }
-            }
-            KeyCode::Char('n') => {
-                app.cur_desk_mut().new_tab();
-                app.spawn_active_pty();
-                app.dirty = true;
-            }
-            KeyCode::Char('x') => {
-                app.cur_desk_mut().close_tab();
-                app.dirty = true;
-            }
-            KeyCode::Char('r' | 'R') => app.begin_rename_tab(),
-            KeyCode::Enter => {
-                app.focus = Focus::Content;
-                app.spawn_active_pty();
-            }
-            _ => {}
-        },
-        Focus::Content => {
-            let shift = key
-                .modifiers
-                .contains(crossterm::event::KeyModifiers::SHIFT);
-            // Shift+PageUp/Down = scrollback
-            if shift && key.code == KeyCode::PageUp {
-                app.pty_scroll(5);
-                return false;
-            }
-            if shift && key.code == KeyCode::PageDown {
-                app.pty_scroll(-5);
-                return false;
-            }
-            let bytes = encode_content_key(&key);
-            if !bytes.is_empty() {
-                app.pty_write(&bytes);
-            }
-        }
+    // All other keys go to the terminal
+    let bytes = encode_content_key(&key);
+    if !bytes.is_empty() {
+        app.pty_write(&bytes);
     }
     false
 }
@@ -372,6 +79,7 @@ fn encode_content_key(key: &crossterm::event::KeyEvent) -> Vec<u8> {
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     let alt = key.modifiers.contains(KeyModifiers::ALT);
     let mut bytes: Vec<u8> = match key.code {
+        KeyCode::Esc => vec![0x1b],
         KeyCode::Enter => b"\r".to_vec(),
         KeyCode::Backspace => vec![0x7f],
         KeyCode::Tab => b"\t".to_vec(),

@@ -87,16 +87,9 @@ pub fn show_status() -> io::Result<()> {
 
         if let Some(state) = state_opt.as_ref() {
             tab_names = tab_name_map(state);
-            let office_count = state.offices.len();
-            let desk_count: usize = state.offices.iter().map(|o| o.desks.len()).sum();
-            let total_tabs: usize = state
-                .offices
-                .iter()
-                .flat_map(|o| o.desks.iter())
-                .map(|d| d.tabs.len())
-                .sum();
+            let desk_count = state.desks.len();
+            let total_tabs: usize = state.desks.iter().map(|d| d.tabs.len()).sum();
 
-            println!("   Offices:       {}", office_count);
             println!("   Desks:         {}", desk_count);
             println!("   Total Tabs:    {}", total_tabs);
             match process_status.as_ref() {
@@ -107,11 +100,8 @@ pub fn show_status() -> io::Result<()> {
                 None => {}
             }
 
-            if let Some(active_office) = state.offices.get(state.current_office) {
-                println!("   Active Office: {}", active_office.name);
-                if let Some(active_desk) = active_office.desks.get(active_office.active_desk) {
-                    println!("   Active Desk:   {}", active_desk.name);
-                }
+            if let Some(active_desk) = state.desks.get(state.selected_desk) {
+                println!("   Active Desk:   {}", active_desk.name);
             }
         }
 
@@ -236,14 +226,9 @@ fn query_process_status(
 
 fn tab_name_map(state: &SavedState) -> HashMap<String, String> {
     let mut names = HashMap::new();
-    for office in &state.offices {
-        for desk in &office.desks {
-            for tab in &desk.tabs {
-                names.insert(
-                    tab.id.clone(),
-                    format!("{}/{}/{}", office.name, desk.name, tab.name),
-                );
-            }
+    for desk in &state.desks {
+        for tab in &desk.tabs {
+            names.insert(tab.id.clone(), format!("{}/{}", desk.name, tab.name));
         }
     }
     names
