@@ -58,28 +58,60 @@ pub struct ThemeColors {
 
 impl ThemeColors {
     pub fn bg(&self) -> Color {
-        if self.follow_terminal { Color::Reset } else { best_color(self.bg[0], self.bg[1], self.bg[2]) }
+        if self.follow_terminal {
+            Color::Reset
+        } else {
+            best_color(self.bg[0], self.bg[1], self.bg[2])
+        }
     }
     pub fn surface(&self) -> Color {
-        if self.follow_terminal { Color::Reset } else { best_color(self.surface[0], self.surface[1], self.surface[2]) }
+        if self.follow_terminal {
+            Color::Reset
+        } else {
+            best_color(self.surface[0], self.surface[1], self.surface[2])
+        }
     }
     pub fn border(&self) -> Color {
-        if self.follow_terminal { Color::Reset } else { best_color(self.border[0], self.border[1], self.border[2]) }
+        if self.follow_terminal {
+            Color::Reset
+        } else {
+            best_color(self.border[0], self.border[1], self.border[2])
+        }
     }
     pub fn accent(&self) -> Color {
-        if self.follow_terminal { Color::Reset } else { best_color(self.accent[0], self.accent[1], self.accent[2]) }
+        if self.follow_terminal {
+            Color::Reset
+        } else {
+            best_color(self.accent[0], self.accent[1], self.accent[2])
+        }
     }
     pub fn accent2(&self) -> Color {
-        if self.follow_terminal { Color::Reset } else { best_color(self.accent2[0], self.accent2[1], self.accent2[2]) }
+        if self.follow_terminal {
+            Color::Reset
+        } else {
+            best_color(self.accent2[0], self.accent2[1], self.accent2[2])
+        }
     }
     pub fn fg(&self) -> Color {
-        if self.follow_terminal { Color::Reset } else { best_color(self.fg[0], self.fg[1], self.fg[2]) }
+        if self.follow_terminal {
+            Color::Reset
+        } else {
+            best_color(self.fg[0], self.fg[1], self.fg[2])
+        }
     }
     pub fn fg_dim(&self) -> Color {
-        if self.follow_terminal { Color::Reset } else { best_color(self.fg_dim[0], self.fg_dim[1], self.fg_dim[2]) }
+        if self.follow_terminal {
+            Color::Reset
+        } else {
+            best_color(self.fg_dim[0], self.fg_dim[1], self.fg_dim[2])
+        }
     }
     pub fn sel_bg(&self) -> Color {
-        if self.follow_terminal { Color::Reset } else { best_color(self.sel_bg[0], self.sel_bg[1], self.sel_bg[2]) }
+        if self.follow_terminal {
+            Color::Reset
+        } else {
+            best_color(self.sel_bg[0], self.sel_bg[1], self.sel_bg[2])
+        }
     }
     pub fn rgb_bg(&self) -> [u8; 3] {
         self.bg
@@ -148,44 +180,44 @@ pub fn builtin(name: &str) -> ThemeColors {
         },
         "tomato" => ThemeColors {
             follow_terminal: false,
-            bg: [20, 15, 15],           // Warm dark black
-            surface: [35, 25, 25],      // Warm dark surface
-            border: [80, 45, 45],       // Muted tomato-skin border
-            accent: [230, 57, 70],      // High-end Tomato Red (#E63946)
-            accent2: [80, 220, 160],    // Leaf Green
-            fg: [241, 250, 238],        // Off-white for high contrast
-            fg_dim: [160, 140, 140],    // Warm dimmed text
-            sel_bg: [100, 35, 35],      // Deep focused red
+            bg: [20, 15, 15],        // Warm dark black
+            surface: [35, 25, 25],   // Warm dark surface
+            border: [80, 45, 45],    // Muted tomato-skin border
+            accent: [230, 57, 70],   // High-end Tomato Red (#E63946)
+            accent2: [80, 220, 160], // Leaf Green
+            fg: [241, 250, 238],     // Off-white for high contrast
+            fg_dim: [160, 140, 140], // Warm dimmed text
+            sel_bg: [100, 35, 35],   // Deep focused red
         },
         "potato" => ThemeColors {
             follow_terminal: false,
-            bg: [40, 35, 30],           // Earthy dark brown
-            surface: [55, 50, 45],      // Muted potato-skin
-            border: [100, 90, 80],      // Earthy border
-            accent: [212, 163, 115],    // Potato gold
-            accent2: [233, 196, 106],   // Flashy yellow
-            fg: [241, 234, 218],        // Warm parchment
-            fg_dim: [140, 130, 120],    // Muted earthy text
-            sel_bg: [85, 75, 65],       // Deep earthy selection
+            bg: [40, 35, 30],         // Earthy dark brown
+            surface: [55, 50, 45],    // Muted potato-skin
+            border: [100, 90, 80],    // Earthy border
+            accent: [212, 163, 115],  // Potato gold
+            accent2: [233, 196, 106], // Flashy yellow
+            fg: [241, 234, 218],      // Warm parchment
+            fg_dim: [140, 130, 120],  // Muted earthy text
+            sel_bg: [85, 75, 65],     // Deep earthy selection
         },
         "one-dark" => ThemeColors {
             follow_terminal: false,
-            bg: [40, 44, 52],           // #282C34 editor bg
-            surface: [33, 37, 43],      // #21252B sidebar bg (darker than editor)
-            border: [55, 60, 71],       // panel separator – mid tone, minimal blue bias
-            accent: [97, 175, 239],     // #61AFEF One Dark Blue
-            accent2: [152, 195, 121],   // #98C379 One Dark Green
-            fg: [171, 178, 191],        // #ABB2BF
-            fg_dim: [92, 99, 112],      // #5C6370
-            sel_bg: [62, 68, 81],       // #3E4451 selection
+            bg: [40, 44, 52],         // #282C34 editor bg
+            surface: [33, 37, 43],    // #21252B sidebar bg (darker than editor)
+            border: [55, 60, 71],     // panel separator – mid tone, minimal blue bias
+            accent: [97, 175, 239],   // #61AFEF One Dark Blue
+            accent2: [152, 195, 121], // #98C379 One Dark Green
+            fg: [171, 178, 191],      // #ABB2BF
+            fg_dim: [92, 99, 112],    // #5C6370
+            sel_bg: [62, 68, 81],     // #3E4451 selection
         },
         "nord" => ThemeColors {
             follow_terminal: false,
             bg: [46, 52, 64],
             surface: [59, 66, 82],
             border: [76, 86, 106],
-            accent: [136, 192, 208],    // Frost blue
-            accent2: [163, 190, 140],   // Frost green
+            accent: [136, 192, 208],  // Frost blue
+            accent2: [163, 190, 140], // Frost green
             fg: [216, 222, 233],
             fg_dim: [103, 110, 125],
             sel_bg: [67, 76, 94],
@@ -195,8 +227,8 @@ pub fn builtin(name: &str) -> ThemeColors {
             bg: [43, 43, 43],
             surface: [60, 63, 65],
             border: [85, 85, 85],
-            accent: [187, 134, 252],    // Purple
-            accent2: [106, 135, 89],    // Olive Green
+            accent: [187, 134, 252], // Purple
+            accent2: [106, 135, 89], // Olive Green
             fg: [169, 183, 198],
             fg_dim: [128, 128, 128],
             sel_bg: [33, 66, 131],
@@ -206,8 +238,8 @@ pub fn builtin(name: &str) -> ThemeColors {
             bg: [0, 43, 54],
             surface: [7, 54, 66],
             border: [88, 110, 117],
-            accent: [38, 139, 210],     // Solarized Blue
-            accent2: [133, 153, 0],     // Solarized Green
+            accent: [38, 139, 210], // Solarized Blue
+            accent2: [133, 153, 0], // Solarized Green
             fg: [131, 148, 150],
             fg_dim: [101, 123, 131],
             sel_bg: [0, 33, 43],
@@ -217,19 +249,19 @@ pub fn builtin(name: &str) -> ThemeColors {
             bg: [28, 28, 28],
             surface: [36, 36, 36],
             border: [64, 64, 64],
-            accent: [255, 0, 127],      // Neon Magenta
-            accent2: [0, 255, 255],     // Neon Cyan
+            accent: [255, 0, 127],  // Neon Magenta
+            accent2: [0, 255, 255], // Neon Cyan
             fg: [255, 255, 255],
             fg_dim: [160, 160, 160],
             sel_bg: [48, 48, 48],
         },
         "p10k" => ThemeColors {
             follow_terminal: false,
-            bg: [10, 10, 10],           // Near black
+            bg: [10, 10, 10], // Near black
             surface: [30, 30, 30],
             border: [50, 50, 50],
-            accent: [0, 255, 0],        // Matrix Green
-            accent2: [255, 255, 0],     // Laser Yellow
+            accent: [0, 255, 0],    // Matrix Green
+            accent2: [255, 255, 0], // Laser Yellow
             fg: [255, 255, 255],
             fg_dim: [150, 150, 150],
             sel_bg: [60, 60, 60],
@@ -258,14 +290,14 @@ pub fn builtin(name: &str) -> ThemeColors {
         },
         "navy" => ThemeColors {
             follow_terminal: false,
-            bg: [10, 15, 35],           // Deep navy black
-            surface: [16, 23, 52],      // Navy surface
-            border: [38, 58, 120],      // Navy border
-            accent: [80, 170, 255],     // Sky blue
-            accent2: [250, 210, 60],    // Gold
-            fg: [195, 215, 245],        // Cool white-blue
-            fg_dim: [90, 115, 160],     // Muted navy
-            sel_bg: [28, 48, 108],      // Selection navy
+            bg: [10, 15, 35],        // Deep navy black
+            surface: [16, 23, 52],   // Navy surface
+            border: [38, 58, 120],   // Navy border
+            accent: [80, 170, 255],  // Sky blue
+            accent2: [250, 210, 60], // Gold
+            fg: [195, 215, 245],     // Cool white-blue
+            fg_dim: [90, 115, 160],  // Muted navy
+            sel_bg: [28, 48, 108],   // Selection navy
         },
         _ => ThemeColors {
             // system (default/fallback)

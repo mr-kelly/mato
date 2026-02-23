@@ -28,6 +28,10 @@ pub struct DaemonProvider {
     /// Channel to send messages to worker for writing on subscribe connection
     worker_tx: Arc<Mutex<Option<mpsc::Sender<Vec<u8>>>>>,
     screen_generation: Arc<AtomicU64>,
+    /// Pending Kitty graphics APC sequences received from daemon push.
+    pending_graphics: Arc<Mutex<Vec<Vec<u8>>>>,
+    /// Current working directory from OSC 7 (last seen in screen content).
+    cached_cwd: Arc<Mutex<Option<String>>>,
 }
 
 impl DaemonProvider {
@@ -118,6 +122,8 @@ impl DaemonProvider {
             write_stream: None,
             worker_tx: Arc::new(Mutex::new(None)),
             screen_generation: Arc::new(AtomicU64::new(0)),
+            pending_graphics: Arc::new(Mutex::new(Vec::new())),
+            cached_cwd: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -245,9 +251,7 @@ impl DaemonProvider {
         frame.extend_from_slice(&bin);
         tx.send(frame).is_ok()
     }
-
 }
-
 
 impl Drop for DaemonProvider {
     fn drop(&mut self) {
@@ -450,6 +454,18 @@ impl TerminalProvider for DaemonProvider {
             }
         }
         false
+    }
+
+    fn take_pending_graphics(&self) -> Vec<Vec<u8>> {
+        if let Ok(mut g) = self.pending_graphics.lock() {
+            std::mem::take(&mut *g)
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn get_cwd(&self) -> Option<String> {
+        self.cached_cwd.lock().ok().and_then(|g| g.clone())
     }
 }
 

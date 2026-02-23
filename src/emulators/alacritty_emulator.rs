@@ -163,7 +163,9 @@ impl TerminalEmulator for AlacrittyEmulator {
             let row = row_i32 as usize;
             // Skip rows above our window (top `row_offset` rows of the PTY viewport).
             // row_offset = 0 when client size matches PTY size; > 0 when client is smaller.
-            let Some(adjusted_row) = row.checked_sub(row_offset) else { continue };
+            let Some(adjusted_row) = row.checked_sub(row_offset) else {
+                continue;
+            };
             if adjusted_row >= render_rows {
                 continue;
             }
@@ -262,6 +264,7 @@ impl TerminalEmulator for AlacrittyEmulator {
             cursor_shape,
             bell: self.bell.swap(false, Ordering::Relaxed),
             focus_events_enabled: self.term.mode().contains(TermMode::FOCUS_IN_OUT),
+            cwd: None,
         }
     }
 

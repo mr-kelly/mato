@@ -288,9 +288,34 @@ pub struct App {
     pub startup_instant: Instant,
     /// Temporary notification message
     pub toast: Option<(String, Instant)>,
+    /// Whether the outer terminal supports Kitty graphics protocol.
+    /// Detected at startup from environment variables.
+    pub supports_kitty_graphics: bool,
 }
 
 impl App {
+    /// Detect if the outer terminal supports Kitty graphics protocol.
+    /// Uses env vars — no I/O needed, works before raw mode.
+    fn detect_kitty_graphics() -> bool {
+        if std::env::var("KITTY_WINDOW_ID").is_ok() {
+            return true;
+        }
+        if std::env::var("GHOSTTY_RESOURCES_DIR").is_ok()
+            || std::env::var("GHOSTTY_BIN_DIR").is_ok()
+        {
+            return true;
+        }
+        if matches!(
+            std::env::var("TERM_PROGRAM").as_deref(),
+            Ok("WezTerm") | Ok("iTerm.app")
+        ) {
+            return true;
+        }
+        if std::env::var("WEZTERM_PANE").is_ok() {
+            return true;
+        }
+        false
+    }
     pub fn flush_pending_content_esc(&mut self) {
         let Some(prev) = self.last_content_esc else {
             return;
@@ -404,6 +429,7 @@ impl App {
             } else {
                 None
             },
+            supports_kitty_graphics: Self::detect_kitty_graphics(),
         }
     }
 
@@ -505,6 +531,7 @@ impl App {
             } else {
                 None
             },
+            supports_kitty_graphics: Self::detect_kitty_graphics(),
         }
     }
 
@@ -576,7 +603,12 @@ impl App {
         self.offices[self.current_office]
             .desks
             .push(Desk::new(name.clone()));
-        self.select_desk(self.offices[self.current_office].desks.len().saturating_sub(1));
+        self.select_desk(
+            self.offices[self.current_office]
+                .desks
+                .len()
+                .saturating_sub(1),
+        );
         self.spawn_active_pty();
         self.show_toast(format!("New desk \"{}\" created", name));
         self.dirty = true;
@@ -625,7 +657,14 @@ impl App {
         }
 
         self.offices[self.current_office].desks.remove(idx);
-        self.select_desk(idx.min(self.offices[self.current_office].desks.len().saturating_sub(1)));
+        self.select_desk(
+            idx.min(
+                self.offices[self.current_office]
+                    .desks
+                    .len()
+                    .saturating_sub(1),
+            ),
+        );
         self.tab_scroll = 0;
         self.mark_tab_switch();
         self.spawn_active_pty();
@@ -732,6 +771,46 @@ impl App {
         desk.tabs[desk.active_tab].provider.screen_generation()
     }
 
+    /// Emit any pending Kitty graphics APC sequences to the outer terminal.
+    ///
+    /// Should be called after each render, only when `supports_kitty_graphics` is true.
+    /// Translates PTY cursor coordinates to outer terminal coordinates using `content_area`.
+    pub fn emit_pending_graphics(&mut self) {
+        if !self.supports_kitty_graphics {
+            return;
+        }
+        let i = self.selected();
+        let desk = &self.offices[self.current_office].desks[i];
+        if desk.tabs.is_empty() {
+            return;
+        }
+        let payloads = desk.tabs[desk.active_tab].provider.take_pending_graphics();
+        if payloads.is_empty() {
+            return;
+        }
+
+        // Get the current display cursor (row, col) relative to content area
+        let (sub_rows, sub_cols) = (self.content_area.height, self.content_area.width);
+        let content = desk.tabs[desk.active_tab]
+            .provider
+            .get_screen(sub_rows.saturating_sub(2), sub_cols.saturating_sub(2));
+        let (cursor_row, cursor_col) = content.cursor;
+
+        // Translate: content_area has a 1-cell border; content starts at (x+1, y+1)
+        let outer_row = self.content_area.y + 1 + cursor_row;
+        let outer_col = self.content_area.x + 1 + cursor_col;
+
+        use std::io::Write;
+        let mut stdout = std::io::stdout();
+        // Save cursor, move to translated position, emit all APC sequences, restore cursor
+        let _ = write!(stdout, "\x1b[s\x1b[{};{}H", outer_row + 1, outer_col + 1);
+        for apc in &payloads {
+            let _ = stdout.write_all(apc);
+        }
+        let _ = write!(stdout, "\x1b[u");
+        let _ = stdout.flush();
+    }
+
     pub fn pty_mouse_mode_enabled(&mut self) -> bool {
         let i = self.selected();
         let at = self.offices[self.current_office].desks[i].active_tab;
@@ -766,8 +845,8 @@ impl App {
         if is_content || was_content {
             let i = self.selected();
             let desk = &self.offices[self.current_office].desks[i];
-            let enabled = !desk.tabs.is_empty()
-                && desk.tabs[desk.active_tab].provider.focus_events_enabled();
+            let enabled =
+                !desk.tabs.is_empty() && desk.tabs[desk.active_tab].provider.focus_events_enabled();
             if enabled {
                 if is_content {
                     self.pty_write(b"\x1b[I");

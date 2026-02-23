@@ -23,6 +23,15 @@ pub trait TerminalProvider: Send {
         0
     }
     fn scroll(&mut self, _delta: i32) {}
+    /// Take pending graphics passthrough sequences (Kitty/Sixel/iTerm2 APC).
+    /// Each entry is a complete `\x1b_...\x1b\\` sequence intercepted from PTY output.
+    fn take_pending_graphics(&self) -> Vec<Vec<u8>> {
+        vec![]
+    }
+    /// Current working directory as reported by OSC 7. None if not set.
+    fn get_cwd(&self) -> Option<String> {
+        None
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,6 +46,10 @@ pub struct ScreenContent {
     /// Whether the PTY application has enabled focus tracking (\x1b[?1004h).
     #[serde(default)]
     pub focus_events_enabled: bool,
+    /// Current working directory from OSC 7 (`\x1b]7;file://host/path ST`).
+    /// None if the shell has not emitted OSC 7 yet.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -121,6 +134,7 @@ impl Default for ScreenContent {
             cursor_shape: CursorShape::Block,
             bell: false,
             focus_events_enabled: false,
+            cwd: None,
         }
     }
 }

@@ -80,9 +80,7 @@ fn snapshot_multiple_desks() {
 #[test]
 fn snapshot_topbar_many_tabs() {
     // Many tabs to trigger tab_scroll > 0 in some configurations
-    let tabs = vec![
-        "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta",
-    ];
+    let tabs = vec!["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta"];
     let mut app = make_app(vec![make_desk("Work", tabs)]);
     app.focus = Focus::Topbar;
     let out = render(&mut app, 100, 30);

@@ -215,6 +215,7 @@ Recommended CLI coding agents:
 - [Kimi CLI](https://moonshotai.github.io/kimi-cli/)
 - [OpenCode](https://opencode.ai/)
 - [OpenClaw](https://openclaw.ai/)
+- [Amp](https://ampcode.com/)
 - [Goose](https://block.github.io/goose/)
 - [aider](https://aider.chat/)
 - [pi-mono coding-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)

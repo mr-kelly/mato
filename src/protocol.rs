@@ -98,4 +98,17 @@ pub enum ServerMsg {
         mouse: bool,
         bracketed_paste: bool,
     },
+    /// Graphics passthrough: Kitty graphics protocol / Sixel / iTerm2 inline image APC
+    /// sequences intercepted from PTY output. The client should re-emit them to the
+    /// outer terminal (kitty/ghostty/wezterm/iTerm2) at the translated screen position.
+    ///
+    /// `cursor` is the display cursor in content-area coordinates at the time the
+    /// last APC was captured (row, col), 0-indexed within the content area.
+    Graphics {
+        tab_id: String,
+        /// Display cursor position (row, col) relative to content area at APC capture time.
+        cursor: (u16, u16),
+        /// Each entry is one complete `\x1b_...\x1b\\` APC sequence.
+        payloads: Vec<Vec<u8>>,
+    },
 }

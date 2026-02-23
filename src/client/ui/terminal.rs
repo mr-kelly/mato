@@ -92,18 +92,30 @@ pub(super) fn draw_terminal(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeC
                         style = style.bg(bg);
                     }
                     let mut mods = Modifier::empty();
-                    if cell.bold { mods |= Modifier::BOLD; }
-                    if cell.italic { mods |= Modifier::ITALIC; }
+                    if cell.bold {
+                        mods |= Modifier::BOLD;
+                    }
+                    if cell.italic {
+                        mods |= Modifier::ITALIC;
+                    }
                     if cell.underline {
                         mods |= Modifier::UNDERLINED;
                         if let Some(uc) = cell.underline_color {
                             style = style.underline_color(uc);
                         }
                     }
-                    if cell.dim { mods |= Modifier::DIM; }
-                    if cell.reverse { mods |= Modifier::REVERSED; }
-                    if cell.strikethrough { mods |= Modifier::CROSSED_OUT; }
-                    if cell.hidden { mods |= Modifier::HIDDEN; }
+                    if cell.dim {
+                        mods |= Modifier::DIM;
+                    }
+                    if cell.reverse {
+                        mods |= Modifier::REVERSED;
+                    }
+                    if cell.strikethrough {
+                        mods |= Modifier::CROSSED_OUT;
+                    }
+                    if cell.hidden {
+                        mods |= Modifier::HIDDEN;
+                    }
                     if !mods.is_empty() {
                         style = style.add_modifier(mods);
                     }

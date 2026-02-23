@@ -97,6 +97,7 @@ impl TerminalEmulator for Vt100Emulator {
             cursor_shape: crate::terminal_provider::CursorShape::Block,
             bell: false,
             focus_events_enabled: false,
+            cwd: None,
         }
     }
 

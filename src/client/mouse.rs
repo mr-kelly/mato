@@ -18,16 +18,12 @@ pub fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
             MouseEventKind::ScrollUp => {
                 if mouse_mode {
                     app.pty_write(format!("\x1b[<64;{};{}M", tx, ty).as_bytes());
-                } else {
-                    app.pty_scroll(3);
                 }
                 return;
             }
             MouseEventKind::ScrollDown => {
                 if mouse_mode {
                     app.pty_write(format!("\x1b[<65;{};{}M", tx, ty).as_bytes());
-                } else {
-                    app.pty_scroll(-3);
                 }
                 return;
             }
@@ -118,8 +114,7 @@ pub fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
                             {
                                 app.begin_rename_tab();
                             } else {
-                                app.offices[app.current_office].desks[ti].active_tab =
-                                    real_tab_idx;
+                                app.offices[app.current_office].desks[ti].active_tab = real_tab_idx;
                                 app.mark_tab_switch();
                                 app.spawn_active_pty();
                             }
@@ -145,9 +140,11 @@ pub fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
             if in_rect(col, row, app.sidebar_area) {
                 app.nav(-1);
             } else if in_rect(col, row, app.topbar_area) {
+                let prev = app.tab_scroll;
                 app.tab_scroll = app.tab_scroll.saturating_sub(1);
-            } else if in_rect(col, row, app.content_area) {
-                app.pty_scroll(3);
+                if app.tab_scroll != prev {
+                    app.dirty = true;
+                }
             }
         }
         MouseEventKind::ScrollDown => {
@@ -158,11 +155,37 @@ pub fn handle_mouse(app: &mut App, me: crossterm::event::MouseEvent) {
                     .tabs
                     .len()
                     .saturating_sub(1);
+                let prev = app.tab_scroll;
                 if app.tab_scroll < max {
                     app.tab_scroll += 1;
                 }
-            } else if in_rect(col, row, app.content_area) {
-                app.pty_scroll(-3);
+                if app.tab_scroll != prev {
+                    app.dirty = true;
+                }
+            }
+        }
+        MouseEventKind::ScrollLeft => {
+            if in_rect(col, row, app.topbar_area) {
+                let prev = app.tab_scroll;
+                app.tab_scroll = app.tab_scroll.saturating_sub(1);
+                if app.tab_scroll != prev {
+                    app.dirty = true;
+                }
+            }
+        }
+        MouseEventKind::ScrollRight => {
+            if in_rect(col, row, app.topbar_area) {
+                let max = app.offices[app.current_office].desks[app.selected()]
+                    .tabs
+                    .len()
+                    .saturating_sub(1);
+                let prev = app.tab_scroll;
+                if app.tab_scroll < max {
+                    app.tab_scroll += 1;
+                }
+                if app.tab_scroll != prev {
+                    app.dirty = true;
+                }
             }
         }
         _ => {}

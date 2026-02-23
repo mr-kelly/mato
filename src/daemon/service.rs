@@ -694,7 +694,7 @@ pub async fn handle_client(
                         rmp_serde::to_vec(&response).unwrap_or_default()
                     };
 
-                    last_sent_screen = Some(content);
+                    last_sent_screen = Some(content.clone());
                     let len = (bin.len() as u32).to_le_bytes();
                     // Reuse pre-allocated buffer to avoid per-push allocation
                     push_frame_buf.clear();
@@ -706,6 +706,31 @@ pub async fn handle_client(
                     }
                     if writer.flush().await.is_err() {
                         break;
+                    }
+
+                    // Send any pending graphics (Kitty APC) after the screen update.
+                    // cursor from content is already display-relative.
+                    let graphics = {
+                        let tab = tabs.get(&tab_id)
+                            .map(|e| e.lock().take_pending_graphics())
+                            .unwrap_or_default();
+                        tab
+                    };
+                    if !graphics.is_empty() {
+                        let gmsg = crate::protocol::ServerMsg::Graphics {
+                            tab_id: tab_id.clone(),
+                            cursor: content.cursor,
+                            payloads: graphics,
+                        };
+                        if let Ok(gbin) = rmp_serde::to_vec(&gmsg) {
+                            push_frame_buf.clear();
+                            let glen = (gbin.len() as u32).to_le_bytes();
+                            push_frame_buf.push(0x00);
+                            push_frame_buf.extend_from_slice(&glen);
+                            push_frame_buf.extend_from_slice(&gbin);
+                            let _ = writer.write_all(&push_frame_buf).await;
+                            let _ = writer.flush().await;
+                        }
                     }
                 }
                 tracing::debug!("Client #{} push loop ended for tab {}", client_id, tab_id);

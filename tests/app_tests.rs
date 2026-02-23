@@ -160,7 +160,10 @@ fn commit_rename_empty_string_is_ignored() {
 #[test]
 fn commit_rename_task_applies_trimmed_name() {
     let mut app = make_app_with(vec![make_task("Old")]);
-    app.rename = Some(RenameState::new(RenameTarget::Desk(0), "  New Name  ".into()));
+    app.rename = Some(RenameState::new(
+        RenameTarget::Desk(0),
+        "  New Name  ".into(),
+    ));
     app.commit_rename();
     assert_eq!(app.offices[0].desks[0].name, "New Name");
     assert!(app.dirty);
@@ -521,13 +524,19 @@ fn from_saved_clamps_active_desk_to_valid_range() {
                     id: "d1".into(),
                     name: "Desk A".into(),
                     active_tab: 0,
-                    tabs: vec![SavedTab { id: "t1".into(), name: "Tab 1".into() }],
+                    tabs: vec![SavedTab {
+                        id: "t1".into(),
+                        name: "Tab 1".into(),
+                    }],
                 },
                 SavedDesk {
                     id: "d2".into(),
                     name: "Desk B".into(),
                     active_tab: 0,
-                    tabs: vec![SavedTab { id: "t2".into(), name: "Tab 1".into() }],
+                    tabs: vec![SavedTab {
+                        id: "t2".into(),
+                        name: "Tab 1".into(),
+                    }],
                 },
             ],
         }],
@@ -556,10 +565,13 @@ fn close_desk_resets_tab_scroll_to_zero() {
     // Close first desk
     app.nav(0);
     app.close_desk(); // goes through request_close_desk; call confirm path
-    // If only one desk is protected, add a second and actually close
+                      // If only one desk is protected, add a second and actually close
     app.nav(0);
     // Force close by calling close_desk_at via public close_desk when 2 desks remain
-    assert_eq!(app.tab_scroll, 0, "tab_scroll must be reset to 0 after desk close");
+    assert_eq!(
+        app.tab_scroll, 0,
+        "tab_scroll must be reset to 0 after desk close"
+    );
 }
 
 // ── sync_focus_events: no panic with empty tabs ───────────────────────────────
@@ -588,8 +600,12 @@ impl TerminalProvider for EnabledMouseProvider {
     fn spawn(&mut self, _: u16, _: u16) {}
     fn resize(&mut self, _: u16, _: u16) {}
     fn write(&mut self, _: &[u8]) {}
-    fn mouse_mode_enabled(&self) -> bool { true }
-    fn get_screen(&self, _: u16, _: u16) -> ScreenContent { ScreenContent::default() }
+    fn mouse_mode_enabled(&self) -> bool {
+        true
+    }
+    fn get_screen(&self, _: u16, _: u16) -> ScreenContent {
+        ScreenContent::default()
+    }
 }
 
 #[test]
@@ -612,10 +628,16 @@ fn pty_mouse_mode_cache_invalidated_on_tab_switch() {
         active_tab: 0,
     };
     let mut app = make_app_with(vec![desk]);
-    assert!(app.pty_mouse_mode_enabled(), "tab1 should have mouse enabled");
+    assert!(
+        app.pty_mouse_mode_enabled(),
+        "tab1 should have mouse enabled"
+    );
     // Switch to tab2
     app.offices[0].desks[0].active_tab = 1;
-    assert!(!app.pty_mouse_mode_enabled(), "tab2 should not have mouse enabled after switch");
+    assert!(
+        !app.pty_mouse_mode_enabled(),
+        "tab2 should not have mouse enabled after switch"
+    );
 }
 
 // ── Spinner: needs_update drives redraws ──────────────────────────────────────
@@ -649,7 +671,10 @@ fn update_spinner_advances_frame_after_80ms() {
     let before = app.spinner_frame;
     thread::sleep(std::time::Duration::from_millis(85));
     app.update_spinner();
-    assert_ne!(app.spinner_frame, before, "spinner_frame must advance after 80ms");
+    assert_ne!(
+        app.spinner_frame, before,
+        "spinner_frame must advance after 80ms"
+    );
 }
 
 // ── RenameState: unicode / cursor editing ─────────────────────────────────────
@@ -738,7 +763,7 @@ fn rename_cursor_byte_index_correct_for_multibyte() {
     // "😀" = 4 bytes, so byte_index(1) should be 4
     let r = RenameState::new(RenameTarget::Desk(0), "😀a".into());
     assert_eq!(r.cursor, 2); // cursor at end (char len = 2)
-    // Move to position 1 (after emoji, before 'a')
+                             // Move to position 1 (after emoji, before 'a')
     let mut r2 = RenameState::new(RenameTarget::Desk(0), "😀a".into());
     r2.cursor = 1;
     assert_eq!(r2.cursor_byte_index(), 4); // emoji is 4 bytes
@@ -767,7 +792,11 @@ fn select_desk_no_dirty_when_same() {
 fn select_desk_clamps_to_last() {
     let mut app = make_app_with(vec![make_task("A"), make_task("B")]);
     app.select_desk(99);
-    assert_eq!(app.selected(), 1, "out-of-range select must clamp to last desk");
+    assert_eq!(
+        app.selected(),
+        1,
+        "out-of-range select must clamp to last desk"
+    );
 }
 
 // ── App: switch_office ────────────────────────────────────────────────────────
@@ -805,7 +834,10 @@ fn switch_office_same_always_sets_dirty() {
     app.current_office = 0;
     app.dirty = false;
     app.switch_office(0);
-    assert!(app.dirty, "switch_office always marks dirty (even same office)");
+    assert!(
+        app.dirty,
+        "switch_office always marks dirty (even same office)"
+    );
 }
 
 #[test]
@@ -858,17 +890,16 @@ fn has_active_tabs_true_when_nonempty() {
 
 // ── App: flush_pending_content_esc ────────────────────────────────────────────
 
-use std::time::{Duration, Instant};
 use mato::client::app::CONTENT_ESC_DOUBLE_PRESS_WINDOW_MS;
+use std::time::{Duration, Instant};
 
 #[test]
 fn flush_esc_clears_stale_esc() {
     use std::thread;
     let mut app = make_app_with(vec![make_task("T")]);
     // Simulate an ESC press older than the detection window
-    app.last_content_esc = Some(
-        Instant::now() - Duration::from_millis(CONTENT_ESC_DOUBLE_PRESS_WINDOW_MS + 50),
-    );
+    app.last_content_esc =
+        Some(Instant::now() - Duration::from_millis(CONTENT_ESC_DOUBLE_PRESS_WINDOW_MS + 50));
     app.flush_pending_content_esc();
     assert!(
         app.last_content_esc.is_none(),
@@ -894,12 +925,30 @@ fn jump_labels_content_focus_excludes_c_r_q() {
     let mut app = make_app_with(vec![make_task("T")]);
     app.focus = Focus::Content;
     let labels = app.jump_labels();
-    assert!(!labels.contains(&'c'), "c must be excluded in Content focus");
-    assert!(!labels.contains(&'C'), "C must be excluded in Content focus");
-    assert!(!labels.contains(&'r'), "r must be excluded in Content focus");
-    assert!(!labels.contains(&'R'), "R must be excluded in Content focus");
-    assert!(!labels.contains(&'q'), "q must be excluded in Content focus");
-    assert!(!labels.contains(&'Q'), "Q must be excluded in Content focus");
+    assert!(
+        !labels.contains(&'c'),
+        "c must be excluded in Content focus"
+    );
+    assert!(
+        !labels.contains(&'C'),
+        "C must be excluded in Content focus"
+    );
+    assert!(
+        !labels.contains(&'r'),
+        "r must be excluded in Content focus"
+    );
+    assert!(
+        !labels.contains(&'R'),
+        "R must be excluded in Content focus"
+    );
+    assert!(
+        !labels.contains(&'q'),
+        "q must be excluded in Content focus"
+    );
+    assert!(
+        !labels.contains(&'Q'),
+        "Q must be excluded in Content focus"
+    );
 }
 
 #[test]
@@ -909,7 +958,10 @@ fn jump_labels_sidebar_focus_excludes_r_q_but_not_c() {
     let labels = app.jump_labels();
     assert!(!labels.contains(&'r'));
     assert!(!labels.contains(&'q'));
-    assert!(labels.contains(&'c'), "c should be available in Sidebar focus");
+    assert!(
+        labels.contains(&'c'),
+        "c should be available in Sidebar focus"
+    );
 }
 
 #[test]
@@ -919,7 +971,11 @@ fn jump_labels_are_unique() {
         app.focus = focus;
         let labels = app.jump_labels();
         let set: HashSet<char> = labels.iter().cloned().collect();
-        assert_eq!(labels.len(), set.len(), "jump labels must be unique for {focus:?}");
+        assert_eq!(
+            labels.len(),
+            set.len(),
+            "jump labels must be unique for {focus:?}"
+        );
     }
 }
 
@@ -929,12 +985,18 @@ fn jump_labels_are_unique() {
 fn tab_switch_timing_roundtrip() {
     use std::thread;
     let mut app = make_app_with(vec![make_task("T")]);
-    assert!(app.finish_tab_switch_measurement().is_none(), "no measurement before mark");
+    assert!(
+        app.finish_tab_switch_measurement().is_none(),
+        "no measurement before mark"
+    );
     app.mark_tab_switch();
     thread::sleep(Duration::from_millis(5));
     let elapsed = app.finish_tab_switch_measurement();
     assert!(elapsed.is_some());
-    assert!(elapsed.unwrap() >= Duration::from_millis(1), "elapsed must be > 0");
+    assert!(
+        elapsed.unwrap() >= Duration::from_millis(1),
+        "elapsed must be > 0"
+    );
     // Second call returns None (consumed)
     assert!(app.finish_tab_switch_measurement().is_none());
 }
@@ -949,7 +1011,12 @@ fn jump_selection_switches_desk() {
     app.focus = Focus::Sidebar;
     app.jump_mode = JumpMode::Active;
     // Manually set sidebar_list_area so visible_desk_indices works
-    app.sidebar_list_area = ratatui::layout::Rect { x: 0, y: 0, width: 20, height: 10 };
+    app.sidebar_list_area = ratatui::layout::Rect {
+        x: 0,
+        y: 0,
+        width: 20,
+        height: 10,
+    };
     // 'a' maps to label[0] which maps to target[0] (first desk in Sidebar focus)
     let labels = app.jump_labels();
     let targets = app.jump_targets();
@@ -958,8 +1025,16 @@ fn jump_selection_switches_desk() {
     let (kind, desk_idx, _) = targets[0];
     assert_eq!(kind, 't', "first target in Sidebar focus should be a desk");
     app.handle_jump_selection(first_label);
-    assert_eq!(app.selected(), desk_idx, "jump should switch to correct desk");
-    assert_eq!(app.jump_mode, JumpMode::None, "jump mode must exit after selection");
+    assert_eq!(
+        app.selected(),
+        desk_idx,
+        "jump should switch to correct desk"
+    );
+    assert_eq!(
+        app.jump_mode,
+        JumpMode::None,
+        "jump mode must exit after selection"
+    );
 }
 
 #[test]
@@ -970,7 +1045,11 @@ fn jump_selection_invalid_char_exits_jump_mode() {
     // Use a character that is NOT in jump_labels
     let reserved = '☃'; // not in JUMP_LABELS at all
     app.handle_jump_selection(reserved);
-    assert_eq!(app.jump_mode, JumpMode::None, "jump mode must exit even on no-match");
+    assert_eq!(
+        app.jump_mode,
+        JumpMode::None,
+        "jump mode must exit even on no-match"
+    );
 }
 
 #[test]
@@ -1006,8 +1085,14 @@ fn non_esc_key_clears_pending_esc_immediately() {
     // This tests the `last_content_esc.take()` path in input.rs.
     let mut app = make_app_with(vec![make_task("T")]);
     app.last_content_esc = Some(Instant::now()); // fresh ESC pending
-    // Simulate what input.rs does for a non-ESC key in Content focus:
+                                                 // Simulate what input.rs does for a non-ESC key in Content focus:
     let had_pending_esc = app.last_content_esc.take().is_some();
-    assert!(had_pending_esc, "recent ESC must be immediately cleared on non-ESC key");
-    assert!(app.last_content_esc.is_none(), "last_content_esc must be None after take()");
+    assert!(
+        had_pending_esc,
+        "recent ESC must be immediately cleared on non-ESC key"
+    );
+    assert!(
+        app.last_content_esc.is_none(),
+        "last_content_esc must be None after take()"
+    );
 }

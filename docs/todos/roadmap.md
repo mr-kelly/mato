@@ -234,13 +234,31 @@
 2. Multi-client collaboration semantics (read-only/input ownership)
 3. Configurable keymap while keeping AI-friendly defaults
 
-### P2: Task/Agent Capability Framework
+### P2: Graphics Protocol Support (High UX Value)
+
+**Kitty Graphics Protocol passthrough** — enables image preview in yazi, neovim (image.nvim),
+fzf preview, ranger, and any tool using the protocol. Supported by kitty, ghostty, wezterm, iTerm2.
+
+Implementation approach (does NOT require replacing alacritty_terminal):
+1. Detect outer terminal support: send `\x1b_Gi=1,s=1,v=1,a=q,f=24;AAAA\x1b\\` at startup
+2. In PTY reader thread: intercept `\x1b_G...ESC\` (APC) sequences before feeding to alacritty
+3. Package as new `ServerMsg::Graphics { tab_id, apc_payload }` pushed to subscribers
+4. Client: on receiving Graphics msg, translate PTY (row,col) → outer terminal (content_area + row_offset + cell_px), re-emit APC to stdout
+5. Also pass through Sixel and iTerm2 inline image sequences via same mechanism
+
+Note on WezTerm emulator: `wezterm-term` is NOT published to crates.io, has 50+ internal crate
+dependencies, and unstable API. NOT recommended as emulator replacement — graphics passthrough
+at the PTY reader layer is the correct architecture regardless of emulator.
+
+Limitation: mosh does not propagate APC sequences (mosh strips them). SSH works fine.
+
+### P3: Task/Agent Capability Framework
 
 1. Task schema (`cmd/cwd/env/restart/backoff`)
 2. Task state machine + events
 3. Notification pipeline (bell -> desktop/webhook)
 
-### P3: Plugin System
+### P4: Plugin System
 
 1. Minimal plugin API (commands/hooks)
 2. Security boundaries
@@ -255,3 +273,4 @@
 3. `resize-mode`: add `resize_strategy` config and implement fixed/sync modes.
 4. `session-cli`: design `mato attach/detach/sessions` commands.
 5. `task-schema`: introduce task model + restart policy + state machine.
+6. `graphics-passthrough`: Kitty/Sixel/iTerm2 image passthrough via APC intercept in PTY reader.

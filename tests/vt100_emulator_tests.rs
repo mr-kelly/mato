@@ -1,6 +1,5 @@
 /// Tests for Vt100Emulator, focusing on the get_screen() rewrite in vt100 0.16
 /// where Cell::default() was removed and we now use an explicit None branch.
-
 use mato::emulators::Vt100Emulator;
 use mato::terminal_emulator::TerminalEmulator;
 
@@ -89,7 +88,10 @@ fn vt100_get_screen_smaller_than_parser_returns_correct_size() {
     // Bottom 5 rows of a 24-row terminal = PTY rows 19..23 (0-based).
     // "Hello" is at PTY row 23 → display row 4 (last row of the 5-row window).
     let last_row: String = screen.lines[4].cells.iter().map(|c| c.ch).collect();
-    assert!(last_row.starts_with("Hello"), "expected Hello on last display row, got: {last_row:?}");
+    assert!(
+        last_row.starts_with("Hello"),
+        "expected Hello on last display row, got: {last_row:?}"
+    );
     // Cursor should be at display row 4 (PTY row 23 - row_offset 19 = display row 4)
     assert_eq!(screen.cursor.0, 4, "cursor should be on last display row");
 }
@@ -106,7 +108,10 @@ fn vt100_bold_attribute_is_set() {
     // After reset, next char should not be bold
     emu.process(b"Normal");
     let screen2 = emu.get_screen(24, 80);
-    assert!(!screen2.lines[0].cells[4].bold, "cell after reset should not be bold");
+    assert!(
+        !screen2.lines[0].cells[4].bold,
+        "cell after reset should not be bold"
+    );
 }
 
 #[test]
@@ -130,7 +135,10 @@ fn vt100_underline_attribute_is_set() {
     let mut emu = Vt100Emulator::new(24, 80);
     emu.process(b"\x1b[4mUnder\x1b[0m");
     let screen = emu.get_screen(24, 80);
-    assert!(screen.lines[0].cells[0].underline, "cell should be underlined");
+    assert!(
+        screen.lines[0].cells[0].underline,
+        "cell should be underlined"
+    );
 }
 
 // ── Colors ────────────────────────────────────────────────────────────────────
@@ -141,7 +149,10 @@ fn vt100_indexed_fg_color_is_set() {
     // SGR 31 = red (index 1)
     emu.process(b"\x1b[31mR\x1b[0m");
     let screen = emu.get_screen(24, 80);
-    assert!(screen.lines[0].cells[0].fg.is_some(), "fg color should be set");
+    assert!(
+        screen.lines[0].cells[0].fg.is_some(),
+        "fg color should be set"
+    );
 }
 
 #[test]
@@ -159,8 +170,14 @@ fn vt100_default_color_is_none() {
     let mut emu = Vt100Emulator::new(24, 80);
     emu.process(b"X");
     let screen = emu.get_screen(24, 80);
-    assert!(screen.lines[0].cells[0].fg.is_none(), "default fg should be None");
-    assert!(screen.lines[0].cells[0].bg.is_none(), "default bg should be None");
+    assert!(
+        screen.lines[0].cells[0].fg.is_none(),
+        "default fg should be None"
+    );
+    assert!(
+        screen.lines[0].cells[0].bg.is_none(),
+        "default bg should be None"
+    );
 }
 
 // ── Wide characters ───────────────────────────────────────────────────────────
@@ -214,7 +231,10 @@ fn vt100_resize_same_size_is_noop() {
     emu.resize(24, 80); // same size — should not clear
     let screen = emu.get_screen(24, 80);
     let row: String = screen.lines[0].cells.iter().map(|c| c.ch).collect();
-    assert!(row.starts_with("Hello"), "same-size resize should preserve content: {row:?}");
+    assert!(
+        row.starts_with("Hello"),
+        "same-size resize should preserve content: {row:?}"
+    );
 }
 
 #[test]

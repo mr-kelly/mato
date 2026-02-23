@@ -356,7 +356,11 @@ pub(super) fn draw_desk_delete_confirm(f: &mut Frame, app: &App, t: &ThemeColors
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Length(2), Constraint::Length(2)])
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Length(2),
+            Constraint::Length(2),
+        ])
         .split(popup);
 
     let warning = Paragraph::new(format!("⚠️  Delete desk \"{}\"?", desk_name))
@@ -403,7 +407,11 @@ pub(super) fn draw_toast(f: &mut Frame, app: &App, t: &ThemeColors) {
             .fg(t.bg())
             .bg(t.accent2())
             .add_modifier(Modifier::BOLD)
-            .add_modifier(if faded { Modifier::DIM } else { Modifier::empty() });
+            .add_modifier(if faded {
+                Modifier::DIM
+            } else {
+                Modifier::empty()
+            });
 
         f.render_widget(Clear, toast_area);
         f.render_widget(

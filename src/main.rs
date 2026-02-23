@@ -3,6 +3,7 @@ mod config;
 mod daemon;
 mod emulators;
 mod error;
+mod passthrough;
 mod protocol;
 mod providers;
 mod terminal;
@@ -350,6 +351,8 @@ fn run_client() -> Result<()> {
                         app.resize_all_ptys(app.term_rows, app.term_cols);
                         last_drawn_size = (app.term_rows, app.term_cols);
                     }
+                    // Emit any buffered Kitty graphics APC sequences after rendering.
+                    app.emit_pending_graphics();
                 }
 
                 // Forward bell (BEL) from inner terminal to host terminal.
@@ -361,8 +364,6 @@ fn run_client() -> Result<()> {
                 if let Some(elapsed) = app.finish_tab_switch_measurement() {
                     tracing::debug!("Tab switch first-frame latency: {}ms", elapsed.as_millis());
                 }
-
-
             }
             ScreenState::Onboarding(controller) => {
                 terminal.draw(|f| controller.draw(f))?;
@@ -491,5 +492,3 @@ fn run_client() -> Result<()> {
     terminal.show_cursor()?;
     Ok(())
 }
-
-

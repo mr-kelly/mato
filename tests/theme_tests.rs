@@ -1,5 +1,4 @@
 /// Tests for ThemeColors and builtin theme loading.
-
 use mato::theme::{builtin, rgb_to_256, supports_truecolor, ThemeColors, BUILTIN_THEMES};
 use ratatui::style::Color;
 
@@ -248,8 +247,12 @@ fn theme_merge_overrides_accent() {
     };
     let mut merged = builtin(file.name.as_deref().unwrap_or("system"));
     let o = &file.colors;
-    if let Some(v) = o.accent { merged.accent = v; }
-    if let Some(v) = o.bg { merged.bg = v; }
+    if let Some(v) = o.accent {
+        merged.accent = v;
+    }
+    if let Some(v) = o.bg {
+        merged.bg = v;
+    }
 
     assert_eq!(merged.accent, custom_accent, "accent should be overridden");
     assert_eq!(merged.bg, base.bg, "bg should remain from base theme");
@@ -272,14 +275,30 @@ fn theme_merge_all_fields_override() {
     };
     let mut merged = builtin("gruvbox");
     let o = &file.colors;
-    if let Some(v) = o.bg { merged.bg = v; }
-    if let Some(v) = o.surface { merged.surface = v; }
-    if let Some(v) = o.border { merged.border = v; }
-    if let Some(v) = o.accent { merged.accent = v; }
-    if let Some(v) = o.accent2 { merged.accent2 = v; }
-    if let Some(v) = o.fg { merged.fg = v; }
-    if let Some(v) = o.fg_dim { merged.fg_dim = v; }
-    if let Some(v) = o.sel_bg { merged.sel_bg = v; }
+    if let Some(v) = o.bg {
+        merged.bg = v;
+    }
+    if let Some(v) = o.surface {
+        merged.surface = v;
+    }
+    if let Some(v) = o.border {
+        merged.border = v;
+    }
+    if let Some(v) = o.accent {
+        merged.accent = v;
+    }
+    if let Some(v) = o.accent2 {
+        merged.accent2 = v;
+    }
+    if let Some(v) = o.fg {
+        merged.fg = v;
+    }
+    if let Some(v) = o.fg_dim {
+        merged.fg_dim = v;
+    }
+    if let Some(v) = o.sel_bg {
+        merged.sel_bg = v;
+    }
 
     assert_eq!(merged.bg, [1, 2, 3]);
     assert_eq!(merged.surface, [4, 5, 6]);
@@ -297,8 +316,12 @@ fn theme_merge_empty_partial_leaves_base_unchanged() {
     let base = builtin("catppuccin");
     let partial = PartialColors::default();
     let mut merged = builtin("catppuccin");
-    if let Some(v) = partial.bg { merged.bg = v; }
-    if let Some(v) = partial.surface { merged.surface = v; }
+    if let Some(v) = partial.bg {
+        merged.bg = v;
+    }
+    if let Some(v) = partial.surface {
+        merged.surface = v;
+    }
     assert_eq!(merged.bg, base.bg);
     assert_eq!(merged.surface, base.surface);
     assert_eq!(merged.accent, base.accent);
@@ -398,8 +421,7 @@ fn load_always_respects_saved_theme_regardless_of_colorterm() {
     }
     // Both calls must return the same theme — COLORTERM must not influence load().
     assert_eq!(
-        theme_without_colorterm.follow_terminal,
-        theme_with_colorterm.follow_terminal,
+        theme_without_colorterm.follow_terminal, theme_with_colorterm.follow_terminal,
         "load() must not change theme based on COLORTERM"
     );
 }
@@ -420,7 +442,10 @@ fn rgb_to_256_pure_white_maps_to_cube_white() {
 fn rgb_to_256_grayscale_uses_ramp() {
     // Mid-gray: avg ≈ 128. Ramp index = (128-8)/10 = 12 → 232+12 = 244.
     let idx = rgb_to_256(128, 128, 128);
-    assert!(idx >= 232 && idx <= 255, "expected grayscale ramp, got {idx}");
+    assert!(
+        idx >= 232 && idx <= 255,
+        "expected grayscale ramp, got {idx}"
+    );
 }
 
 #[test]
@@ -439,7 +464,16 @@ fn rgb_to_256_blue_maps_to_cube() {
 fn color_accessors_never_return_reset_for_non_system_theme() {
     // Regardless of COLORTERM, a non-system theme must return a real color.
     let t = fixed_theme();
-    for color in [t.bg(), t.surface(), t.border(), t.accent(), t.accent2(), t.fg(), t.fg_dim(), t.sel_bg()] {
+    for color in [
+        t.bg(),
+        t.surface(),
+        t.border(),
+        t.accent(),
+        t.accent2(),
+        t.fg(),
+        t.fg_dim(),
+        t.sel_bg(),
+    ] {
         assert_ne!(color, Color::Reset, "expected a real color, got Reset");
     }
 }

@@ -136,11 +136,15 @@ fn screen_content_json_roundtrip_preserves_bell_and_focus_events() {
         cursor_shape: CursorShape::Beam,
         bell: true,
         focus_events_enabled: true,
+        cwd: None,
     };
     let json = serde_json::to_string(&content).unwrap();
     let restored: ScreenContent = serde_json::from_str(&json).unwrap();
     assert!(restored.bell, "bell must survive JSON roundtrip");
-    assert!(restored.focus_events_enabled, "focus_events_enabled must survive JSON roundtrip");
+    assert!(
+        restored.focus_events_enabled,
+        "focus_events_enabled must survive JSON roundtrip"
+    );
     assert_eq!(restored.cursor, (3, 7));
     assert_eq!(restored.title.as_deref(), Some("vim"));
 }
@@ -154,6 +158,7 @@ fn screen_content_msgpack_roundtrip_preserves_bell_and_focus_events() {
         cursor_shape: CursorShape::Block,
         bell: true,
         focus_events_enabled: true,
+        cwd: None,
     };
     let bin = rmp_serde::to_vec(&content).unwrap();
     let restored: ScreenContent = rmp_serde::from_slice(&bin).unwrap();
@@ -166,8 +171,14 @@ fn screen_content_missing_new_fields_deserialize_as_false() {
     // Old JSON without bell/focus_events_enabled should deserialize cleanly (serde default).
     let old_json = r#"{"lines":[],"cursor":[0,0],"title":null,"cursor_shape":"Block"}"#;
     let content: ScreenContent = serde_json::from_str(old_json).unwrap();
-    assert!(!content.bell, "old client JSON with no bell field must default to false");
-    assert!(!content.focus_events_enabled, "old client JSON with no focus_events_enabled must default to false");
+    assert!(
+        !content.bell,
+        "old client JSON with no bell field must default to false"
+    );
+    assert!(
+        !content.focus_events_enabled,
+        "old client JSON with no focus_events_enabled must default to false"
+    );
 }
 
 #[test]
@@ -185,8 +196,14 @@ fn screen_diff_msgpack_roundtrip_preserves_focus_events_enabled() {
     let bin = rmp_serde::to_vec(&msg).unwrap();
     let restored: ServerMsg = rmp_serde::from_slice(&bin).unwrap();
     match restored {
-        ServerMsg::ScreenDiff { focus_events_enabled, .. } => {
-            assert!(focus_events_enabled, "focus_events_enabled must survive msgpack roundtrip");
+        ServerMsg::ScreenDiff {
+            focus_events_enabled,
+            ..
+        } => {
+            assert!(
+                focus_events_enabled,
+                "focus_events_enabled must survive msgpack roundtrip"
+            );
         }
         _ => panic!("Expected ScreenDiff"),
     }
@@ -249,7 +266,14 @@ fn screen_diff_bell_and_focus_events_both_true() {
     let bin = rmp_serde::to_vec(&msg).unwrap();
     let back: ServerMsg = rmp_serde::from_slice(&bin).unwrap();
     match back {
-        ServerMsg::ScreenDiff { bell, focus_events_enabled, cursor, title, cursor_shape, .. } => {
+        ServerMsg::ScreenDiff {
+            bell,
+            focus_events_enabled,
+            cursor,
+            title,
+            cursor_shape,
+            ..
+        } => {
             assert!(bell);
             assert!(focus_events_enabled);
             assert_eq!(cursor, (5, 10));
@@ -265,11 +289,17 @@ fn screen_diff_bell_and_focus_events_both_true() {
 fn input_modes_roundtrip_all_combinations() {
     use mato::protocol::ServerMsg;
     for (mouse, paste) in [(false, false), (true, false), (false, true), (true, true)] {
-        let msg = ServerMsg::InputModes { mouse, bracketed_paste: paste };
+        let msg = ServerMsg::InputModes {
+            mouse,
+            bracketed_paste: paste,
+        };
         let json = serde_json::to_string(&msg).unwrap();
         let back: ServerMsg = serde_json::from_str(&json).unwrap();
         match back {
-            ServerMsg::InputModes { mouse: m, bracketed_paste: p } => {
+            ServerMsg::InputModes {
+                mouse: m,
+                bracketed_paste: p,
+            } => {
                 assert_eq!(m, mouse);
                 assert_eq!(p, paste);
             }
@@ -286,10 +316,17 @@ fn screen_full_with_changed_lines_msgpack_roundtrip() {
     let cell = ScreenCell {
         ch: 'A',
         display_width: 1,
-        fg: None, bg: None,
-        bold: true, italic: false, underline: false,
-        dim: false, reverse: false, strikethrough: false, hidden: false,
-        underline_color: None, zerowidth: None,
+        fg: None,
+        bg: None,
+        bold: true,
+        italic: false,
+        underline: false,
+        dim: false,
+        reverse: false,
+        strikethrough: false,
+        hidden: false,
+        underline_color: None,
+        zerowidth: None,
     };
     let line = ScreenLine { cells: vec![cell] };
     let content = ScreenContent {
@@ -299,8 +336,12 @@ fn screen_full_with_changed_lines_msgpack_roundtrip() {
         cursor_shape: CursorShape::Block,
         bell: false,
         focus_events_enabled: false,
+        cwd: None,
     };
-    let msg = ServerMsg::Screen { tab_id: "t".into(), content };
+    let msg = ServerMsg::Screen {
+        tab_id: "t".into(),
+        content,
+    };
     let bin = rmp_serde::to_vec(&msg).unwrap();
     let back: ServerMsg = rmp_serde::from_slice(&bin).unwrap();
     match back {
@@ -318,7 +359,9 @@ fn screen_full_with_changed_lines_msgpack_roundtrip() {
 #[test]
 fn error_message_roundtrip() {
     use mato::protocol::ServerMsg;
-    let msg = ServerMsg::Error { message: "tab not found".into() };
+    let msg = ServerMsg::Error {
+        message: "tab not found".into(),
+    };
     let json = serde_json::to_string(&msg).unwrap();
     let back: ServerMsg = serde_json::from_str(&json).unwrap();
     match back {
@@ -330,7 +373,9 @@ fn error_message_roundtrip() {
 /// GetInputModes request roundtrip.
 #[test]
 fn get_input_modes_request_roundtrip() {
-    let msg = ClientMsg::GetInputModes { tab_id: "abc".into() };
+    let msg = ClientMsg::GetInputModes {
+        tab_id: "abc".into(),
+    };
     let json = serde_json::to_string(&msg).unwrap();
     let back: ClientMsg = serde_json::from_str(&json).unwrap();
     match back {
@@ -347,10 +392,17 @@ fn screen_diff_changed_lines_preserve_cell_attributes() {
     let cell = ScreenCell {
         ch: '✓',
         display_width: 1,
-        fg: None, bg: None,
-        bold: false, italic: true, underline: true,
-        dim: false, reverse: true, strikethrough: false, hidden: false,
-        underline_color: None, zerowidth: None,
+        fg: None,
+        bg: None,
+        bold: false,
+        italic: true,
+        underline: true,
+        dim: false,
+        reverse: true,
+        strikethrough: false,
+        hidden: false,
+        underline_color: None,
+        zerowidth: None,
     };
     let line = ScreenLine { cells: vec![cell] };
     let msg = ServerMsg::ScreenDiff {
@@ -364,7 +416,12 @@ fn screen_diff_changed_lines_preserve_cell_attributes() {
     let bin = rmp_serde::to_vec(&msg).unwrap();
     let back: ServerMsg = rmp_serde::from_slice(&bin).unwrap();
     match back {
-        ServerMsg::ScreenDiff { changed_lines, cursor, cursor_shape, .. } => {
+        ServerMsg::ScreenDiff {
+            changed_lines,
+            cursor,
+            cursor_shape,
+            ..
+        } => {
             assert_eq!(cursor, (3, 1));
             assert!(matches!(cursor_shape, CursorShape::Underline));
             assert_eq!(changed_lines.len(), 1);

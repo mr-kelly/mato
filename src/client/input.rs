@@ -112,7 +112,10 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
                 let selected = app.office_selector.list_state.selected().unwrap_or(0);
                 if selected < app.offices.len() {
                     let office_name = app.offices[selected].name.clone();
-                    app.rename = Some(RenameState::new(RenameTarget::Office(selected), office_name));
+                    app.rename = Some(RenameState::new(
+                        RenameTarget::Office(selected),
+                        office_name,
+                    ));
                     app.office_selector.active = false;
                 }
             }

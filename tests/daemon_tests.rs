@@ -422,7 +422,10 @@ fn alacritty_bell_is_consumed_once_per_ding() {
     let s1 = emu.get_screen(24, 80);
     assert!(s1.bell, "first get_screen should report bell=true");
     let s2 = emu.get_screen(24, 80);
-    assert!(!s2.bell, "second get_screen should report bell=false (consumed)");
+    assert!(
+        !s2.bell,
+        "second get_screen should report bell=false (consumed)"
+    );
 }
 
 #[test]
