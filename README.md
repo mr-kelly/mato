@@ -288,27 +288,16 @@ You say tomato, I say Mato.
 <a id="resources"></a>
 ## 🛠️ Resources
 
-<table border="0">
-<tr>
-<td>
-
-#### 📖 Documentation
+### 📖 Documentation
 - [**Keyboard Shortcuts**](docs/KEYBOARD_SHORTCUTS.md)
 - [**AI Agent Guide**](docs/AI_AGENT_FRIENDLY.md)
 - [**Persistence Specs**](docs/TERMINAL_PERSISTENCE.md)
 - [**Spinner Logic**](docs/SPINNER_LOGIC.md)
 
-</td>
-<td>
-
-#### 🔧 Customization
+### 🔧 Customization
 - [**Theme Engine**](docs/changelog/2026-02-22_themes-settings-update-check.md)
 - [**Template Gallery**](templates/README.md)
 - [**Configuration API**](src/config.rs)
-
-</td>
-</tr>
-</table>
 
 ---
 
