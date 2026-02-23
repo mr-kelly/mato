@@ -351,8 +351,7 @@ fn run_client() -> Result<()> {
                     tracing::debug!("Tab switch first-frame latency: {}ms", elapsed.as_millis());
                 }
 
-                // Apply pending resize after user stops resizing
-                app.apply_pending_resize();
+
             }
             ScreenState::Onboarding(controller) => {
                 terminal.draw(|f| controller.draw(f))?;

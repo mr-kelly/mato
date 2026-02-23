@@ -158,7 +158,6 @@ pub struct App {
     pub office_selector: OfficeSelectorState,
     pub term_rows: u16,
     pub term_cols: u16,
-    pub pending_resize: Option<(u16, u16, std::time::Instant)>, // Delay resize to avoid content loss
     pub dirty: bool,
     // layout rects
     pub sidebar_list_area: Rect,
@@ -274,7 +273,6 @@ impl App {
             office_selector: OfficeSelectorState::new(),
             term_rows: 24,
             term_cols: 80,
-            pending_resize: None,
             dirty: false,
             sidebar_list_area: Rect::default(),
             sidebar_area: Rect::default(),
@@ -323,16 +321,17 @@ impl App {
                     .desks
                     .into_iter()
                     .map(|d| {
-                        let tabs = d
+                        let tabs: Vec<TabEntry> = d
                             .tabs
                             .into_iter()
                             .map(|tb| TabEntry::with_id(tb.id, tb.name))
                             .collect();
+                        let n_tabs = tabs.len().max(1);
                         Desk {
                             id: d.id,
                             name: d.name,
+                            active_tab: d.active_tab.min(n_tabs - 1),
                             tabs,
-                            active_tab: d.active_tab,
                         }
                     })
                     .collect();
@@ -365,7 +364,6 @@ impl App {
             office_selector: OfficeSelectorState::new(),
             term_rows: 24,
             term_cols: 80,
-            pending_resize: None,
             dirty: false,
             sidebar_list_area: Rect::default(),
             sidebar_area: Rect::default(),
@@ -470,7 +468,7 @@ impl App {
         self.offices[self.current_office]
             .desks
             .push(Desk::new(format!("Desk {n}")));
-        self.select_desk(self.offices[self.current_office].desks.len() - 1);
+        self.select_desk(self.offices[self.current_office].desks.len().saturating_sub(1));
         self.spawn_active_pty();
         self.dirty = true;
     }
@@ -578,34 +576,11 @@ impl App {
         self.mark_tab_switch();
     }
 
+    /// Called after draw() detects the content area size changed.
+    /// Sends resize to all PTYs in the current office.
     pub fn resize_all_ptys(&mut self, rows: u16, cols: u16) {
-        // Don't resize immediately - wait for user to stop resizing
-        // This prevents content loss during window resize
-        if self.term_rows != rows || self.term_cols != cols {
-            self.pending_resize = Some((rows, cols, std::time::Instant::now()));
-        }
-    }
-
-    pub fn apply_pending_resize(&mut self) {
-        if let Some((rows, cols, time)) = self.pending_resize {
-            // Wait 500ms after last resize before applying
-            if time.elapsed().as_millis() > 500 {
-                if self.term_rows != rows || self.term_cols != cols {
-                    tracing::info!(
-                        "Applying delayed resize: {}x{} -> {}x{}",
-                        self.term_rows,
-                        self.term_cols,
-                        rows,
-                        cols
-                    );
-                    self.term_rows = rows;
-                    self.term_cols = cols;
-                    for desk in &mut self.offices[self.current_office].desks {
-                        desk.resize_all_ptys(rows, cols);
-                    }
-                }
-                self.pending_resize = None;
-            }
+        for desk in &mut self.offices[self.current_office].desks {
+            desk.resize_all_ptys(rows, cols);
         }
     }
 

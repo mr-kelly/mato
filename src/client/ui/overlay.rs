@@ -261,6 +261,9 @@ pub(super) fn draw_office_delete_confirm(f: &mut Frame, app: &App, t: &ThemeColo
     let Some(ref confirm) = app.office_delete_confirm else {
         return;
     };
+    if confirm.office_idx >= app.offices.len() {
+        return;
+    }
     let office_name = &app.offices[confirm.office_idx].name;
 
     let area = f.area();

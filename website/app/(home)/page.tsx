@@ -2,24 +2,15 @@ import Link from 'next/link';
 import { 
   Terminal, 
   Activity, 
-  Zap, 
-  Layers, 
-  Command, 
   Rocket, 
-  ShieldCheck, 
   Cpu, 
-  MousePointer2,
   Github,
   Download,
   Eye,
   Keyboard,
-  RefreshCw,
-  LayoutGrid,
-  Palette
+  RefreshCw
 } from 'lucide-react';
-import { Card, Cards } from 'fumadocs-ui/components/card';
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
-import { Callout } from 'fumadocs-ui/components/callout';
 import { InstallTabs } from '@/components/home/install-tabs';
 import { VersionBadge } from '@/components/home/version-badge';
 import { cn } from '@/lib/cn';
@@ -45,8 +36,8 @@ export default function HomePage() {
         </h1>
         
         <p className="mb-4 max-w-2xl text-balance text-lg leading-relaxed text-fd-muted-foreground md:text-xl px-4">
-          The <strong>Tomato Terminal</strong> for managing hundreds of AI agent sessions with real-time activity signals, 
-          daemon-backed persistence, and zero-conflict ergonomics.
+          Mato is a terminal multiplexer and workspace that brings visual intelligence to the CLI.
+          Manage hundreds of AI agent sessions with real-time signals, daemon-backed persistence, and zero-conflict ergonomics.
         </p>
 
         <div className="mb-10 flex flex-col items-center gap-1 text-sm font-mono text-fd-muted-foreground/60 italic">
@@ -94,10 +85,9 @@ export default function HomePage() {
       {/* The Vision Section */}
       <section className="container relative z-10 px-4 py-32 sm:px-6 md:py-48">
         <div className="mb-20 text-center">
-          <h2 className="mb-6 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Visual Intelligence for CLI</h2>
+          <h2 className="mb-6 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Why Mato?</h2>
           <p className="mx-auto max-w-2xl text-lg text-fd-muted-foreground">
-            Traditional terminal multiplexers are "blind." Mato changes that by bringing 
-            real-time visibility to your command line.
+            Traditional terminal multiplexers are "blind." You never know what's happening in another tab until you switch to it.
           </p>
         </div>
 
@@ -105,22 +95,22 @@ export default function HomePage() {
           {[
             {
               title: "Lost in Tabs",
-              solution: "Real-time Activity Spinners notify you exactly where the work is happening.",
+              solution: "See active agents instantly with live activity signals across desks/tabs.",
               icon: <Eye className="h-6 w-6 text-[#D63C3C]" />
             },
             {
-              title: "Shortcut Hell",
-              solution: "Zero-Conflict Design: Your shell belongs to you. Only Esc is special.",
-              icon: <Keyboard className="h-6 w-6 text-[#D63C3C]" />
-            },
-            {
-              title: "Task Anxiety",
-              solution: "Visual Breadcrumbs: Instant status of every background agent or build process.",
+              title: "Arrow-Key Grind",
+              solution: "Jump to what you need in one move, instead of stepping tab-by-tab.",
               icon: <Activity className="h-6 w-6 text-[#D63C3C]" />
             },
             {
+              title: "Shortcut Hell",
+              solution: "Only Esc is special, so your shell/editor shortcuts keep working as usual.",
+              icon: <Keyboard className="h-6 w-6 text-[#D63C3C]" />
+            },
+            {
               title: "Session Loss",
-              solution: "Daemon-First Architecture: Your workspace lives even if the client dies.",
+              solution: "Agents keep running in the background; reconnect and continue where you left off.",
               icon: <RefreshCw className="h-6 w-6 text-[#D63C3C]" />
             }
           ].map((item, i) => (
@@ -135,12 +125,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Showcase Grid */}
+      {/* Features Grid */}
       <section className="container relative z-10 px-4 py-32 sm:px-6 md:py-48 bg-fd-secondary/10">
         <div className="mb-20 text-center">
-          <h2 className="mb-6 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Workspace Showcase</h2>
+          <h2 className="mb-6 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Features</h2>
           <p className="mx-auto max-w-2xl text-lg text-fd-muted-foreground text-balance">
-            Everything you need for high-concurrency agent workflows.
+            Developer-friendly features for high-concurrency AI workflows.
           </p>
         </div>
 
@@ -153,37 +143,37 @@ export default function HomePage() {
             },
             {
               title: "Spinner Activity",
-              description: "Live indicators appear the moment an agent or process produces output.",
+              description: "See where work is happening right now with live spinner signals.",
               img: "/screenshot-working-spinner.gif"
             },
             {
               title: "Multi-Client Sync",
-              description: "Attach multiple SSH clients to the same daemon with synchronized state.",
+              description: "Attach from multiple terminals/SSH sessions and stay in sync.",
               img: "/screenshot-multi-client-sync.gif"
             },
             {
               title: "Prebuilt Templates",
-              description: "Fast onboarding with curated layouts for different engineering roles.",
+              description: "Start in seconds with ready-made templates and multilingual onboarding.",
               img: "/screenshot-onboarding.png"
             },
             {
               title: "Background Persistence",
-              description: "Sessions keep running even if your terminal process exits or SSH disconnects.",
+              description: "Agents keep running even if terminal closes or SSH drops.",
               img: "/screenshot-daemon-background-run.gif"
             },
             {
               title: "Mouse Support",
-              description: "Native mouse interaction for clicking tabs and desks in a terminal UI.",
+              description: "Click desks and tabs directly while keeping a terminal-native workflow.",
               img: "/screenshot-mouse-jump.gif"
             },
             {
               title: "Jump Mode",
-              description: "Press Esc to enter Jump Mode, then teleport instantly to visible targets.",
+              description: "Press Esc, then jump straight to visible targets in one move.",
               img: "/screenshot-quick-jump-mode.gif"
             },
             {
               title: "Customizable Themes",
-              description: "Personalize your experience with built-in themes like Tomato and Nord.",
+              description: "Pick the theme style you like with persistent workspace state.",
               img: "/screenshot-themes.png"
             }
           ].map((item, i) => (
@@ -224,44 +214,6 @@ export default function HomePage() {
           <div className="absolute inset-0 -z-10 bg-[#D63C3C]/5 blur-3xl opacity-50" />
           <div className="rounded-2xl border border-fd-border bg-fd-card/80 p-2 shadow-2xl backdrop-blur-md sm:p-6 md:rounded-3xl">
             <InstallTabs />
-          </div>
-        </div>
-      </section>
-
-      {/* Premium Features */}
-      <section className="container relative z-10 px-4 py-32 sm:px-6 md:py-48">
-        <div className="mb-20 text-center">
-          <h2 className="mb-6 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Engineered for Clarity</h2>
-        </div>
-
-        <div className="grid gap-8 md:grid-cols-2">
-          <div className="space-y-4 rounded-3xl border border-fd-border bg-fd-card/50 p-8">
-            <Activity className="h-8 w-8 text-[#D63C3C]" />
-            <h3 className="text-2xl font-bold">Live Activity Monitoring</h3>
-            <p className="text-fd-muted-foreground">
-              Never poll your terminals again. Mato's signature spinners appear in your sidebar and topbar the moment a process produces output. Perfect for tracking long-running builds or AI agents.
-            </p>
-          </div>
-          <div className="space-y-4 rounded-3xl border border-fd-border bg-fd-card/50 p-8">
-            <Command className="h-8 w-8 text-[#D63C3C]" />
-            <h3 className="text-2xl font-bold">AI-Agent Native</h3>
-            <p className="text-fd-muted-foreground">
-              Built specifically for tools like Claude Code, Cursor, and Windsurf. Mato preserves 100% of your shell's keyboard shortcuts, ensuring your agents operate without interference.
-            </p>
-          </div>
-          <div className="space-y-4 rounded-3xl border border-fd-border bg-fd-card/50 p-8">
-            <Zap className="h-8 w-8 text-[#D63C3C]" />
-            <h3 className="text-2xl font-bold">Jump Mode (EasyMotion)</h3>
-            <p className="text-fd-muted-foreground">
-              Navigate like a pro. Hit Esc and use EasyMotion-style jump labels to teleport to any desk or tab instantly. No more repetitive arrow-key mashing.
-            </p>
-          </div>
-          <div className="space-y-4 rounded-3xl border border-fd-border bg-fd-card/50 p-8">
-            <Palette className="h-8 w-8 text-[#D63C3C]" />
-            <h3 className="text-2xl font-bold">Customizable Themes</h3>
-            <p className="text-fd-muted-foreground">
-              Personalize your workspace with a suite of professional themes including Tomato, Potato, Nord, and Darcula. Tailored for long-term coding comfort.
-            </p>
           </div>
         </div>
       </section>

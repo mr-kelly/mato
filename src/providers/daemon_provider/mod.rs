@@ -153,10 +153,11 @@ impl DaemonProvider {
     // Send message without waiting for response (fire and forget)
     fn send_msg_no_response_static(socket_path: &str, msg: &ClientMsg) {
         if let Ok(mut stream) = StdUnixStream::connect(socket_path) {
-            let json = serde_json::to_vec(&msg).unwrap();
-            let _ = stream.write_all(&json);
-            let _ = stream.write_all(b"\n");
-            let _ = stream.flush();
+            if let Ok(json) = serde_json::to_vec(&msg) {
+                let _ = stream.write_all(&json);
+                let _ = stream.write_all(b"\n");
+                let _ = stream.flush();
+            }
         }
     }
 

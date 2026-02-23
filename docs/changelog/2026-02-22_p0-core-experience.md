@@ -477,3 +477,75 @@ Implement P0 items from roadmap.md that are critical for daily user experience.
   - Force top-alignment in normal terminal mode.
 - **Files changed**:
   - `src/client/ui.rs`
+
+---
+
+## Session: 2026-02-23 (continued) — Bug Fixes, Refactor, Snapshot Tests
+
+### 41. Terminal Init Race: Worker Fire-and-Forget Spawn Removed
+- **Symptom**: ~80% of the time, switching desks or opening Mato produced a blank terminal that never initialized.
+- **Root cause**: The worker thread, on receiving "tab not found" from the daemon Subscribe response, immediately sent a fire-and-forget `Spawn(rows=1, cols=1)`. This raced ahead of the main thread's real `Spawn(34x153)`, creating a 1×1 PTY in the daemon. The main thread's spawn then got "already exists" and did nothing → terminal stuck at 1×1 → blank.
+- **Fix**:
+  - Removed worker's fire-and-forget Spawn entirely. Worker now only does Subscribe — if it gets "tab not found", it waits 100ms and retries. The main thread is solely responsible for spawning.
+  - Moved `spawn_active_pty()` before first `terminal.draw()` in `main.rs` so the tab exists before the worker starts.
+  - Pre-computed real terminal dimensions before first spawn using `terminal.size()` to avoid spawning at 24×80 default.
+- **Files changed**:
+  - `src/providers/daemon_provider/worker.rs`
+  - `src/main.rs`
+
+### 42. Tab Click Index Bug (Multi-page Tabs)
+- **Symptom**: When tabs exceeded one visible page (tab_scroll > 0), clicking the first visible tab selected the wrong tab — visual index 0 mapped to real tab 0 instead of real tab `tab_scroll`.
+- **Root cause**: Mouse handler used `active_tab = i` (visual index) instead of `tab_area_tab_indices[i]` (real tab index).
+- **Fix**: Use `tab_area_tab_indices[i]` to convert visual position → real tab index. Applied to both single-click and double-click rename logic.
+- **Files changed**:
+  - `src/client/mouse.rs`
+
+### 43. Resize Instability Fix
+- **Problem**: Window resize applied wrong PTY size because `Event::Resize` triggered `resize_all_ptys(term_rows, term_cols)` with stale values from the previous frame. `term_rows/cols` are only updated during `draw()`, which hadn't run yet.
+- **Fix**: Detect size change *after* `terminal.draw()` by comparing `(term_rows, term_cols)` to `last_drawn_size`. If changed, call `resize_all_ptys` with the freshly-updated values.
+- **Side effect**: Removed the now-redundant 500ms debounce `pending_resize` / `apply_pending_resize` path (dead code since draw-after detection is immediate and correct). Removed `pending_resize` field from `App`.
+- **Files changed**:
+  - `src/main.rs`
+  - `src/client/app.rs`
+
+### 44. Close Desk/Tab Leaves Blank Terminal
+- **Symptom**: Closing a desk or tab left the newly-active terminal blank.
+- **Root cause**:
+  - `close_desk()` didn't call `spawn_active_pty()` or reset `tab_scroll` for the next desk.
+  - `close_tab()` handler in input.rs didn't call `spawn_active_pty()` for the newly-active tab.
+  - `desks.len() - 1` used without `saturating_sub` (potential underflow if len=0).
+- **Fix**: Added `tab_scroll = 0`, `mark_tab_switch()`, and `spawn_active_pty()` after `close_desk()`; added `spawn_active_pty()` after `close_tab()` in input handler; changed to `saturating_sub(1)`.
+- **Files changed**:
+  - `src/client/app.rs`
+  - `src/client/input.rs`
+
+### 45. UI Refactor: Split Large Files into Submodules
+- **Motivation**: `ui.rs` (1069 lines), `app.rs` (1067 lines), `main.rs` (647 lines), `daemon_provider.rs` (661 lines) were hard to navigate.
+- **Changes**:
+  - `src/client/ui.rs` → `src/client/ui/` module: `mod.rs` (helpers + draw), `sidebar.rs`, `topbar.rs`, `terminal.rs`, `overlay.rs`
+  - `src/client/app.rs` extracted: `desk.rs` (Desk struct), `jump.rs` (jump_targets/labels), `status.rs` (refresh_active/spinner/titles)
+  - `src/main.rs` extracted: `src/client/mouse.rs` (handle_mouse)
+  - `src/providers/daemon_provider.rs` → `src/providers/daemon_provider/` module: `mod.rs` + `worker.rs` (worker thread)
+- **Result**: Largest file reduced from 1069 → 355 lines (overlay). All files < 500 lines.
+- **Files changed**: All files above; zero behavior changes.
+
+### 46. Snapshot Tests (ratatui TestBackend + insta)
+- **Added**: `tests/ui_snapshot_tests.rs` — 6 snapshot tests using `ratatui::backend::TestBackend` and `insta::assert_snapshot!`.
+- **Coverage**: single desk, multiple desks, many tabs (tab scroll), second desk selected, narrow terminal (no sidebar), rename popup.
+- **Usage**: `cargo test --test ui_snapshot_tests` for regression; `cargo insta review` to accept intentional UI changes.
+- **Added dep**: `insta = "1"` in `[dev-dependencies]`.
+- **Files changed**:
+  - `tests/ui_snapshot_tests.rs` (new)
+  - `tests/snapshots/` (6 `.snap` files)
+  - `Cargo.toml`
+
+### 47. Core Bug Fixes
+- **`new_id()` collision**: Was using `subsec_nanos()` (repeats every second). Replaced with `as_nanos()` (full Unix timestamp). Prevents tab ID collisions on process restart or rapid tab creation, which caused daemon to return "already exists" and leave terminal blank.
+- **`office_delete_confirm` bounds check**: `draw_office_delete_confirm()` accessed `offices[confirm.office_idx]` without checking bounds → potential panic. Added guard.
+- **`from_saved` `active_tab` clamp**: Restoring state from `state.json` didn't clamp `active_tab` to `tabs.len()-1`. Corrupted state file could panic. Now clamped.
+- **`send_msg_no_response_static` unwrap**: Replaced `.unwrap()` on JSON serialization with `if let Ok(...)` — no panic on memory pressure.
+- **Files changed**:
+  - `src/utils/id.rs`
+  - `src/client/ui/overlay.rs`
+  - `src/client/app.rs`
+  - `src/providers/daemon_provider/mod.rs`
