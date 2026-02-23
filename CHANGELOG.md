@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-02-23
+
+### Changed
+- README top navigation now uses explicit anchor ids for stable in-page jumps:
+  - `Quick Start`, `Features`, `Why Mato?`, `Development`, `Resources`
+- README feature descriptions were rewritten in a more developer-friendly and plain-language style.
+- Vision table wording was refined (`Pain` + `Mato Solution`) with clearer, shorter pain statements.
+- Added Discord community link to README CTA.
+
+### Fixed
+- Fixed incorrect/mismatched README jump links caused by emoji heading slug differences.
+
 ## [0.9.0] - 2026-02-23
 
 ### Added
@@ -304,7 +316,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Links
 
-[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/mr-kelly/mato/releases/tag/v0.9.1
 [0.9.0]: https://github.com/mr-kelly/mato/releases/tag/v0.9.0
 [0.8.1]: https://github.com/mr-kelly/mato/releases/tag/v0.8.1
 [0.8.0]: https://github.com/mr-kelly/mato/releases/tag/v0.8.0

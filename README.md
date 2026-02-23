@@ -86,12 +86,12 @@ Select a template (we recommend **Full-Stack** for your first run) and start cod
 
 Traditional terminal multiplexers (tmux/screen) are "blind." You never know what's happening in another tab until you switch to it. **Mato changes that.**
 
-| **The Problem** | **The Mato Solution** |
+| **Pain** | **Mato Solution** |
 | :--- | :--- |
-| 🕵️ **Lost in Tabs** | **Real-time Activity Spinners** notify you exactly where the work is happening. |
-| ⌨️ **Shortcut Hell** | **Zero-Conflict Design**: Your shell belongs to you. Only `Esc` is special. |
-| 📉 **Task Anxiety** | **Visual Breadcrumbs**: Instant status of every background agent or build process. |
-| 🔌 **Session Loss** | **Daemon-First Architecture**: Your workspace lives even if the client dies. |
+| 🕵️ **Lost in Tabs** | See active agents instantly with live activity signals across desks/tabs. |
+| 🎯 **Arrow-Key Grind** | Jump to what you need in one move, instead of stepping tab-by-tab. |
+| ⌨️ **Shortcut Hell** | Only `Esc` is special, so your shell/editor shortcuts keep working as usual. |
+| 🔌 **Session Loss** | Agents keep running in the background; reconnect and continue where you left off. |
 
 ---
 
@@ -106,7 +106,7 @@ Traditional terminal multiplexers (tmux/screen) are "blind." You never know what
 
 **1) Offices -> Desks -> Tabs UI**
 
-A structured workspace hierarchy where Offices contain multiple Desks, and each Desk contains Tabs for parallel terminal workflows.
+Organize complex work into a clear hierarchy: one Office, multiple Desks, and Tabs inside each Desk for parallel tasks.
 
 </td>
 <td width="50%" valign="top">
@@ -115,7 +115,7 @@ A structured workspace hierarchy where Offices contain multiple Desks, and each 
 
 **2) Spinner Activity (AI is working)**
 
-Live spinner indicators appear on active tabs/desks when an AI agent or process produces output, so you can track long-running work at a glance.
+See where work is happening right now: active tabs and desks show live spinners when an agent or process prints output.
 
 </td>
 </tr>
@@ -126,7 +126,7 @@ Live spinner indicators appear on active tabs/desks when an AI agent or process 
 
 **3) Multi-Client Sync**
 
-Two SSH clients attach to the same running Mato daemon and view the same workspace state in sync.
+Attach from multiple terminals/SSH sessions and keep everyone on the same live workspace state.
 
 </td>
 <td width="50%" valign="top">
@@ -135,10 +135,7 @@ Two SSH clients attach to the same running Mato daemon and view the same workspa
 
 **4) Prebuilt Templates**
 
-Fast onboarding with prebuilt templates for different workflows:
-- **Mato Creator Office**: 20 desks / 248 tabs for complex swarms.
-- **Full-Stack**: Frontend, Backend, and DB in one view.
-- **Solo Dev**: Focused, minimalist productivity.
+Start in seconds with ready-made templates (Mato Creator Office, Full-Stack, Solo Dev) and multilingual onboarding (English, 中文, 日本語, 한국어).
 
 </td>
 </tr>
@@ -149,7 +146,7 @@ Fast onboarding with prebuilt templates for different workflows:
 
 **5) Background Runtime Persistence**
 
-AI agents keep running in the background even if your terminal process exits or SSH disconnects; when you open `mato` again, you return to the same live workspace automatically (no explicit detach/attach workflow).
+Your agents keep running even if the terminal closes or SSH drops. Reopen `mato` and you land back in the same live workspace.
 
 </td>
 <td width="50%" valign="top">
@@ -158,7 +155,7 @@ AI agents keep running in the background even if your terminal process exits or 
 
 **6) Mouse Support in a TUI**
 
-Native mouse interaction for clicking tabs and desks; terminal-first UX with practical GUI-like navigation support.
+Click desks and tabs directly when you want speed, while keeping a terminal-native workflow.
 
 </td>
 </tr>
@@ -169,7 +166,7 @@ Native mouse interaction for clicking tabs and desks; terminal-first UX with pra
 
 **7) Jump Mode (Core Navigation)**
 
-Press `Esc` to enter Jump Mode, then jump instantly to visible sidebar/topbar targets without repetitive arrow-key movement.
+Press `Esc` to enter Jump Mode, then jump straight to visible targets without repeated arrow-key navigation.
 
 </td>
 <td width="50%" valign="top">
@@ -178,7 +175,7 @@ Press `Esc` to enter Jump Mode, then jump instantly to visible sidebar/topbar ta
 
 **8) Customizable Themes**
 
-Customize theme colors and visual styles, while keeping Office/Desk/Tab workspace state persistent across reconnects and restarts.
+Pick the theme style you like, while Office/Desk/Tab state stays persistent across reconnects and restarts.
 
 </td>
 </tr>
