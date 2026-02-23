@@ -4,7 +4,13 @@ This directory contains release notes and summaries for Mato versions.
 
 ## 📦 Releases
 
-### v0.8.1 (2026-02-23) - Latest
+### v0.9.0 (2026-02-23) - Latest
+- **[RELEASE_NOTES_v0.9.0.md](RELEASE_NOTES_v0.9.0.md)** - Desk Confirmation UX + Esc Double-Press Reliability + Docs/Website Refresh
+- **[RELEASE_SUMMARY_v0.9.0.md](RELEASE_SUMMARY_v0.9.0.md)** - Technical summary
+
+**Highlights**: desk delete yes/no confirmation flow, `Esc-Esc` bell-side-effect fix in Content mode, feature-first README/media refresh, and client/daemon-provider module refactoring with snapshot tests.
+
+### v0.8.1 (2026-02-23)
 - **[RELEASE_NOTES_v0.8.1.md](RELEASE_NOTES_v0.8.1.md)** - Jump Mode Viewport Correctness + Startup/Render Stability Polish
 - **[RELEASE_SUMMARY_v0.8.1.md](RELEASE_SUMMARY_v0.8.1.md)** - Technical summary
 
@@ -66,5 +72,5 @@ Milestone-level historical overview.
 
 ---
 
-**Latest Release**: v0.8.1 (2026-02-23)  
+**Latest Release**: v0.9.0 (2026-02-23)  
 **Status**: Stable

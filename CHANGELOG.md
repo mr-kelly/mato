@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-02-23
+
+### Added
+- **Desk close confirmation**: Sidebar `x` now opens an explicit yes/no confirmation for desk deletion.
+- **UI snapshot coverage**: added `tests/ui_snapshot_tests.rs` and snapshot fixtures for key layout states.
+- **Release media assets**: added new GIF/APNG image set for docs/website showcases.
+
+### Changed
+- **Input semantics (Content focus)**: refined double-ESC handling so Jump Mode entry does not prematurely forward ESC to shell.
+- **README and website messaging**: moved to feature-first presentation, improved install guidance for both human and AI-agent flows, and expanded visual showcase coverage.
+- **Module organization**:
+  - client logic decomposed into dedicated submodules (`jump`, `status`, `mouse`, `ui/*`)
+  - daemon provider worker extracted to `src/providers/daemon_provider/worker.rs`
+- **Version bump**: `Cargo.toml` updated to `0.9.0`.
+
+### Fixed
+- **Bell side effect on `Esc-Esc`**: resolved cases where entering Jump Mode from Content focus could trigger shell bell behavior.
+- **Destructive desk close UX risk**: accidental desk deletion is now guarded by explicit user confirmation.
+
 ## [0.8.1] - 2026-02-23
 
 ### Added
@@ -285,7 +304,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Links
 
-[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/mr-kelly/mato/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/mr-kelly/mato/releases/tag/v0.9.0
 [0.8.1]: https://github.com/mr-kelly/mato/releases/tag/v0.8.1
 [0.8.0]: https://github.com/mr-kelly/mato/releases/tag/v0.8.0
 [0.7.1]: https://github.com/mr-kelly/mato/releases/tag/v0.7.1
