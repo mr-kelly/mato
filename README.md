@@ -213,6 +213,8 @@ Recommended CLI coding agents:
 - [Cursor CLI](https://docs.cursor.com/en/cli)
 - [Kiro CLI](https://kiro.dev/cli)
 - [Kimi CLI](https://moonshotai.github.io/kimi-cli/)
+- [OpenCode](https://opencode.ai/)
+- [OpenClaw](https://openclaw.ai/)
 - [Goose](https://block.github.io/goose/)
 - [aider](https://aider.chat/)
 - [pi-mono coding-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)
