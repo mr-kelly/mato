@@ -113,8 +113,25 @@ if echo "$PATH" | grep -q "$INSTALL_DIR"; then
 else
     echo "⚠️  Add $INSTALL_DIR to your PATH:"
     echo ""
-    echo "    echo 'export PATH=\"\$PATH:$INSTALL_DIR\"' >> ~/.bashrc"
-    echo "    source ~/.bashrc"
+    # Detect shell config file
+    SHELL_NAME=$(basename "$SHELL" 2>/dev/null || echo "bash")
+    case "$SHELL_NAME" in
+        zsh)
+            RC_FILE="$HOME/.zshrc"
+            ;;
+        bash)
+            RC_FILE="$HOME/.bashrc"
+            ;;
+        fish)
+            RC_FILE="$HOME/.config/fish/config.fish"
+            ;;
+        *)
+            RC_FILE="$HOME/.profile"
+            ;;
+    esac
+
+    echo "    echo 'export PATH=\"\$PATH:$INSTALL_DIR\"' >> $RC_FILE"
+    echo "    source $RC_FILE"
     echo ""
     echo "Or run directly: $TARGET_BIN"
 fi
