@@ -23,9 +23,9 @@ impl Desk {
         &self.tabs[self.active_tab]
     }
 
-    pub fn new_tab(&mut self) {
+    pub fn new_tab(&mut self, cwd: Option<String>) {
         let n = self.tabs.len() + 1;
-        self.tabs.push(TabEntry::new(format!("Terminal {n}")));
+        self.tabs.push(TabEntry::new_with_cwd(format!("Terminal {n}"), cwd));
         self.active_tab = self.tabs.len() - 1;
     }
 

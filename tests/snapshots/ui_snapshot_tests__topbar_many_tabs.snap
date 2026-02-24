@@ -29,6 +29,6 @@ expression: out
 "│                      ││                                                                          │"
 "│                      ││                                                                          │"
 "│                      ││                                                                          │"
-"│                      ││                                                                          │"
-"└──────────────────────┘└──────────────────────────────────────────────────────────────────────────┘"
+"│                      ││      Theme disabled: terminal lacks truecolor (set COLORTERM=truecolor)   "
+"└──────────────────────┘└ ─────────────────────────────────────────────────────────────────────────┘"
 "  Focus:Topbar    ←→  Switch Tab   n  New Tab   x  Close Tab   r  Rename   Enter  Focus   Esc  Jump "

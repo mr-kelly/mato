@@ -55,7 +55,7 @@ pub(super) fn display_width(text: &str) -> u16 {
 
 pub fn draw(f: &mut Frame, app: &mut App) {
     let t = app.theme.clone();
-    
+
     let full_area = f.area();
 
     f.render_widget(
@@ -129,7 +129,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     if app.rename.is_some() {
         overlay::draw_rename_popup(f, app, &t);
     }
-    
+
     // Always draw toast last to keep it on top
     overlay::draw_toast(f, app, &t);
 }

@@ -1,5 +1,6 @@
 use crate::client::app::{
-    App, Focus, JumpMode, OfficeDeleteConfirm, RenameTarget, CONTENT_ESC_DOUBLE_PRESS_WINDOW_MS,
+    App, Focus, JumpMode, OfficeDeleteConfirm, RenameState, RenameTarget,
+    CONTENT_ESC_DOUBLE_PRESS_WINDOW_MS,
 };
 use crossterm::{
     event::{EnableMouseCapture, KeyCode, KeyEventKind, KeyModifiers},
@@ -111,7 +112,10 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
                 let selected = app.office_selector.list_state.selected().unwrap_or(0);
                 if selected < app.offices.len() {
                     let office_name = app.offices[selected].name.clone();
-                    app.rename = Some((RenameTarget::Office(selected), office_name));
+                    app.rename = Some(RenameState::new(
+                        RenameTarget::Office(selected),
+                        office_name,
+                    ));
                     app.office_selector.active = false;
                 }
             }
@@ -223,13 +227,38 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
             KeyCode::Enter => app.commit_rename(),
             KeyCode::Esc => app.cancel_rename(),
             KeyCode::Backspace => {
-                if let Some((_, buf)) = &mut app.rename {
-                    buf.pop();
+                if let Some(rename) = &mut app.rename {
+                    rename.backspace();
+                }
+            }
+            KeyCode::Delete => {
+                if let Some(rename) = &mut app.rename {
+                    rename.delete();
+                }
+            }
+            KeyCode::Left => {
+                if let Some(rename) = &mut app.rename {
+                    rename.move_left();
+                }
+            }
+            KeyCode::Right => {
+                if let Some(rename) = &mut app.rename {
+                    rename.move_right();
+                }
+            }
+            KeyCode::Home => {
+                if let Some(rename) = &mut app.rename {
+                    rename.move_home();
+                }
+            }
+            KeyCode::End => {
+                if let Some(rename) = &mut app.rename {
+                    rename.move_end();
                 }
             }
             KeyCode::Char(c) if !ctrl => {
-                if let Some((_, buf)) = &mut app.rename {
-                    buf.push(c);
+                if let Some(rename) = &mut app.rename {
+                    rename.insert_char(c);
                 }
             }
             _ => {}
@@ -263,13 +292,15 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
         return false;
     }
 
-    // In Content focus, flush a pending single-ESC before handling any non-ESC key.
-    // This preserves Alt/meta-style workflows while avoiding ESC-ESC bell side effects.
-    if app.focus == Focus::Content
-        && !matches!(key.code, KeyCode::Esc)
-        && app.last_content_esc.is_some()
-    {
-        app.flush_pending_content_esc();
+    // In Content focus, immediately forward any pending single-ESC before
+    // handling a non-ESC key. ESC+key combinations (Alt sequences in readline,
+    // ESC before a vim command, etc.) must arrive at the PTY in order.
+    // Note: the timer-based flush (main.rs) uses flush_pending_content_esc()
+    // which has a 300ms guard; here we always forward immediately.
+    if app.focus == Focus::Content && !matches!(key.code, KeyCode::Esc) {
+        if app.last_content_esc.take().is_some() {
+            app.pty_write(b"\x1b");
+        }
     }
 
     if key.code == KeyCode::Esc {
@@ -304,9 +335,11 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
                 let idx = (n as usize).saturating_sub(1);
                 let i = app.selected();
                 if idx < app.offices[app.current_office].desks[i].tabs.len() {
+                    app.pty_send_focus_event(false);
                     app.offices[app.current_office].desks[i].active_tab = idx;
                     app.mark_tab_switch();
                     app.spawn_active_pty();
+                    app.pty_send_focus_event(true);
                 }
                 return false;
             }
@@ -361,7 +394,7 @@ pub fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> bool {
                 }
             }
             KeyCode::Char('n') => {
-                app.cur_desk_mut().new_tab();
+                app.new_tab_inheriting_cwd();
                 app.spawn_active_pty();
                 app.dirty = true;
             }

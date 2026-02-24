@@ -204,29 +204,25 @@ By default, Mato does not intercept your normal `Ctrl-*` and `Alt-*` shell/edito
 
 If you want to improve a feature, fix a bug, or change behavior you are not satisfied with, paste the prompt below into your coding agent and let it implement the change for you.
 
-Recommended agents: **Claude Code / Codex / Warp / Cursor / Antigravity / OpenClaw / GitHub Copilot (VS Code) / Gemini CLI / Windsurf**.
+Recommended CLI coding agents:
+
+- [Claude Code](https://www.anthropic.com/claude-code)
+- [Codex CLI](https://github.com/openai/codex)
+- [Gemini CLI](https://github.com/google-gemini/gemini-cli)
+- [GitHub Copilot CLI](https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli)
+- [Cursor CLI](https://docs.cursor.com/en/cli)
+- [Kiro CLI](https://kiro.dev/cli)
+- [Kimi CLI](https://moonshotai.github.io/kimi-cli/)
+- [OpenCode](https://opencode.ai/)
+- [OpenClaw](https://openclaw.ai/)
+- [Amp](https://ampcode.com/)
+- [Goose](https://block.github.io/goose/)
+- [aider](https://aider.chat/)
+- [pi-mono coding-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent)
 
 ### 🧪 Test Suite
 
-Mato has **101 passing tests** across 14 test suites:
-
-| Suite | Tests | What it covers |
-|---|---|---|
-| `screen_diff_tests` | 16 | ScreenDiff protocol, bell/focus propagation, msgpack roundtrip |
-| `input_tests` | 24 | Key bindings, jump mode, rename, copy mode, alt/ctrl encoding |
-| `app_tests` | 29 | Desk/tab lifecycle, nav, rename, `from_saved` clamping, focus events, mouse cache, spinner |
-| `daemon_tests` | 20 | Alacritty emulator (bell, focus tracking, wide chars, resize), PID/lock files, persistence |
-| `ui_snapshot_tests` | 6 | TUI layout regressions (ratatui `TestBackend` + insta snapshots) |
-| `protocol_tests` | 11 | ClientMsg/ServerMsg JSON + msgpack serde, `ScreenContent` roundtrips |
-| `terminal_persistence_tests` | 5 | PTY content survives reconnect, resize, multi-write |
-| `utils_tests` | 5 | ID uniqueness under load, path layout |
-| others | 5 | Config, compat, integration |
-
-```bash
-cargo test                     # run all tests
-INSTA_UPDATE=always cargo test --test ui_snapshot_tests  # regenerate snapshots
-cargo insta review             # review changed snapshots interactively
-```
+Testing commands and coverage notes are documented in [`docs/TESTING.md`](docs/TESTING.md).
 
 ### Fast Contribute (3 steps)
 
@@ -291,6 +287,7 @@ You say tomato, I say Mato.
 ### 📖 Documentation
 - [**Keyboard Shortcuts**](docs/KEYBOARD_SHORTCUTS.md)
 - [**AI Agent Guide**](docs/AI_AGENT_FRIENDLY.md)
+- [**Testing**](docs/TESTING.md)
 - [**Persistence Specs**](docs/TERMINAL_PERSISTENCE.md)
 - [**Spinner Logic**](docs/SPINNER_LOGIC.md)
 

@@ -4,6 +4,7 @@ pub mod config;
 pub mod daemon;
 pub mod emulators;
 pub mod error;
+pub mod passthrough;
 pub mod protocol;
 pub mod providers;
 pub mod terminal;

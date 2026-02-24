@@ -26,11 +26,93 @@ pub enum JumpMode {
 pub const JUMP_LABELS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 pub const CONTENT_ESC_DOUBLE_PRESS_WINDOW_MS: u64 = 300;
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum RenameTarget {
     Desk(usize),
     Tab(usize, usize),
     Office(usize),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RenameState {
+    pub target: RenameTarget,
+    pub buffer: String,
+    pub cursor: usize, // char index
+}
+
+impl RenameState {
+    pub fn new(target: RenameTarget, buffer: String) -> Self {
+        let cursor = buffer.chars().count();
+        Self {
+            target,
+            buffer,
+            cursor,
+        }
+    }
+
+    pub fn char_len(&self) -> usize {
+        self.buffer.chars().count()
+    }
+
+    pub fn move_left(&mut self) {
+        self.cursor = self.cursor.saturating_sub(1);
+    }
+
+    pub fn move_right(&mut self) {
+        self.cursor = (self.cursor + 1).min(self.char_len());
+    }
+
+    pub fn move_home(&mut self) {
+        self.cursor = 0;
+    }
+
+    pub fn move_end(&mut self) {
+        self.cursor = self.char_len();
+    }
+
+    pub fn insert_char(&mut self, c: char) {
+        let idx = self.byte_index(self.cursor);
+        self.buffer.insert(idx, c);
+        self.cursor += 1;
+    }
+
+    pub fn backspace(&mut self) {
+        if self.cursor == 0 {
+            return;
+        }
+        let end = self.byte_index(self.cursor);
+        let start = self.byte_index(self.cursor - 1);
+        self.buffer.replace_range(start..end, "");
+        self.cursor -= 1;
+    }
+
+    pub fn delete(&mut self) {
+        if self.cursor >= self.char_len() {
+            return;
+        }
+        let start = self.byte_index(self.cursor);
+        let end = self.byte_index(self.cursor + 1);
+        self.buffer.replace_range(start..end, "");
+    }
+
+    pub fn cursor_byte_index(&self) -> usize {
+        self.byte_index(self.cursor)
+    }
+
+    fn byte_index(&self, char_idx: usize) -> usize {
+        if char_idx == 0 {
+            return 0;
+        }
+        let total = self.char_len();
+        if char_idx >= total {
+            return self.buffer.len();
+        }
+        self.buffer
+            .char_indices()
+            .nth(char_idx)
+            .map(|(i, _)| i)
+            .unwrap_or(self.buffer.len())
+    }
 }
 
 pub struct OfficeSelectorState {
@@ -103,6 +185,21 @@ impl TabEntry {
             provider: Box::new(DaemonProvider::new(id, socket_path)),
         }
     }
+
+    /// Create a new tab that will spawn with the given working directory.
+    pub fn new_with_cwd(name: impl Into<String>, cwd: Option<String>) -> Self {
+        let id = new_id();
+        let socket_path = crate::utils::get_socket_path()
+            .to_string_lossy()
+            .to_string();
+        let mut provider = DaemonProvider::new(id.clone(), socket_path);
+        provider.set_spawn_cwd(cwd);
+        Self {
+            id,
+            name: name.into(),
+            provider: Box::new(provider),
+        }
+    }
     pub fn with_id(id: String, name: impl Into<String>) -> Self {
         let socket_path = crate::utils::get_socket_path()
             .to_string_lossy()
@@ -154,7 +251,7 @@ pub struct App {
     pub focus: Focus,
     pub prev_focus: Focus,
     pub jump_mode: JumpMode,
-    pub rename: Option<(RenameTarget, String)>,
+    pub rename: Option<RenameState>,
     pub office_selector: OfficeSelectorState,
     pub term_rows: u16,
     pub term_cols: u16,
@@ -206,9 +303,34 @@ pub struct App {
     pub startup_instant: Instant,
     /// Temporary notification message
     pub toast: Option<(String, Instant)>,
+    /// Whether the outer terminal supports Kitty graphics protocol.
+    /// Detected at startup from environment variables.
+    pub supports_kitty_graphics: bool,
 }
 
 impl App {
+    /// Detect if the outer terminal supports Kitty graphics protocol.
+    /// Uses env vars — no I/O needed, works before raw mode.
+    fn detect_kitty_graphics() -> bool {
+        if std::env::var("KITTY_WINDOW_ID").is_ok() {
+            return true;
+        }
+        if std::env::var("GHOSTTY_RESOURCES_DIR").is_ok()
+            || std::env::var("GHOSTTY_BIN_DIR").is_ok()
+        {
+            return true;
+        }
+        if matches!(
+            std::env::var("TERM_PROGRAM").as_deref(),
+            Ok("WezTerm") | Ok("iTerm.app")
+        ) {
+            return true;
+        }
+        if std::env::var("WEZTERM_PANE").is_ok() {
+            return true;
+        }
+        false
+    }
     pub fn flush_pending_content_esc(&mut self) {
         let Some(prev) = self.last_content_esc else {
             return;
@@ -312,11 +434,20 @@ impl App {
             last_content_esc: None,
             last_rendered_screen_gen: 0,
             startup_instant: Instant::now(),
-            toast: None,
+            toast: if !crate::theme::supports_truecolor()
+                && crate::theme::selected_name() != "system"
+            {
+                Some((
+                    "Theme disabled: terminal lacks truecolor (set COLORTERM=truecolor)".into(),
+                    Instant::now(),
+                ))
+            } else {
+                None
+            },
+            supports_kitty_graphics: Self::detect_kitty_graphics(),
         }
     }
 
-    #[allow(dead_code)]
     pub fn from_saved(state: SavedState) -> Self {
         let mut list_state = ListState::default();
         let mut offices = state
@@ -405,7 +536,17 @@ impl App {
             last_content_esc: None,
             last_rendered_screen_gen: 0,
             startup_instant: Instant::now(),
-            toast: None,
+            toast: if !crate::theme::supports_truecolor()
+                && crate::theme::selected_name() != "system"
+            {
+                Some((
+                    "Theme disabled: terminal lacks truecolor (set COLORTERM=truecolor)".into(),
+                    Instant::now(),
+                ))
+            } else {
+                None
+            },
+            supports_kitty_graphics: Self::detect_kitty_graphics(),
         }
     }
 
@@ -459,6 +600,19 @@ impl App {
         &mut self.offices[self.current_office].desks[i]
     }
 
+    /// Create a new tab in the current desk, inheriting the active tab's CWD.
+    /// Falls back to no cwd if OSC 7 has not reported one yet (shell default applies).
+    pub fn new_tab_inheriting_cwd(&mut self) {
+        let i = self.selected();
+        let desk = &self.offices[self.current_office].desks[i];
+        let cwd = if !desk.tabs.is_empty() {
+            desk.tabs[desk.active_tab].provider.get_cwd()
+        } else {
+            None
+        };
+        self.offices[self.current_office].desks[i].new_tab(cwd);
+    }
+
     pub fn switch_office(&mut self, office_idx: usize) {
         if office_idx < self.offices.len() {
             self.current_office = office_idx;
@@ -477,7 +631,12 @@ impl App {
         self.offices[self.current_office]
             .desks
             .push(Desk::new(name.clone()));
-        self.select_desk(self.offices[self.current_office].desks.len().saturating_sub(1));
+        self.select_desk(
+            self.offices[self.current_office]
+                .desks
+                .len()
+                .saturating_sub(1),
+        );
         self.spawn_active_pty();
         self.show_toast(format!("New desk \"{}\" created", name));
         self.dirty = true;
@@ -526,7 +685,14 @@ impl App {
         }
 
         self.offices[self.current_office].desks.remove(idx);
-        self.select_desk(idx.min(self.offices[self.current_office].desks.len().saturating_sub(1)));
+        self.select_desk(
+            idx.min(
+                self.offices[self.current_office]
+                    .desks
+                    .len()
+                    .saturating_sub(1),
+            ),
+        );
         self.tab_scroll = 0;
         self.mark_tab_switch();
         self.spawn_active_pty();
@@ -633,6 +799,46 @@ impl App {
         desk.tabs[desk.active_tab].provider.screen_generation()
     }
 
+    /// Emit any pending Kitty graphics APC sequences to the outer terminal.
+    ///
+    /// Should be called after each render, only when `supports_kitty_graphics` is true.
+    /// Translates PTY cursor coordinates to outer terminal coordinates using `content_area`.
+    pub fn emit_pending_graphics(&mut self) {
+        if !self.supports_kitty_graphics {
+            return;
+        }
+        let i = self.selected();
+        let desk = &self.offices[self.current_office].desks[i];
+        if desk.tabs.is_empty() {
+            return;
+        }
+        let payloads = desk.tabs[desk.active_tab].provider.take_pending_graphics();
+        if payloads.is_empty() {
+            return;
+        }
+
+        // Get the current display cursor (row, col) relative to content area
+        let (sub_rows, sub_cols) = (self.content_area.height, self.content_area.width);
+        let content = desk.tabs[desk.active_tab]
+            .provider
+            .get_screen(sub_rows.saturating_sub(2), sub_cols.saturating_sub(2));
+        let (cursor_row, cursor_col) = content.cursor;
+
+        // Translate: content_area has a 1-cell border; content starts at (x+1, y+1)
+        let outer_row = self.content_area.y + 1 + cursor_row;
+        let outer_col = self.content_area.x + 1 + cursor_col;
+
+        use std::io::Write;
+        let mut stdout = std::io::stdout();
+        // Save cursor, move to translated position, emit all APC sequences, restore cursor
+        let _ = write!(stdout, "\x1b[s\x1b[{};{}H", outer_row + 1, outer_col + 1);
+        for apc in &payloads {
+            let _ = stdout.write_all(apc);
+        }
+        let _ = write!(stdout, "\x1b[u");
+        let _ = stdout.flush();
+    }
+
     pub fn pty_mouse_mode_enabled(&mut self) -> bool {
         let i = self.selected();
         let at = self.offices[self.current_office].desks[i].active_tab;
@@ -667,8 +873,8 @@ impl App {
         if is_content || was_content {
             let i = self.selected();
             let desk = &self.offices[self.current_office].desks[i];
-            let enabled = !desk.tabs.is_empty()
-                && desk.tabs[desk.active_tab].provider.focus_events_enabled();
+            let enabled =
+                !desk.tabs.is_empty() && desk.tabs[desk.active_tab].provider.focus_events_enabled();
             if enabled {
                 if is_content {
                     self.pty_write(b"\x1b[I");
@@ -680,10 +886,29 @@ impl App {
         }
         self.prev_focus = self.focus;
     }
-    /// Start renaming task at sidebar index
+
+    /// Send FocusIn (`\x1b[I`) or FocusOut (`\x1b[O`) to the currently active
+    /// PTY. Only fires when in Content focus and the terminal has opted in via
+    /// `\x1b[?1004h`. Call this before and after any desk/tab switch that
+    /// happens while remaining in Content focus, so inner TUI apps (vim, helix,
+    /// etc.) are notified even when mato's focus mode doesn't change.
+    pub fn pty_send_focus_event(&mut self, focus_in: bool) {
+        if self.focus != Focus::Content {
+            return;
+        }
+        let i = self.selected();
+        let desk = &self.offices[self.current_office].desks[i];
+        if desk.tabs.is_empty() {
+            return;
+        }
+        if desk.tabs[desk.active_tab].provider.focus_events_enabled() {
+            self.pty_write(if focus_in { b"\x1b[I" } else { b"\x1b[O" });
+        }
+    }
+
     pub fn begin_rename_desk(&mut self, idx: usize) {
         let name = self.offices[self.current_office].desks[idx].name.clone();
-        self.rename = Some((RenameTarget::Desk(idx), name));
+        self.rename = Some(RenameState::new(RenameTarget::Desk(idx), name));
     }
 
     /// Start renaming active tab of current task
@@ -693,16 +918,16 @@ impl App {
         let name = self.offices[self.current_office].desks[ti].tabs[at]
             .name
             .clone();
-        self.rename = Some((RenameTarget::Tab(ti, at), name));
+        self.rename = Some(RenameState::new(RenameTarget::Tab(ti, at), name));
     }
 
     pub fn commit_rename(&mut self) {
-        if let Some((target, buf)) = self.rename.take() {
-            let name = buf.trim().to_string();
+        if let Some(rename) = self.rename.take() {
+            let name = rename.buffer.trim().to_string();
             if name.is_empty() {
                 return;
             }
-            match target {
+            match rename.target {
                 RenameTarget::Desk(i) => {
                     self.offices[self.current_office].desks[i].name = name.clone();
                     self.show_toast(format!("Desk renamed to \"{}\"", name));
@@ -737,6 +962,7 @@ impl App {
                 match kind {
                     't' => {
                         // Jump to desk target.
+                        self.pty_send_focus_event(false); // FocusOut to current tab
                         self.select_desk(task_idx);
                         self.focus = match origin_focus {
                             Focus::Content => Focus::Content,
@@ -745,9 +971,11 @@ impl App {
                         };
                         self.mark_tab_switch();
                         self.spawn_active_pty();
+                        self.pty_send_focus_event(true); // FocusIn to new tab
                     }
                     'b' => {
                         // Jump to tab target.
+                        self.pty_send_focus_event(false); // FocusOut to current tab
                         self.offices[self.current_office].desks[task_idx].active_tab = tab_idx;
                         self.focus = match origin_focus {
                             Focus::Content => Focus::Content,
@@ -756,6 +984,7 @@ impl App {
                         };
                         self.mark_tab_switch();
                         self.spawn_active_pty();
+                        self.pty_send_focus_event(true); // FocusIn to new tab
                     }
                     _ => {}
                 }

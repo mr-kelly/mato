@@ -30,6 +30,8 @@ impl DaemonProvider {
         let cache = self.screen_cache.clone();
         let running = self.worker_running.clone();
         let screen_gen = self.screen_generation.clone();
+        let pending_graphics = self.pending_graphics.clone();
+        let cached_cwd = self.cached_cwd.clone();
 
         thread::spawn(move || {
             let mut last_error_log: Option<Instant> = None;
@@ -178,6 +180,12 @@ impl DaemonProvider {
                 match response {
                     Some(ServerMsg::Screen { content, .. }) => {
                         screen_gen.fetch_add(1, Ordering::Relaxed);
+                        // Update cwd from screen content
+                        if let Some(ref cwd) = content.cwd {
+                            if let Ok(mut c) = cached_cwd.lock() {
+                                *c = Some(cwd.clone());
+                            }
+                        }
                         if let Ok(mut c) = cache.lock() {
                             *c = Some(ScreenCacheEntry {
                                 content,
@@ -210,6 +218,12 @@ impl DaemonProvider {
                                 entry.content.bell = bell;
                                 entry.content.focus_events_enabled = focus_events_enabled;
                             }
+                        }
+                    }
+                    Some(ServerMsg::Graphics { payloads, .. }) => {
+                        // Buffer APC sequences for the client to re-emit to outer terminal
+                        if let Ok(mut g) = pending_graphics.lock() {
+                            g.extend(payloads);
                         }
                     }
                     Some(ServerMsg::Error { message }) => {

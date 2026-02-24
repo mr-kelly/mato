@@ -190,7 +190,7 @@ pub(super) fn draw_statusbar(f: &mut Frame, app: &App, area: Rect, t: &ThemeColo
             Focus::Content => &[
                 ("a-z/A-Z/0-9", "Jump"),
                 ("c", "Copy Mode"),
-                ("r", "Restart Terminal"),
+                ("x", "Restart Terminal"),
                 ("←", "Focus Sidebar"),
                 ("↑", "Focus Tabbar"),
                 ("q", "Quit"),

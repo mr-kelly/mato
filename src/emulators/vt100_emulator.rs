@@ -24,48 +24,80 @@ impl TerminalEmulator for Vt100Emulator {
     fn get_screen(&self, rows: u16, cols: u16) -> ScreenContent {
         let parser = self.parser.lock().unwrap();
         let screen = parser.screen();
+        let (screen_rows, screen_cols) = screen.size();
+
+        let render_rows = rows.min(screen_rows);
+        let render_cols = cols.min(screen_cols);
+        // Show the BOTTOM render_rows rows (same as alacritty emulator).
+        // When a smaller client subscribes to a PTY started by a larger client,
+        // the shell/cursor lives at the bottom — we must show the bottom rows.
+        let row_offset = screen_rows - render_rows;
 
         let mut lines = vec![];
-        for row in 0..rows {
+        for display_row in 0..render_rows {
+            let pty_row = row_offset + display_row;
             let mut cells = vec![];
-            for col in 0..cols {
-                let def = vt100::Cell::default();
-                let cell = screen.cell(row, col).unwrap_or(&def);
-                let ch = cell.contents().chars().next().unwrap_or(' ');
-                let display_width = if ch == '\0' {
-                    0
+            for col in 0..render_cols {
+                let sc = if let Some(cell) = screen.cell(pty_row, col) {
+                    let ch = cell.contents().chars().next().unwrap_or(' ');
+                    let display_width = if ch == '\0' {
+                        0
+                    } else {
+                        UnicodeWidthChar::width(ch).unwrap_or(1).clamp(1, 2) as u8
+                    };
+                    ScreenCell {
+                        ch,
+                        display_width,
+                        fg: vt_color(cell.fgcolor()),
+                        bg: vt_color(cell.bgcolor()),
+                        bold: cell.bold(),
+                        italic: cell.italic(),
+                        underline: cell.underline(),
+                        dim: false,
+                        reverse: cell.inverse(),
+                        strikethrough: false,
+                        hidden: false,
+                        underline_color: None,
+                        zerowidth: None,
+                    }
                 } else {
-                    UnicodeWidthChar::width(ch).unwrap_or(1).clamp(1, 2) as u8
+                    ScreenCell {
+                        ch: ' ',
+                        display_width: 1,
+                        fg: None,
+                        bg: None,
+                        bold: false,
+                        italic: false,
+                        underline: false,
+                        dim: false,
+                        reverse: false,
+                        strikethrough: false,
+                        hidden: false,
+                        underline_color: None,
+                        zerowidth: None,
+                    }
                 };
-                cells.push(ScreenCell {
-                    ch,
-                    display_width,
-                    fg: vt_color(cell.fgcolor()),
-                    bg: vt_color(cell.bgcolor()),
-                    bold: cell.bold(),
-                    italic: cell.italic(),
-                    underline: cell.underline(),
-                    dim: false,
-                    reverse: cell.inverse(),
-                    strikethrough: false,
-                    hidden: false,
-                    underline_color: None,
-                    zerowidth: None,
-                });
+                cells.push(sc);
             }
             lines.push(ScreenLine { cells });
         }
 
         let (cr, cc) = screen.cursor_position();
-        let cr = cr.min(rows.saturating_sub(1));
-        let cc = cc.min(cols.saturating_sub(1));
+        // Adjust cursor row to be relative to the display window (bottom render_rows rows).
+        let display_cr = if cr >= row_offset {
+            (cr - row_offset).min(render_rows.saturating_sub(1))
+        } else {
+            0
+        };
+        let display_cc = cc.min(render_cols.saturating_sub(1));
         ScreenContent {
             lines,
-            cursor: (cr, cc),
+            cursor: (display_cr, display_cc),
             title: None,
             cursor_shape: crate::terminal_provider::CursorShape::Block,
             bell: false,
             focus_events_enabled: false,
+            cwd: None,
         }
     }
 

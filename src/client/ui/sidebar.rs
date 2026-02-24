@@ -17,10 +17,11 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeCo
 
     // Office selector (top area)
     let office_name = &app.offices[app.current_office].name;
-    
+
     let office_style = if active {
         if t.follow_terminal {
-            Style::default().add_modifier(ratatui::style::Modifier::BOLD | ratatui::style::Modifier::REVERSED)
+            Style::default()
+                .add_modifier(ratatui::style::Modifier::BOLD | ratatui::style::Modifier::REVERSED)
         } else {
             Style::default()
                 .fg(t.fg())
@@ -76,7 +77,9 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, area: Rect, t: &ThemeCo
             };
             let item_style = if t.follow_terminal {
                 if sel {
-                    Style::default().add_modifier(ratatui::style::Modifier::BOLD | ratatui::style::Modifier::REVERSED)
+                    Style::default().add_modifier(
+                        ratatui::style::Modifier::BOLD | ratatui::style::Modifier::REVERSED,
+                    )
                 } else {
                     Style::default().add_modifier(ratatui::style::Modifier::DIM)
                 }

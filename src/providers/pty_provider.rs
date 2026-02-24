@@ -1,11 +1,15 @@
 use crate::emulators::{AlacrittyEmulator, Vt100Emulator};
+use crate::passthrough::split_passthrough;
 use crate::terminal_emulator::TerminalEmulator;
 use crate::terminal_provider::{ScreenContent, TerminalProvider};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use std::{
     env,
     io::{Read, Write},
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::AtomicUsize,
+        Arc, Mutex,
+    },
     thread,
     time::Instant,
 };
@@ -20,6 +24,12 @@ pub struct PtyProvider {
     spawn_env: Option<Vec<(String, String)>>,
     /// Notified whenever the PTY reader thread processes new output.
     pub output_notify: Arc<tokio::sync::Notify>,
+    /// Number of active push-mode subscribers for this tab.
+    pub subscriber_count: Arc<AtomicUsize>,
+    /// Intercepted APC sequences (Kitty graphics, Sixel, iTerm2) pending delivery to clients.
+    pub pending_graphics: Arc<Mutex<Vec<Vec<u8>>>>,
+    /// Current working directory from OSC 7 notifications.
+    pub current_cwd: Arc<Mutex<Option<String>>>,
 }
 
 struct PtyState {
@@ -39,6 +49,9 @@ impl PtyProvider {
             spawn_shell: None,
             spawn_env: None,
             output_notify: Arc::new(tokio::sync::Notify::new()),
+            subscriber_count: Arc::new(AtomicUsize::new(0)),
+            pending_graphics: Arc::new(Mutex::new(Vec::new())),
+            current_cwd: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -120,6 +133,8 @@ impl PtyProvider {
         env: Option<&[(String, String)]>,
         last_output: Arc<Mutex<Instant>>,
         output_notify: Arc<tokio::sync::Notify>,
+        pending_graphics: Arc<Mutex<Vec<Vec<u8>>>>,
+        current_cwd: Arc<Mutex<Option<String>>>,
     ) -> Option<PtyState> {
         let pty_system = native_pty_system();
         let pair = match pty_system.openpty(PtySize {
@@ -172,7 +187,23 @@ impl PtyProvider {
                 match reader.read(&mut buf) {
                     Ok(0) | Err(_) => break,
                     Ok(n) => {
-                        emulator_clone.lock().unwrap().process(&buf[..n]);
+                        let parsed = split_passthrough(&buf[..n]);
+                        // Feed normal bytes to emulator
+                        if !parsed.normal.is_empty() {
+                            emulator_clone.lock().unwrap().process(&parsed.normal);
+                        }
+                        // Collect APC sequences for graphics passthrough
+                        if !parsed.apc_seqs.is_empty() {
+                            if let Ok(mut g) = pending_graphics.lock() {
+                                g.extend(parsed.apc_seqs);
+                            }
+                        }
+                        // Update working directory from OSC 7
+                        if let Some(path) = parsed.osc7_paths.into_iter().last() {
+                            if let Ok(mut cwd_guard) = current_cwd.lock() {
+                                *cwd_guard = Some(path);
+                            }
+                        }
                         *last_output_clone.lock().unwrap() = Instant::now();
                         output_notify.notify_waiters();
                     }
@@ -237,6 +268,8 @@ impl PtyProvider {
             env,
             self.last_output.clone(),
             self.output_notify.clone(),
+            self.pending_graphics.clone(),
+            self.current_cwd.clone(),
         );
         if spawned.is_none() && primary_shell != fallback_shell {
             tracing::info!("Retrying PTY spawn with fallback shell: {}", fallback_shell);
@@ -248,6 +281,8 @@ impl PtyProvider {
                 env,
                 self.last_output.clone(),
                 self.output_notify.clone(),
+                self.pending_graphics.clone(),
+                self.current_cwd.clone(),
             );
         }
 
@@ -335,7 +370,11 @@ impl TerminalProvider for PtyProvider {
             tracing::debug!("get_screen: PTY not spawned");
             return ScreenContent::default();
         };
-        let content = pty.emulator.lock().unwrap().get_screen(rows, cols);
+        let mut content = pty.emulator.lock().unwrap().get_screen(rows, cols);
+        // Attach current working directory from OSC 7
+        if let Ok(cwd) = self.current_cwd.lock() {
+            content.cwd = cwd.clone();
+        }
         tracing::debug!("get_screen: {} lines", content.lines.len());
         content
     }
@@ -345,5 +384,46 @@ impl TerminalProvider for PtyProvider {
         if let Some(pty) = &self.pty {
             pty.emulator.lock().unwrap().scroll(delta);
         }
+    }
+
+    fn take_pending_graphics(&self) -> Vec<Vec<u8>> {
+        if let Ok(mut g) = self.pending_graphics.lock() {
+            std::mem::take(&mut *g)
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn get_cwd(&self) -> Option<String> {
+        // Primary: read /proc/<pid>/cwd (Linux) — works regardless of shell config
+        #[cfg(target_os = "linux")]
+        if let Some(pid) = self.child_pid() {
+            let proc_cwd = std::path::PathBuf::from(format!("/proc/{}/cwd", pid));
+            if let Ok(path) = std::fs::read_link(&proc_cwd) {
+                return path.to_str().map(|s| s.to_string());
+            }
+        }
+
+        // macOS fallback: lsof -p <pid> -Fn to find cwd (fd type 'cwd')
+        #[cfg(target_os = "macos")]
+        if let Some(pid) = self.child_pid() {
+            if let Ok(out) = std::process::Command::new("lsof")
+                .args(["-p", &pid.to_string(), "-Fn", "-a", "-d", "cwd"])
+                .output()
+            {
+                // lsof -Fn prints "p<pid>\nn<path>" — grab the line starting with 'n'
+                let stdout = String::from_utf8_lossy(&out.stdout);
+                for line in stdout.lines() {
+                    if let Some(path) = line.strip_prefix('n') {
+                        if path.starts_with('/') {
+                            return Some(path.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Last resort: OSC 7 path reported by shell
+        self.current_cwd.lock().ok().and_then(|g| g.clone())
     }
 }

@@ -198,7 +198,7 @@ fn persistence_missing_active_task_defaults_to_zero() {
 
 // ── persistence: save_state / load_state via XDG_CONFIG_HOME ─────────────────
 
-use mato::client::app::{App, Desk, RenameTarget, TabEntry};
+use mato::client::app::{App, Desk, RenameState, RenameTarget, TabEntry};
 use mato::terminal_provider::{ScreenContent, TerminalProvider};
 
 struct NullProvider;
@@ -311,7 +311,7 @@ fn load_state_corrupt_json_returns_err() {
 #[test]
 fn commit_rename_tab_applies_name() {
     let mut app = make_app(vec![null_task("T", 2)]);
-    app.rename = Some((RenameTarget::Tab(0, 1), "Renamed".into()));
+    app.rename = Some(RenameState::new(RenameTarget::Tab(0, 1), "Renamed".into()));
     app.commit_rename();
     assert_eq!(app.offices[0].desks[0].tabs[1].name, "Renamed");
 }
@@ -320,18 +320,18 @@ fn commit_rename_tab_applies_name() {
 fn begin_rename_task_sets_rename_state() {
     let mut app = make_app(vec![null_task("MyTask", 1)]);
     app.begin_rename_desk(0);
-    let (target, buf) = app.rename.as_ref().unwrap();
-    assert!(matches!(target, RenameTarget::Desk(0)));
-    assert_eq!(buf, "MyTask");
+    let rename = app.rename.as_ref().unwrap();
+    assert!(matches!(rename.target, RenameTarget::Desk(0)));
+    assert_eq!(rename.buffer, "MyTask");
 }
 
 #[test]
 fn begin_rename_tab_sets_rename_state() {
     let mut app = make_app(vec![null_task("T", 1)]);
     app.begin_rename_tab();
-    let (target, buf) = app.rename.as_ref().unwrap();
-    assert!(matches!(target, RenameTarget::Tab(0, 0)));
-    assert_eq!(buf, "T1");
+    let rename = app.rename.as_ref().unwrap();
+    assert!(matches!(rename.target, RenameTarget::Tab(0, 0)));
+    assert_eq!(rename.buffer, "T1");
 }
 
 #[test]
@@ -422,7 +422,10 @@ fn alacritty_bell_is_consumed_once_per_ding() {
     let s1 = emu.get_screen(24, 80);
     assert!(s1.bell, "first get_screen should report bell=true");
     let s2 = emu.get_screen(24, 80);
-    assert!(!s2.bell, "second get_screen should report bell=false (consumed)");
+    assert!(
+        !s2.bell,
+        "second get_screen should report bell=false (consumed)"
+    );
 }
 
 #[test]

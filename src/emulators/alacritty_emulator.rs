@@ -120,7 +120,8 @@ impl TerminalEmulator for AlacrittyEmulator {
     fn get_screen(&self, rows: u16, cols: u16) -> ScreenContent {
         let grid = self.term.grid();
         let renderable = self.term.renderable_content();
-        let mut cursor = renderable.cursor.point;
+        let cursor = renderable.cursor.point;
+        let raw = grid.cursor.point;
         let title = self.title.lock().unwrap().clone();
 
         // Use renderable cursor shape which accounts for DECTCEM (cursor visibility).
@@ -132,23 +133,17 @@ impl TerminalEmulator for AlacrittyEmulator {
             _ => CursorShape::Block,
         };
 
-        // Some TUIs may report an off-screen renderable cursor transiently.
-        // Only in that case fall back to raw grid cursor.
-        let raw = grid.cursor.point;
-        let renderable_offscreen = cursor.line.0 < 0 || cursor.line.0 >= rows as i32;
-        if renderable_offscreen {
-            cursor = raw;
-        }
-        if cursor.line.0 >= 0 && cursor.column.0 > 0 {
-            let point_cell = &grid[cursor.line][cursor.column];
-            if point_cell.flags.intersects(Flags::WIDE_CHAR_SPACER) {
-                cursor.column -= 1;
-            }
-        }
-
         let grid_cols = self.term.columns();
-        let render_rows = (rows as usize).min(self.term.screen_lines());
+        let screen_lines = self.term.screen_lines();
+        let render_rows = (rows as usize).min(screen_lines);
         let render_cols = (cols as usize).min(grid_cols);
+
+        // When the subscriber requests fewer rows than the PTY has (e.g., phone with
+        // 25 rows connected to a 40-row PTY), show the BOTTOM render_rows rows.
+        // Without this, a 25-row subscriber sees rows 0-24, but the shell and cursor
+        // live at the bottom (rows 15-39 for a 40-row PTY) — typed chars and scrolling
+        // are completely invisible to the smaller client.
+        let row_offset = screen_lines - render_rows; // 0 when sizes match
 
         let mut lines = vec![
             ScreenLine {
@@ -161,12 +156,17 @@ impl TerminalEmulator for AlacrittyEmulator {
         for indexed in renderable.display_iter {
             let abs_line = indexed.point.line.0;
             let col = indexed.point.column.0;
-            let row = abs_line - visible_top_line;
-            if row < 0 {
+            let row_i32 = abs_line - visible_top_line;
+            if row_i32 < 0 || col >= render_cols {
                 continue;
             }
-            let row = row as usize;
-            if row >= render_rows || col >= render_cols {
+            let row = row_i32 as usize;
+            // Skip rows above our window (top `row_offset` rows of the PTY viewport).
+            // row_offset = 0 when client size matches PTY size; > 0 when client is smaller.
+            let Some(adjusted_row) = row.checked_sub(row_offset) else {
+                continue;
+            };
+            if adjusted_row >= render_rows {
                 continue;
             }
             let cell = indexed.cell;
@@ -190,7 +190,7 @@ impl TerminalEmulator for AlacrittyEmulator {
             let underline_color = cell
                 .underline_color()
                 .and_then(|c| self.ansi_color_to_ratatui(c));
-            lines[row].cells.push(ScreenCell {
+            lines[adjusted_row].cells.push(ScreenCell {
                 ch: if spacer { '\0' } else { cell.c },
                 display_width,
                 fg: self.ansi_color_to_ratatui(cell.fg),
@@ -236,11 +236,35 @@ impl TerminalEmulator for AlacrittyEmulator {
 
         ScreenContent {
             lines,
-            cursor: (cursor.line.0.max(0) as u16, cursor.column.0.max(0) as u16),
+            // Adjust cursor row to be relative to the bottom render_rows window.
+            // PTY row 0..screen_lines maps to display row (row - row_offset);
+            // clamp to [0, render_rows-1] for edge cases (cursor in scrollback or
+            // transiently above the visible window).
+            cursor: {
+                // Prefer renderable cursor; fall back to raw grid cursor if off-screen.
+                let mut cur = cursor;
+                let adjusted_row = cur.line.0 - row_offset as i32;
+                if adjusted_row < 0 || adjusted_row >= render_rows as i32 {
+                    cur = raw; // fall back to raw
+                }
+                // Wide-char: step back one column if cursor sits on a spacer cell.
+                if cur.line.0 >= 0 && cur.column.0 > 0 {
+                    let point_cell = &grid[cur.line][cur.column];
+                    if point_cell.flags.intersects(Flags::WIDE_CHAR_SPACER) {
+                        cur.column -= 1;
+                    }
+                }
+                let display_row = (cur.line.0 - row_offset as i32)
+                    .max(0)
+                    .min(render_rows as i32 - 1) as u16;
+                let display_col = cur.column.0.min(render_cols.saturating_sub(1)) as u16;
+                (display_row, display_col)
+            },
             title,
             cursor_shape,
             bell: self.bell.swap(false, Ordering::Relaxed),
             focus_events_enabled: self.term.mode().contains(TermMode::FOCUS_IN_OUT),
+            cwd: None,
         }
     }
 

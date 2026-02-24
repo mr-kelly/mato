@@ -19,6 +19,6 @@ expression: out
 "│                      ││                        │"
 "│                      ││                        │"
 "│                      ││                        │"
-"│                      ││                        │"
-"└──────────────────────┘└────────────────────────┘"
+" Theme disabled: terminal lacks truecolor (set COL"
+"└──────────────────────┘└ ───────────────────────┘"
 "  Focus:Content    Esc·Esc  Jump   keys→shell     "

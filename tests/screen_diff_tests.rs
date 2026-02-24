@@ -33,6 +33,7 @@ fn make_screen(lines: &[&str]) -> ScreenContent {
         cursor_shape: CursorShape::Block,
         bell: false,
         focus_events_enabled: false,
+        cwd: None,
     }
 }
 
@@ -335,7 +336,10 @@ fn focus_events_enabled_propagates_through_diff() {
         ServerMsg::ScreenDiff {
             focus_events_enabled,
             ..
-        } => assert!(*focus_events_enabled, "diff should carry focus_events_enabled=true"),
+        } => assert!(
+            *focus_events_enabled,
+            "diff should carry focus_events_enabled=true"
+        ),
         _ => panic!("Expected ScreenDiff"),
     }
 
@@ -387,8 +391,5 @@ fn bell_cleared_by_subsequent_diff_without_bell() {
     c.lines[0] = make_line("world"); // force a real diff so compute_diff returns Some
     let diff2 = compute_diff(&b, &c).unwrap();
     apply_diff(&mut cached, diff2);
-    assert!(
-        !cached.bell,
-        "bell must be false after diff without bell"
-    );
+    assert!(!cached.bell, "bell must be false after diff without bell");
 }

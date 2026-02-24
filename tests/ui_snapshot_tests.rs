@@ -35,6 +35,11 @@ fn make_desk(name: &str, tabs: Vec<&str>) -> Desk {
 
 fn make_app(desks: Vec<Desk>) -> App {
     let mut app = App::new();
+    // Snapshot tests must be deterministic across local COLORTERM/theme settings.
+    app.toast = Some((
+        "Theme disabled: terminal lacks truecolor (set COLORTERM=truecolor)".into(),
+        std::time::Instant::now(),
+    ));
     app.current_office = 0;
     app.offices = vec![Office {
         id: "office-test".into(),
@@ -80,9 +85,7 @@ fn snapshot_multiple_desks() {
 #[test]
 fn snapshot_topbar_many_tabs() {
     // Many tabs to trigger tab_scroll > 0 in some configurations
-    let tabs = vec![
-        "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta",
-    ];
+    let tabs = vec!["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta"];
     let mut app = make_app(vec![make_desk("Work", tabs)]);
     app.focus = Focus::Topbar;
     let out = render(&mut app, 100, 30);

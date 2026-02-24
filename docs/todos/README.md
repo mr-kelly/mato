@@ -5,8 +5,8 @@ Current development roadmap and future plans for Mato.
 ## 📚 Documentation
 
 This directory contains:
-- **[TODO.md](TODO.md)** - Current roadmap and future plans
-- **[roadmap.md](roadmap.md)** - Terminal runtime capability audit and gap roadmap
+- **[TODO.md](TODO.md)** - Current execution backlog (synced summary of roadmap priorities)
+- **[roadmap.md](roadmap.md)** - Current capability audit and prioritized gap roadmap
 - **[FUTURE_STATE_PERSISTENCE.md](FUTURE_STATE_PERSISTENCE.md)** - Phase 10 design for terminal state persistence
 
 ## 🎯 Purpose
@@ -31,5 +31,5 @@ This directory contains:
 
 ---
 
-**Current Status**: v0.2.0 - Production Ready ✅  
-**Next**: Phase 9 - Advanced UI/UX
+**Current Status**: v0.9.5 - Active Development ✅  
+**Recommended Source of Truth**: `roadmap.md` (capability audit + prioritized gaps)

@@ -29,6 +29,6 @@ expression: out
 "│                      ││                                                                          │"
 "│                      ││                                                                          │"
 "│                      ││                                                                          │"
-"│                      ││                                                                          │"
-"└──────────────────────┘└──────────────────────────────────────────────────────────────────────────┘"
+"│                      ││      Theme disabled: terminal lacks truecolor (set COLORTERM=truecolor)   "
+"└──────────────────────┘└ ─────────────────────────────────────────────────────────────────────────┘"
 "  Focus:Sidebar    ↑↓  Navigate   o  Office   n  New Desk   x  Close   r  Rename   s  Settings   Esc"

@@ -1,7 +1,7 @@
 # Mato Terminal Runtime Roadmap & Capability Audit
 
-**Date**: 2026-02-22  
-**Version Baseline**: v0.7.1 (post-sync code baseline)  
+**Date**: 2026-02-24  
+**Version Baseline**: v0.9.5  
 **Purpose**: Full capability checklist, current-state audit, and prioritized gap roadmap for coding agents
 
 ## Legend
@@ -23,7 +23,7 @@
 - `[x]` Best-effort terminal restoration on exit/crash (`TerminalGuard` + panic/signal cleanup)
 - `[x]` Client disconnect does not stop daemon-side PTYs (basic attach/detach behavior)
 - `[~]` Session continuity: client reconnect works, but PTY process state is lost after daemon restart
-- `[~]` CPU control: adaptive polling exists (80ms/200ms), but no formal performance SLA yet
+- `[~]` CPU control: adaptive polling + conditional render are in place, but no formal performance SLA yet
 
 ---
 
@@ -36,7 +36,7 @@
 - `[x]` Child-exit detection (`try_wait`) with auto-respawn
 - `[x]` Shell resolution strategy (`$SHELL` -> passwd shell -> `/bin/sh`)
 - `[x]` `TERM=xterm-256color`
-- `[ ]` Per-tab `cwd/env/argv/shell` configuration
+- `[~]` Per-tab process config: `cwd` support exists (OSC 7 + `/proc`/`lsof` + inherit-on-new-tab), `env/argv/custom shell` policy is still missing
 - `[~]` Zombie handling: `try_wait` exists, no centralized `SIGCHLD` reaper model
 
 ### 1.2 Terminal State & Recovery
@@ -73,7 +73,7 @@
 ### 2.4 Focus Events
 
 - `[x]` Focus in/out sequences (`\x1b[I` / `\x1b[O`)
-- `[ ]` Focus-aware refresh throttling policy
+- `[~]` Focus-aware refresh throttling exists (adaptive polling by activity/focus), but no explicit policy contract/documentation
 
 ---
 
@@ -97,14 +97,14 @@
 
 - `[x]` `Event::Resize` capture
 - `[x]` Client layout updates
-- `[~]` PTY winsize sync is intentionally disabled in daemon (content-preservation tradeoff)
+- `[~]` PTY winsize strategy is configurable (`fixed`/`sync`) with safety constraints; tradeoffs still apply
 - `[x]` Resize debouncing/pending-apply strategy
 
 ### 3.4 Rendering Strategy
 
 - `[x]` Frame throttling (active/idle)
 - `[~]` Relies on ratatui diffing, but no explicit Mato rendering SLA
-- `[ ]` Explicit backpressure policy for high-throughput output
+- `[~]` High-throughput path has coalescing + push/diff dedup, but no explicit backpressure policy contract
 
 ---
 
@@ -179,7 +179,7 @@
 - `[~]` Alt-key variance not fully validated
 - `[~]` CJK/emoji width still needs broad compatibility coverage
 - `[~]` Mouse protocol compatibility matrix incomplete
-- `[ ]` mosh-specific strategy
+- `[~]` mosh-specific behavior has partial handling (theme/truecolor fallbacks), no full compatibility strategy yet
 - `[~]` SSH-disconnect behavior benefits from daemon model, but lacks automated regression suite
 
 ---
@@ -223,9 +223,7 @@
 
 1. Automated compatibility matrix (vim/nvim/htop/lazygit/less/high-output)
 2. Input hardening (Alt/Esc boundaries, IME behavior, Backspace normalization)
-3. Configurable resize strategy:
-   - `safe_fixed_pty_size` (current)
-   - `sync_pty_winsize` (experimental mode)
+3. Formalize and document resize strategy behavior (`fixed` vs `sync`, single/multi-client semantics)
 4. Backpressure + render SLA under high output
 
 ### P1: Multiplexer & Session Completion
@@ -234,13 +232,33 @@
 2. Multi-client collaboration semantics (read-only/input ownership)
 3. Configurable keymap while keeping AI-friendly defaults
 
-### P2: Task/Agent Capability Framework
+### P2: Graphics Protocol Support Hardening (High UX Value)
+
+**Kitty Graphics Protocol passthrough** is implemented; next work is compatibility hardening and coverage.
+
+Current state:
+1. APC/graphics passthrough pipeline exists
+2. Client emits pending graphics sequences after render
+3. Basic compatibility works for supported terminals
+
+Remaining gaps:
+1. Broader terminal compatibility matrix and regression tests
+2. More explicit fallback/disable behavior on unsupported terminals
+3. UX polish for mixed text/graphics workflows
+
+Note on WezTerm emulator: `wezterm-term` is NOT published to crates.io, has 50+ internal crate
+dependencies, and unstable API. NOT recommended as emulator replacement — graphics passthrough
+at the PTY reader layer is the correct architecture regardless of emulator.
+
+Limitation: mosh does not propagate APC sequences (mosh strips them). SSH works fine.
+
+### P3: Task/Agent Capability Framework
 
 1. Task schema (`cmd/cwd/env/restart/backoff`)
 2. Task state machine + events
 3. Notification pipeline (bell -> desktop/webhook)
 
-### P3: Plugin System
+### P4: Plugin System
 
 1. Minimal plugin API (commands/hooks)
 2. Security boundaries
@@ -252,6 +270,7 @@
 
 1. `compat-matrix`: add `tests/compat/` with TUI smoke tests and capture scripts.
 2. `input-hardening`: isolate input policy layer + Alt/Esc/Backspace/IME tests/docs.
-3. `resize-mode`: add `resize_strategy` config and implement fixed/sync modes.
+3. `resize-mode-docs`: document current `resize_strategy` behavior and add acceptance tests for fixed/sync + multi-client.
 4. `session-cli`: design `mato attach/detach/sessions` commands.
 5. `task-schema`: introduce task model + restart policy + state machine.
+6. `graphics-compat`: expand Kitty/Sixel/iTerm2 compatibility tests and unsupported-terminal fallback behavior.
