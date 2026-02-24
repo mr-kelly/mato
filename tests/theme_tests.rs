@@ -1,5 +1,7 @@
 /// Tests for ThemeColors and builtin theme loading.
-use mato::theme::{builtin, rgb_to_256, supports_truecolor, ThemeColors, BUILTIN_THEMES};
+use mato::theme::{
+    builtin, rgb_to_256, supports_truecolor, supports_truecolor_value, ThemeColors, BUILTIN_THEMES,
+};
 use ratatui::style::Color;
 
 fn fixed_theme() -> ThemeColors {
@@ -361,46 +363,22 @@ fn theme_file_toml_empty_is_default() {
 
 #[test]
 fn supports_truecolor_recognizes_truecolor_value() {
-    // Use a temp env-var scope via std::env directly.
-    let orig = std::env::var("COLORTERM").ok();
-    std::env::set_var("COLORTERM", "truecolor");
-    assert!(mato::theme::supports_truecolor());
-    match orig {
-        Some(v) => std::env::set_var("COLORTERM", v),
-        None => std::env::remove_var("COLORTERM"),
-    }
+    assert!(supports_truecolor_value(Some("truecolor")));
 }
 
 #[test]
 fn supports_truecolor_recognizes_24bit_value() {
-    let orig = std::env::var("COLORTERM").ok();
-    std::env::set_var("COLORTERM", "24bit");
-    assert!(mato::theme::supports_truecolor());
-    match orig {
-        Some(v) => std::env::set_var("COLORTERM", v),
-        None => std::env::remove_var("COLORTERM"),
-    }
+    assert!(supports_truecolor_value(Some("24bit")));
 }
 
 #[test]
 fn supports_truecolor_false_when_missing() {
-    let orig = std::env::var("COLORTERM").ok();
-    std::env::remove_var("COLORTERM");
-    assert!(!mato::theme::supports_truecolor());
-    if let Some(v) = orig {
-        std::env::set_var("COLORTERM", v);
-    }
+    assert!(!supports_truecolor_value(None));
 }
 
 #[test]
 fn supports_truecolor_false_for_xterm256() {
-    let orig = std::env::var("COLORTERM").ok();
-    std::env::set_var("COLORTERM", "256color");
-    assert!(!mato::theme::supports_truecolor());
-    match orig {
-        Some(v) => std::env::set_var("COLORTERM", v),
-        None => std::env::remove_var("COLORTERM"),
-    }
+    assert!(!supports_truecolor_value(Some("256color")));
 }
 
 #[test]

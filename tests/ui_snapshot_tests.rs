@@ -35,6 +35,11 @@ fn make_desk(name: &str, tabs: Vec<&str>) -> Desk {
 
 fn make_app(desks: Vec<Desk>) -> App {
     let mut app = App::new();
+    // Snapshot tests must be deterministic across local COLORTERM/theme settings.
+    app.toast = Some((
+        "Theme disabled: terminal lacks truecolor (set COLORTERM=truecolor)".into(),
+        std::time::Instant::now(),
+    ));
     app.current_office = 0;
     app.offices = vec![Office {
         id: "office-test".into(),

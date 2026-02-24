@@ -357,11 +357,14 @@ pub fn load() -> ThemeColors {
 /// "truecolor" or "24bit" is the de-facto indicator used by terminal
 /// emulators (iTerm2, Kitty, Alacritty, recent mosh, etc.).
 pub fn supports_truecolor() -> bool {
+    let colorterm = std::env::var("COLORTERM").ok();
+    supports_truecolor_value(colorterm.as_deref())
+}
+
+/// Pure parser for COLORTERM values. Exposed for deterministic tests.
+pub fn supports_truecolor_value(colorterm: Option<&str>) -> bool {
     matches!(
-        std::env::var("COLORTERM")
-            .unwrap_or_default()
-            .to_lowercase()
-            .as_str(),
+        colorterm.unwrap_or_default().to_lowercase().as_str(),
         "truecolor" | "24bit"
     )
 }
