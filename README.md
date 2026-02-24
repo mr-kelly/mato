@@ -222,28 +222,7 @@ Recommended CLI coding agents:
 
 ### 🧪 Test Suite
 
-Mato has **264 passing tests** across 14 test suites:
-
-| Suite | Tests | What it covers |
-|---|---|---|
-| `app_tests` | 58 | Desk/tab lifecycle, nav, rename (unicode/cursor), office switch, toast, jump labels/selection, ESC timing, tab switch measurement |
-| `daemon_tests` | 31 | Alacritty emulator (bell, focus tracking, wide chars, resize), PID/lock files, persistence |
-| `screen_diff_tests` | 16 | ScreenDiff protocol, bell/focus propagation, msgpack roundtrip |
-| `input_tests` | 25 | Key bindings, jump mode, rename, copy mode, alt/ctrl encoding |
-| `theme_tests` | 32 | All 12 builtin themes valid, theme merge/override, TOML roundtrip, color palette accuracy |
-| `protocol_tests` | 19 | ClientMsg/ServerMsg JSON + msgpack serde, `ScreenContent` roundtrips, all message variants |
-| `vt100_emulator_tests` | 20 | vt100 emulator correctness |
-| `daemon_provider` (unit) | 11 | Screen cache integrity, resize race-condition guard, size mismatch rejection |
-| `ui_snapshot_tests` | 6 | TUI layout regressions (ratatui `TestBackend` + insta snapshots) |
-| `terminal_persistence_tests` | 5 | PTY content survives reconnect, resize, multi-write |
-| `utils_tests` | 5 | ID uniqueness under load, path layout |
-| others | ~24 | Config, compat, integration |
-
-```bash
-cargo test                     # run all tests
-INSTA_UPDATE=always cargo test --test ui_snapshot_tests  # regenerate snapshots
-cargo insta review             # review changed snapshots interactively
-```
+Testing commands and coverage notes are documented in [`docs/TESTING.md`](docs/TESTING.md).
 
 ### Fast Contribute (3 steps)
 
@@ -308,6 +287,7 @@ You say tomato, I say Mato.
 ### 📖 Documentation
 - [**Keyboard Shortcuts**](docs/KEYBOARD_SHORTCUTS.md)
 - [**AI Agent Guide**](docs/AI_AGENT_FRIENDLY.md)
+- [**Testing**](docs/TESTING.md)
 - [**Persistence Specs**](docs/TERMINAL_PERSISTENCE.md)
 - [**Spinner Logic**](docs/SPINNER_LOGIC.md)
 
