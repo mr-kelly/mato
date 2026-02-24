@@ -84,7 +84,7 @@ export default function HomePage() {
         </div>
 
         <h1 className="mb-6 max-w-5xl bg-gradient-to-b from-fd-foreground to-fd-foreground/70 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent sm:text-6xl md:text-8xl">
-          Your Agents, <br />
+          Your AI Terminals, <br />
           <span className="text-[#D63C3C]">Orchestrated.</span>
         </h1>
         
