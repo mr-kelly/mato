@@ -4,7 +4,13 @@ This directory contains release notes and summaries for Mato versions.
 
 ## 📦 Releases
 
-### v0.9.5 (2026-02-24) - Latest
+### v0.9.6 (2026-02-24) - Latest
+- **[RELEASE_NOTES_v0.9.6.md](RELEASE_NOTES_v0.9.6.md)** - Linux Compatibility + Installer Shell Detection + Test Stability
+- **[RELEASE_SUMMARY_v0.9.6.md](RELEASE_SUMMARY_v0.9.6.md)** - Technical summary
+
+**Highlights**: Linux release build baseline moved to ubuntu-20.04 for broader glibc compatibility, shell-aware installer guidance, and environment-stable theme/snapshot tests.
+
+### v0.9.5 (2026-02-24)
 - **[RELEASE_NOTES_v0.9.5.md](RELEASE_NOTES_v0.9.5.md)** - Docs Alignment + Testing Guide + Backlog Refresh
 - **[RELEASE_SUMMARY_v0.9.5.md](RELEASE_SUMMARY_v0.9.5.md)** - Technical summary
 
@@ -84,5 +90,5 @@ Milestone-level historical overview.
 
 ---
 
-**Latest Release**: v0.9.5 (2026-02-24)  
+**Latest Release**: v0.9.6 (2026-02-24)  
 **Status**: Stable

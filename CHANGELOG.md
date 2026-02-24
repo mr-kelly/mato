@@ -7,54 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-02-24
+
 ### Changed
-- **Restart Terminal shortcut changed from `r` to `x`**: In Jump Mode with Content focus, the restart terminal action now uses `x` key instead of `r` to avoid accidental triggers when attempting to rename tabs/desks. This prevents confusion between rename (`r` in Sidebar/Topbar) and restart operations.
+- **Linux release compatibility**: CI release build runners for Linux targets now use `ubuntu-20.04` instead of `ubuntu-latest` to lower glibc baseline and improve compatibility on older Debian/Ubuntu environments.
+- **Installer shell guidance**: `install.sh` now detects active shell (`bash`/`zsh`/`fish`) and prints shell-specific PATH/source instructions instead of always suggesting `.bashrc`.
 
 ### Fixed
-- **Theme lost when connecting via mosh**: `Color::Rgb` escape sequences (`\x1b[38;2;R;G;Bm`) were emitted unconditionally. mosh ≤ 1.3.x silently drops them; even mosh 1.4+ requires `COLORTERM=truecolor` to be propagated. Added automatic 256-color fallback: when `COLORTERM` is not `truecolor`/`24bit`, each theme color is mapped to the nearest xterm-256 indexed color (6×6×6 cube + 24-step grayscale ramp) via `Color::Indexed`. This means themes work correctly in mosh without any configuration — colors are a close approximation rather than exact RGB. A startup toast is shown when COLORTERM is absent and a custom theme is active, informing the user they can set `COLORTERM=truecolor` for exact colors.
-- **Toast rendering panic in narrow terminals**: `draw_toast` computed `toast_area.width = msg.len() + 4` without clamping to `frame.area().width`. On terminals narrower than the toast message, the buffer access was out-of-bounds. Fixed by clamping `width = msg_len.min(area.width)`.
-- **ESC key silently dropped when followed by another key within 300ms**: The ESC double-press detection window held the ESC in `last_content_esc`. When a non-ESC key was pressed within 300ms, `flush_pending_content_esc()` was called but its `>= 300ms` guard prevented the flush — the ESC was silently dropped. This broke ESC+key combos (Alt sequences in readline, ESC followed by a vim command after exiting insert mode). Fixed in `input.rs`: on any non-ESC keypress, the pending ESC is now forwarded immediately via `last_content_esc.take()` and `pty_write(b"\x1b")`, bypassing the timer guard. The timer-based path (`flush_pending_content_esc` in the event loop) is unchanged.
-- **Focus events (FocusIn/FocusOut) not sent on tab/desk switch within Content focus**: `sync_focus_events()` fires only when mato's `focus` field changes (e.g., Content→Sidebar). When switching tabs via Alt+1-9 or Jump Mode while staying in Content focus, the focus field stays at `Content` and `sync_focus_events()` does not fire — inner TUI apps with focus tracking enabled (vim, helix, kakoune) never receive `\x1b[O` (FocusOut) for the old tab or `\x1b[I` (FocusIn) for the new tab. Fixed by adding `pty_send_focus_event(focus_in: bool)` helper to `App` (guards on `focus == Content` and `focus_events_enabled()`) and calling it before and after every desk/tab switch that keeps focus in Content: Alt+1-9 in `input.rs`, and both 't' and 'b' paths in `handle_jump_selection`.
-- **Multi-client screen sync broken when clients have different window sizes**: When a smaller client (e.g., phone at 25 rows) subscribed to a PTY spawned by a larger client (e.g., PC at 40 rows), `get_screen(25, cols)` in the alacritty emulator returned the TOP 25 rows of the 40-row PTY. The shell and cursor are always at the BOTTOM of the PTY (row 39), so the smaller client saw stale empty rows and the cursor was clamped — typed characters were invisible, scrolling didn't propagate. Fixed in `src/emulators/alacritty_emulator.rs` and `src/emulators/vt100_emulator.rs`: `get_screen(rows, cols)` now computes `row_offset = screen_lines - render_rows` and shows the BOTTOM `rows` rows. All cell indices and the cursor row are adjusted by `row_offset`. When sizes match (`row_offset = 0`) behavior is unchanged.
-- **Multiple clients fight over PTY size (resize storm)**: Default `resize_strategy = Sync` caused every client's window resize to propagate to the PTY. With two clients of different sizes (phone + PC), each client's keyboard-popup resize sent a `Resize` to the daemon — the PTY oscillated between 25 and 40 rows, sending SIGWINCH to the shell repeatedly and causing TUI apps (vim, htop) on both clients to reflow constantly. Fixed: added `subscriber_count: Arc<AtomicUsize>` to `PtyProvider`; the daemon push loop increments it on Subscribe and decrements on client disconnect. The `Resize` handler in the push loop only resizes the PTY when `subscriber_count <= 1` (sole subscriber). With multiple subscribers, `sub_rows`/`sub_cols` still update so `get_screen` returns the correct bottom-rows view for each client's size — but the PTY itself stays at its original size.
+- **Linux runtime failure (`GLIBC_2.39 not found`)**: release artifact compatibility improved by building Linux binaries on an older runner baseline.
+- **Zsh install guidance confusion**: installer output no longer tells zsh users to source `.bashrc`.
+- **Test determinism for environment-sensitive paths**:
+  - Snapshot tests are stabilized against host `COLORTERM`/theme environment differences.
+  - Truecolor parser tests were refactored to avoid mutating global env vars in parallel test execution.
 
-### Fixed
-- **Terminal content unstable on Android keyboard show/dismiss (cursor stuck in middle)**: When the keyboard raises the screen shrinks, then keyboard dismisses and the screen grows back. The client fires a fire-and-forget `Resize` to the daemon while simultaneously sending a sync `GetScreen` on a separate connection — these can be reordered. If `GetScreen` arrives before `Resize`, the daemon returns the old (smaller) PTY content (e.g. 25 lines) for the new display height (e.g. 40 rows). With top-alignment (`row_base = 0`) this renders the 25 content lines at the top with 15 empty rows below, leaving the cursor visually "stuck in the middle" until the push loop delivers the correctly-sized screen. Fixed by switching to **universal bottom-alignment**: `row_base = ih - screen_rows` for both normal and copy mode. When content is correctly sized (`screen_rows == ih`), `row_base = 0` and there is no change. When there is a transient size mismatch, the content pins to the bottom, keeping the cursor near the visual bottom regardless of when the PTY processes the resize.
-- **Last line of terminal content not rendered after window resize**: after a window expand the client's `DaemonProvider` would call `cache_screen(content, new_rows, cols)` with content that only had `old_rows` lines (the PTY had not yet been resized when the synchronous `GetScreen` fallback ran). `cached_screen(new_rows, cols)` then matched on the row key but returned a short content, leaving the bottom row(s) permanently blank until the next push-loop full-screen arrived. Fixed by (a) adding a line-count consistency check in `cached_screen` so mismatched entries are rejected, and (b) skipping `cache_screen` in the sync fallback when `content.lines.len() != rows`. Added 4 unit tests for cache integrity.
-- **Initial PTY spawn size off-by-one**: `term_rows` was initialised to `H-5` (comment said "topbar(3) + 2 borders") but missed the 1-row status bar, giving `H-5` instead of `H-6`. This caused an unnecessary SIGWINCH resize on every startup. Fixed to `H-6`.
-- **`navy` theme not implemented**: `"navy"` was listed in `BUILTIN_THEMES` but had no match arm in `builtin()`, silently falling through to the `_` wildcard (system/transparent theme). Added proper deep-navy palette: bg `#0A0F23`, sky-blue + gold accents.
-- **One Dark theme surface is lighter and more blue-biased than the editor background**: `surface` was `[44,50,60]` — lighter *and* more blue than `bg` `[40,44,52]`, opposite of authentic One Dark (sidebar `#21252B` = `[33,37,43]` is darker than editor). Fixed `surface` to `[33,37,43]` and `border` to `[55,60,71]` to match the real One Dark UI palette and reduce navy appearance.
-
-### Tests
-- **252 tests** (+~53 new tests, 0 failures):
-  - `app_tests`: +29 new — `RenameState` unicode/cursor editing (emoji, CJK, backspace, delete, home/end, boundary clamps), `select_desk` dirty tracking, `switch_office` behavior, `show_toast`, `has_active_tabs`, `flush_pending_content_esc` stale/recent guard, jump label exclusions per focus, jump label uniqueness, tab-switch timing roundtrip, `handle_jump_selection` (desk, tab, invalid char)
-  - `theme_tests`: +12 new — all 12 builtin themes have valid RGB, all themes are implemented (no fallthrough to `_`), One Dark surface darker than bg, Gruvbox warm, Navy blue-dominant, theme merge with partial overrides, TOML roundtrip
-  - `protocol_tests`: +8 new — scroll delta roundtrip, subscribe message roundtrip, ScreenDiff bell+focus_events both true, InputModes all combinations, full Screen msgpack roundtrip, Error roundtrip, GetInputModes roundtrip, ScreenDiff cell attributes (italic/underline/reverse)
-  - `daemon_provider` unit: +4 new — cache rejects mismatched line count, accepts consistent entry, stores correct size, rejects col mismatch
-
-
-
-### Added
-- **Toast notification system**: `app.toast: Option<(String, Instant)>` field drives bottom-right floating messages. Visible for 3s with binary DIM fade after 2s. Event loop drives `dirty=true` while active so toast auto-expires without needing user input. Triggered on: desk created, desk closed (confirmed), desk/tab/office renamed.
-- **Jump Mode background dim**: entering Jump Mode now applies `DIM` modifier to every cell in the buffer, visually suppressing the background to make jump labels stand out.
-- **Google Analytics (GA4) integration for website**: added via Next.js official `@next/third-parties` with configured measurement id.
-
-### Fixed
-- **Focus sequences (`^[[I`/`^[[O`) shown as literal characters on tab switch**: `sync_focus_events()` now gates on `focus_events_enabled` from the screen cache — sequences are only sent to a PTY that has explicitly enabled focus tracking via `\x1b[?1004h`. If the shell/app hasn't opted in, focus transitions are silently skipped.
-- **Bell rings continuously after a single BEL**: cached `ScreenContent.bell = true` was never cleared after being consumed by the renderer, causing `pending_bell` to be set on every frame. Bell in the daemon provider screen cache is now cleared immediately after being read once (consume-on-read).
-- **`focus_events_enabled` not pushed to client on mode change**: `meta_changed` check in the daemon's ScreenDiff push loop did not include `focus_events_enabled`, so a PTY enabling/disabling focus tracking would not trigger a diff push — clients could become stale. Added to `meta_changed` in `src/daemon/service.rs`.
-- **Spinner freezes when focus is on terminal with no activity**: `ui_changed` check did not include spinner timing, so when there were no PTY output changes, no dirty flag, and no recent input, `terminal.draw()` was skipped entirely — spinner froze until the next keypress. Fixed by adding `app.has_active_tabs() && app.spinner_needs_update()` to the `ui_changed` condition. Spinner now drives its own redraws at 80ms intervals whenever there are active tabs, regardless of user input.
-- **Toast fade DIM applied to wrong layer**: DIM was patched onto the Paragraph container style rather than the Span — text color was unaffected. Fixed to apply `Modifier::DIM` directly to the Span style.
-- **Dead `startup_instant` parameter in `border_style`**: breathing border animation was reverted due to `as_rgb()` API issue, but the unused parameter and imports (`Color`, `std::time::Instant`) remained. Removed from signature and all callers.
-
-### Tests
-- **101 tests** passing across 14 suites (+3 spinner tests this fix):
-  - Spinner: `needs_update` false immediately after update, true after 80ms, frame advances after 80ms
-  - Alacritty emulator: bell one-shot consume, `FOCUS_IN_OUT` mode enable/disable via escape sequences
-  - ScreenDiff protocol: `focus_events_enabled` propagation, bell cleared by subsequent diff, msgpack roundtrip
-  - App logic: `sync_focus_events` gating (4 cases), `from_saved` clamping for corrupted state, tab_scroll reset, empty-tabs safety, mouse-mode cache invalidation on tab switch
-  - Protocol serde: `ScreenContent` JSON + msgpack roundtrips preserve `bell` and `focus_events_enabled`; old JSON missing new fields deserializes as `false` (backward compat)
-  - Utils: 1000-ID uniqueness under load, hex-alphanumeric format contract
+### Documentation
+- Added `docs/TESTING.md` as a dedicated testing guide (commands and snapshot workflow).
+- Simplified README by replacing inline test-suite matrix with links to testing docs.
+- Refreshed TODO docs (`docs/todos/TODO.md`, `docs/todos/roadmap.md`, `docs/todos/README.md`) for v0.9.5+ execution planning.
+- Added release notes and summaries for v0.9.5 and v0.9.6 under `docs/release-notes/`.
 
 ## [0.9.1] - 2026-02-23
 
