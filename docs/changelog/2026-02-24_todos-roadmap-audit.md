@@ -34,3 +34,12 @@
 - Linked testing docs from README Resources and Test Suite section.
 - Replaced `docs/todos/TODO.md` with a concise execution backlog synced to `docs/todos/roadmap.md` priorities (P0-P4 + task cards).
 - Updated `docs/todos/README.md` so TODO is no longer marked as legacy.
+
+## Release Follow-up (same session)
+
+- Prepared v0.9.6 release docs:
+  - `docs/release-notes/RELEASE_NOTES_v0.9.6.md`
+  - `docs/release-notes/RELEASE_SUMMARY_v0.9.6.md`
+  - updated `docs/release-notes/README.md` latest pointer
+- Bumped crate version to `0.9.6` in `Cargo.toml`.
+- Added `CHANGELOG.md` entry for v0.9.6 (Linux glibc compatibility, installer shell guidance, and test determinism updates).

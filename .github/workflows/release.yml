@@ -64,11 +64,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             target: x86_64-unknown-linux-gnu
             artifact_name: mato
             asset_name: mato-linux-x86_64
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             target: aarch64-unknown-linux-gnu
             artifact_name: mato
             asset_name: mato-linux-aarch64
